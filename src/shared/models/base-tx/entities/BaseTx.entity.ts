@@ -1,5 +1,5 @@
 import { Entity } from '../../entity';
-import { TxStatus, TxType } from '../../../constants';
+import { TxStatus, TxType } from '../../../constants2';
 import { StatusAudit } from './StatusAudit.entity';
 import { Trade } from '../../trade';
 

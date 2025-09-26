@@ -5,7 +5,7 @@ import {
   TxSubmitResponse,
   CreateTradeOptions,
 } from '../../models';
-import { TxStatus } from '../../constants';
+import { TxStatus } from '../../constants2';
 import { Logger } from '@nestjs/common';
 import { SolanaService } from '../../../infrastructure';
 

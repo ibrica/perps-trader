@@ -12,7 +12,7 @@ import {
 } from '../../shared/ports/trading/PlatformTradingStrategyPort';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { TradePositionService } from '../trade-position/TradePosition.service';
-import { TradePositionStatus } from '../../shared/constants/TradePositionStatus';
+import { TradePositionStatus } from '../../shared/constants2/TradePositionStatus';
 import { HL_DEFAULT_MINT_FROM, SOL_MINT } from '../../shared';
 
 // Import the PlatformPriceService interface

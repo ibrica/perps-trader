@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { TradeManagerService } from '@atrader-app/trade-manager/TradeManager.service';
+import { TradeManagerService } from '../trade-manager/TradeManager.service';
 
 interface LockDoc {
   _id: string;
@@ -50,7 +50,9 @@ export class TradeMonitorScheduler {
         await this.tradeManager.startTrading();
       }
 
-      this.logger.log(`Trade Monitor Scheduler finished - ${open} open positions`);
+      this.logger.log(
+        `Trade Monitor Scheduler finished - ${open} open positions`,
+      );
     } catch (error) {
       this.logger.error('Trade Monitor Scheduler error:', error);
     } finally {

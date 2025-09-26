@@ -1,4 +1,4 @@
-import { BlockchainSymbol, TxStatus, TxType, Trigger } from '../../constants';
+import { BlockchainSymbol, TxStatus, TxType, Trigger } from '../../constants2';
 
 export interface OnFinalizeOptions {
   txId: string;

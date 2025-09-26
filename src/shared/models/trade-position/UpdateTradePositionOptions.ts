@@ -2,7 +2,7 @@ import {
   PositionDirection,
   PositionType,
   TradePositionStatus,
-} from '../../constants';
+} from '../../constants2';
 import { Platform } from '..';
 
 export interface UpdateTradePositionOptions {

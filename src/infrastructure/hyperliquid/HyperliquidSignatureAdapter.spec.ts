@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { HyperliquidSignatureAdapter } from './HyperliquidSignatureAdapter';
-import { HL_HEADERS } from '../../shared/constants/hyperliquid';
+import { HL_HEADERS } from '../../shared/constants2/hyperliquid';
 
 describe('HyperliquidSignatureAdapter', () => {
   let adapter: HyperliquidSignatureAdapter;

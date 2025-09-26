@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { Logger } from '@nestjs/common';
 import { VersionedTransaction } from '@solana/web3.js';
 import { BasePlatformService } from './BasePlatformService';
-import { TxStatus } from '../../constants';
+import { TxStatus } from '../../constants2';
 import { TxPriority } from '../../models';
 import { SolanaService } from '../../../infrastructure';
 

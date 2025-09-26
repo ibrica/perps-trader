@@ -8,7 +8,7 @@ import {
 } from './HyperliquidService';
 import { HyperliquidClient, HyperliquidError } from './HyperliquidClient';
 import { HyperliquidSignatureAdapter } from './HyperliquidSignatureAdapter';
-import { HL_SYMBOL_MAP } from '../../shared/constants/hyperliquid';
+import { HL_SYMBOL_MAP } from '../../shared/constants2/hyperliquid';
 
 // Add HL_ACTION_TYPES for backwards compatibility in tests
 const HL_ACTION_TYPES = {

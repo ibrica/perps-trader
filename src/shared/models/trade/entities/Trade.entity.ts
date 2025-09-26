@@ -1,5 +1,10 @@
 import { Entity } from '../../entity';
-import { TradeType, TradeStatus, PoolType, SwapType } from '../../../constants';
+import {
+  TradeType,
+  TradeStatus,
+  PoolType,
+  SwapType,
+} from '../../../constants2';
 import { Platform } from '../Platform';
 
 export class Trade extends Entity {

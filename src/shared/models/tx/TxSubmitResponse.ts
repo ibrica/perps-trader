@@ -1,4 +1,4 @@
-import { TxStatus } from '../../constants';
+import { TxStatus } from '../../constants2';
 
 export interface TxSubmitResponse {
   transactionSignature: string;

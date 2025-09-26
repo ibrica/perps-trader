@@ -1,4 +1,4 @@
-import { FixedSide, TxType, ProtocolVersion } from '../../constants';
+import { FixedSide, TxType, ProtocolVersion } from '../../constants2';
 import { TxPriority } from './TxPriority';
 
 export interface CreateBaseTxOptions {

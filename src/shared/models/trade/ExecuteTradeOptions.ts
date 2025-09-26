@@ -1,4 +1,4 @@
-import { PoolType, SwapType, TradeType } from '../../constants';
+import { PoolType, SwapType, TradeType } from '../../constants2';
 import { Platform } from './Platform';
 
 export interface CreateTradeOptions {

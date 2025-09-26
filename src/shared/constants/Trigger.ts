@@ -1,0 +1,5 @@
+export enum Trigger {
+  CRON = 'CRON',
+  CRON_CONFIRM = 'CRON_CONFIRM',
+  CRON_BACKFILL = 'CRON_BACKFILL',
+}

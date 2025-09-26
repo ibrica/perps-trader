@@ -1,4 +1,4 @@
-import { Environment } from '../constants';
+import { Environment } from '../constants2';
 
 export const isLocalMode = (): boolean => {
   return process.env.ENVIRONMENT === Environment.LOCAL;

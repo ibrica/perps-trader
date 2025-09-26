@@ -1,5 +1,5 @@
 import { Connection, PublicKey, VersionedTransaction } from '@solana/web3.js';
-import { GeneralNetwork, FixedSide } from '../../constants';
+import { GeneralNetwork, FixedSide } from '../../constants2';
 
 export type RaydiumRequest = {
   migrationAuthority: PublicKey;

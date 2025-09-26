@@ -16,7 +16,7 @@ import {
   HL_SYMBOL_MAP,
   HL_SYMBOL_REVERSE_MAP,
   HL_BASE_CURRENCY_DECIMALS,
-} from '../../shared/constants/hyperliquid';
+} from '../../shared/constants2/hyperliquid';
 
 // Use types from the SDK
 export type HLMarket = Meta['universe'][0] & {

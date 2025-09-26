@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { createHash, randomBytes } from 'crypto';
 import { ethers } from 'ethers';
-import { HL_HEADERS } from '../../shared/constants/hyperliquid';
+import { HL_HEADERS } from '../../shared/constants2/hyperliquid';
 import { EIP712TypedData } from './types';
 
 export interface SignRequestInput {

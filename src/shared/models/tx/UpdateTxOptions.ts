@@ -1,4 +1,9 @@
-import { TxStatus, ProtocolVersion, FixedSide, Trigger } from '../../constants';
+import {
+  TxStatus,
+  ProtocolVersion,
+  FixedSide,
+  Trigger,
+} from '../../constants2';
 import { Priority } from '../../../app/base-tx/priority/Priority.schema';
 
 export interface UpdateBaseTxOptions {

@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule, Schema } from '@nestjs/mongoose';
 import { TradeMonitorScheduler } from './TradeMonitorScheduler.service';
-import { TradeManagerModule } from '@atrader-app/trade-manager/TradeManager.module';
+import { TradeManagerModule } from '../trade-manager/TradeManager.module';
 
 // Simple lock schema for distributed lock
 const LockSchema = new Schema({
