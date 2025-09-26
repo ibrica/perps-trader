@@ -1,0 +1,259 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # PERPS-TRADER APPLICATION (Main Trading Application)
+  # ============================================================================
+  perps-trader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: perps-trader-app
+    command: sh -c "echo 'Waiting 10 seconds for dependencies to fully initialize...' && sleep 10 && echo 'Starting perps-trader application...' && npm run start:prod"
+    ports:
+      - '7777:7777' # API port
+    environment:
+      - NODE_ENV=production
+      - APP_PORT=7777
+      - APP_HOST=0.0.0.0
+      - MONGODB_URI=${MONGODB_URI} # MongoDB Atlas connection string
+      - ENVIRONMENT=${ENVIRONMENT:-PROD}
+      # Datadog APM/logs integration (optional)
+      - DD_API_KEY=${DD_API_KEY:-}
+      - DD_APP_KEY=${DD_APP_KEY:-}
+      - DD_API_URL=${DD_API_URL:-}
+      - DD_AGENT_URL=${DD_AGENT_URL:-http://datadog-agent:8126}
+      - DD_AGENT_MAJOR_VERSION=7
+      # Predictor service (optional)
+      - PREDICTOR_URL=${PREDICTOR_URL:-http://trader-ai}
+      - PREDICTOR_PORT=${PREDICTOR_PORT:-7007}
+      # Indexer service (required)
+      - INDEXER_HOST=${INDEXER_HOST:-sol-indexer}
+      - INDEXER_WS_PORT=${INDEXER_WS_PORT:-7070}
+      - INDEXER_API_PORT=${INDEXER_API_PORT:-8080}
+      # Hyperliquid Configuration
+      - HL_ENABLED=${HL_ENABLED:-false}
+      - HL_ENV=${HL_ENV:-testnet}
+      - HL_API_URL=${HL_API_URL:-https://api.hyperliquid-testnet.xyz}
+      - HL_INFO_URL=${HL_INFO_URL:-https://api.hyperliquid-testnet.xyz/info}
+      - HL_ADDRESS=${HL_ADDRESS:-}
+      - HL_PRIVATE_KEY=${HL_PRIVATE_KEY:-}
+      - HL_KEY_SECRET=${HL_KEY_SECRET:-}
+      - HL_DEFAULT_LEVERAGE=${HL_DEFAULT_LEVERAGE:-3}
+      - HL_MAX_OPEN_POSITIONS=${HL_MAX_OPEN_POSITIONS:-1}
+      - HL_STOP_LOSS_PERCENT=${HL_STOP_LOSS_PERCENT:-10}
+      - HL_TAKE_PROFIT_PERCENT=${HL_TAKE_PROFIT_PERCENT:-20}
+      - HL_DEFAULT_AMOUNT_IN=${HL_DEFAULT_AMOUNT_IN:-100000000}
+      - HL_TIMEOUT_MS=${HL_TIMEOUT_MS:-30000}
+      - HL_RETRY_MAX_ATTEMPTS=${HL_RETRY_MAX_ATTEMPTS:-3}
+      - HL_RETRY_BASE_DELAY_MS=${HL_RETRY_BASE_DELAY_MS:-1000}
+      - HL_MAX_LEVERAGE_PER_SYMBOL=${HL_MAX_LEVERAGE_PER_SYMBOL:-10}
+      - HL_MAX_NOTIONAL_PER_ORDER=${HL_MAX_NOTIONAL_PER_ORDER:-10000}
+      - HL_MAX_TOTAL_NOTIONAL=${HL_MAX_TOTAL_NOTIONAL:-50000}
+    depends_on:
+      sol-indexer:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - shared-network
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:7777/health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '3'
+
+  # ============================================================================
+  # TRADER-AI APPLICATION (AI Trading Service - OPTIONAL)
+  # ============================================================================
+  trader-ai:
+    build:
+      context: ${TRADER_AI_PATH:-../trader-ai}
+      dockerfile: Dockerfile
+    container_name: trader-ai-app
+    expose:
+      - '7007'
+    ports:
+      - '7007:7007' # API port
+    environment:
+      # ClickHouse configuration (used by AI service)
+      - CLICKHOUSE_HOST=clickhouse
+      - CLICKHOUSE_USER=${CLICKHOUSE_USERNAME:-default}
+      - CLICKHOUSE_USERNAME=${CLICKHOUSE_USERNAME:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - CLICKHOUSE_DATABASE=${CLICKHOUSE_DATABASE:-atrader}
+      - CLICKHOUSE_TABLE=${CLICKHOUSE_TABLE:-pump_fun_trades}
+      # API configuration
+      - API_HOST=0.0.0.0
+      - API_PORT=7007
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=json
+      # Optional API key for authentication
+      - API_KEY=${TRADER_AI_API_KEY:-}
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ${TRADER_AI_PATH:-../trader-ai}/models:/app/models:ro
+      - ${TRADER_AI_PATH:-../trader-ai}/logs:/app/logs
+      - ${TRADER_AI_PATH:-../trader-ai}/.env:/app/.env.production:ro
+    networks:
+      - shared-network
+    healthcheck:
+      test: ['CMD', 'python', 'health_check.py']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '3'
+
+  # ============================================================================
+  # SOL-INDEXER APPLICATION (Price Indexer Service - REQUIRED)
+  # ============================================================================
+  sol-indexer:
+    build:
+      context: ${SOL_INDEXER_PATH:-../sol-indexer}
+      dockerfile: Dockerfile
+    container_name: sol-indexer-app
+    ports:
+      - '7070:7070' # WebSocket port for price feeds
+      - '8080:8080' # API port for price queries
+    environment:
+      - CHAINSTREAM_API_KEY=${CHAINSTREAM_API_KEY}
+      - CHAINSTREAM_WEBSOCKET_URL=${CHAINSTREAM_WEBSOCKET_URL:-wss://chainstream.api.syndica.io}
+      - PUMP_FUN_PROGRAM_ADDRESS=${PUMP_FUN_PROGRAM_ADDRESS:-6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=json
+      - SETTINGS_PATH=${SETTINGS_PATH:-config/chainstream.yaml}
+      - RPC_URL=${RPC_URL:-https://api.mainnet-beta.solana.com}
+      - ENVIRONMENT=${ENVIRONMENT:-production}
+      - WEBSOCKET_SERVER_ENABLED=${WEBSOCKET_SERVER_ENABLED:-true}
+      - WEBSOCKET_SERVER_ADDRESS=${WEBSOCKET_SERVER_ADDRESS:-:7070}
+      # ClickHouse configuration (for price data storage)
+      - CH_URL=clickhouse:9000
+      - CH_USERNAME=${CLICKHOUSE_USERNAME:-default}
+      - CLICKHOUSE_URL=clickhouse:9000
+      - CLICKHOUSE_USERNAME=${CLICKHOUSE_USERNAME:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - CLICKHOUSE_TLS=false
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+    restart: unless-stopped
+    volumes:
+      - ${SOL_INDEXER_PATH:-../sol-indexer}/.env:/app/.env:ro
+      - ${SOL_INDEXER_PATH:-../sol-indexer}/config:/app/config:ro
+    networks:
+      - shared-network
+    healthcheck:
+      test: ['CMD', 'test', '-f', '/proc/1/exe']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '50m'
+        max-file: '3'
+
+  # ============================================================================
+  # SHARED INFRASTRUCTURE SERVICES
+  # ============================================================================
+
+  # ClickHouse Database (Used by indexer and AI services for price data)
+  clickhouse:
+    image: clickhouse/clickhouse-server:23.12
+    container_name: shared-clickhouse
+    ports:
+      - '8123:8123' # HTTP interface
+      - '9000:9000' # TCP interface
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DATABASE:-atrader}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USERNAME:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-}
+      - CLICKHOUSE_APP_PASSWORD=${CLICKHOUSE_APP_PASSWORD:-}
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    restart: unless-stopped
+    networks:
+      - shared-network
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'wget',
+          '--no-verbose',
+          '--tries=1',
+          '--spider',
+          'http://localhost:8123/ping',
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '20m'
+        max-file: '2'
+
+  # ============================================================================
+  # DATADOG AGENT (APM & Monitoring - OPTIONAL)
+  # ============================================================================
+  datadog-agent:
+    image: datadog/agent:latest
+    container_name: datadog-agent
+    environment:
+      - DD_API_KEY=${DD_API_KEY:-}
+      - DD_SITE=${DD_SITE:-datadoghq.eu}
+      - DD_APM_ENABLED=true
+      - DD_APM_NON_LOCAL_TRAFFIC=true
+      - DD_DOGSTATSD_NON_LOCAL_TRAFFIC=true
+      - DD_LOGS_ENABLED=true
+      - DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+      - DD_CONTAINER_EXCLUDE_LOGS="name:datadog-agent"
+      - DD_PROCESS_AGENT_ENABLED=true
+    ports:
+      - '8126:8126' # APM traces
+      - '8125:8125/udp' # DogStatsD
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/:/host/proc/:ro
+      - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
+      - ./datadog:/etc/datadog-agent/conf.d:ro
+    networks:
+      - shared-network
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', '/opt/datadog-agent/bin/agent/agent', 'health']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '20m'
+        max-file: '2'
+
+volumes:
+  clickhouse_data:
+    driver: local
+
+networks:
+  shared-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
