@@ -46,58 +46,6 @@ export class PlatformManagerService extends PlatformManagerPort {
   private initializeDefaultConfigurations(): void {
     const defaultConfigs: PlatformConfiguration[] = [
       {
-        platform: Platform.PUMP_FUN,
-        enabled: false, // TODO: read this from the env or even from db in future, or maybe just in separate file so it is easy to configure
-        priority: 3,
-        maxOpenPositions: 3,
-        tradingParams: {
-          maxOpenPositions: 5,
-          defaultAmountIn: 1000000000n, // 1 SOL
-          stopLossPercent: 20,
-          takeProfitPercent: 30,
-        },
-        defaultMintFrom: SOL_MINT,
-      },
-      {
-        platform: Platform.RAYDIUM,
-        enabled: false, // Disabled by default until implementation is complete
-        priority: 4,
-        maxOpenPositions: 4,
-        tradingParams: {
-          maxOpenPositions: 3,
-          defaultAmountIn: 500000000n, // 0.5 SOL
-          stopLossPercent: 15,
-          takeProfitPercent: 20,
-        },
-        defaultMintFrom: SOL_MINT,
-      },
-      {
-        platform: Platform.JUPITER,
-        enabled: false, // Disabled by default until implementation is complete
-        priority: 5,
-        maxOpenPositions: 2,
-        tradingParams: {
-          maxOpenPositions: 2,
-          defaultAmountIn: 250000000n, // 0.25 SOL
-          stopLossPercent: 10,
-          takeProfitPercent: 15,
-        },
-        defaultMintFrom: SOL_MINT,
-      },
-      {
-        platform: Platform.DRIFT,
-        enabled: true,
-        priority: 2,
-        maxOpenPositions: 3,
-        tradingParams: {
-          maxOpenPositions: 3,
-          defaultAmountIn: 100000000n, // 0.1 SOL
-          stopLossPercent: 15,
-          takeProfitPercent: 25,
-        },
-        defaultMintFrom: SOL_MINT,
-      },
-      {
         platform: Platform.HYPERLIQUID,
         enabled: true,
         priority: 1,

@@ -37,16 +37,13 @@ export class TradePosition {
   baseAssetSymbol?: string; // For perp trades
 
   @Prop({ type: String, required: true })
-  currencyMint: string;
+  currency: string;
 
   @Prop({ type: Decimal128, required: true })
   amountIn: bigint;
 
   @Prop({ type: Decimal128 })
   amountOut?: bigint;
-
-  @Prop({ type: Date })
-  timeLastPriceUpdate?: Date;
 
   // Perpetual trading fields (Drift)
   @Prop({ type: String, enum: PositionDirection })

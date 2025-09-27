@@ -24,3 +24,11 @@ export const blockchainEngineMap = new Map<
 export function getDefaultBlockChainName(): BlockchainSymbol {
   return BlockchainSymbol.SOL;
 }
+
+export enum Blockchain {
+  SOLANA = 'SOLANA',
+  ETHEREUM = 'ETHEREUM',
+  BASE = 'BASE',
+  BITCOIN = 'BITCOIN',
+  HYPERLIQUID = 'HYPERLIQUID',
+}

@@ -8,8 +8,8 @@ import {
   deserializeLong,
   Decimal128,
   Platform,
+  Blockchain,
 } from '../../shared';
-import { BlockchainDocument } from '../blockchain/Blockchain.schema';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 
 export type TradeDocument = Trade & Document;
@@ -58,18 +58,8 @@ export class Trade {
   @Prop({ type: Types.ObjectId, ref: 'TradePosition' })
   tradePosition?: string | TradePositionDocument;
 
-  @Prop({ type: Types.ObjectId, ref: 'Blockchain' })
-  blockchain?: string | BlockchainDocument;
-
-  // TODO: Think of adding pool entity
-  @Prop({ type: String })
-  pool?: string;
-
-  @Prop({ type: String, enum: PoolType })
-  poolType?: PoolType;
-
-  @Prop({ type: String, enum: SwapType })
-  swapType?: SwapType;
+  @Prop({ type: String, enum: Blockchain })
+  blockchain?: Blockchain;
 
   createdAt?: Date;
 
