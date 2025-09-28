@@ -9,6 +9,7 @@ import {
   Decimal128,
   Platform,
   Blockchain,
+  Currency,
 } from '../../shared';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 
@@ -40,11 +41,11 @@ export class Trade {
   @Prop({ type: String, enum: TradeStatus, required: true })
   status: TradeStatus;
 
-  @Prop({ type: String, required: true })
-  mintFrom: string;
+  @Prop({ type: String, enum: Currency, required: true })
+  currencyFrom: Currency;
 
-  @Prop({ type: String, required: true })
-  mintTo: string;
+  @Prop({ required: true, enum: Currency })
+  currencyTo: Currency;
 
   @Prop({ type: Decimal128, required: true })
   amountIn: bigint;

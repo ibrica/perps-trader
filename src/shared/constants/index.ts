@@ -12,3 +12,4 @@ export * from './Trigger';
 export * from './PositionDirection';
 export * from './PositionType';
 export * from './hyperliquid';
+export * from './Currency';
