@@ -17,7 +17,6 @@ import {
 } from '../../shared';
 import { TradeModule } from './Trade.module';
 import { TradeRepository } from './Trade.repository';
-import { CurrencyModule, CurrencyService } from '../currency';
 import { BlockchainModule, BlockchainService } from '../blockchain';
 import { PumpFunModule } from '../pumpfun/PumpFun.module';
 import { RaydiumModule } from '../raydium/Raydium.module';
@@ -26,10 +25,7 @@ import { MockAuthoritySignatureModule } from '../authority-signature/MockAuthori
 import { AuthoritySignatureModule } from '../authority-signature/AuthoritySignature.module';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Connection, Types } from 'mongoose';
-import { SignatureServiceSolanaAdapter } from '../../infrastructure';
 import { HyperliquidPlatformService } from '../hyperliquid/HyperliquidPlatform.service';
-import { DriftPlatformService } from '../drift/DriftPlatform.service';
-import { JupiterPlatformService } from '../jupiter/JupiterPlatform.service';
 import { PredictorModule } from '../predictor/Predictor.module';
 import { MockPredictorModule } from '../predictor/MockPredictor.module';
 
@@ -45,22 +41,13 @@ describe('TradeService (integration)', () => {
   let tradeRepository: TradeRepository;
   let mongoDbTestingService: MongoDbTestingService;
   let blockchainService: BlockchainService;
-  let currencyService: CurrencyService;
   let module: TestingModule;
   let blockchain: BlockchainDocument;
   let mongoConnection: Connection;
-  let signatureService: SignatureServiceSolanaAdapter;
 
   beforeEach(async () => {
     module = await createTestingModuleWithProviders({
-      imports: [
-        TradeModule,
-        CurrencyModule,
-        BlockchainModule,
-        PumpFunModule,
-        RaydiumModule,
-        MongoDbTestingModule,
-      ],
+      imports: [TradeModule, MongoDbTestingModule],
     })
       .overrideModule(AuthoritySignatureModule)
       .useModule(MockAuthoritySignatureModule)
@@ -69,23 +56,7 @@ describe('TradeService (integration)', () => {
       .overrideProvider(HyperliquidPlatformService)
       .useValue({
         executeTrade: jest.fn().mockResolvedValue({
-          transactionId: 'dummy-hyperliquid-tx',
-          status: 'failed',
-          message: 'Test mock',
-        }),
-      })
-      .overrideProvider(DriftPlatformService)
-      .useValue({
-        executeTrade: jest.fn().mockResolvedValue({
           transactionId: 'dummy-drift-tx',
-          status: 'failed',
-          message: 'Test mock',
-        }),
-      })
-      .overrideProvider(JupiterPlatformService)
-      .useValue({
-        executeTrade: jest.fn().mockResolvedValue({
-          transactionId: 'dummy-jupiter-tx',
           status: 'failed',
           message: 'Test mock',
         }),
@@ -95,10 +66,8 @@ describe('TradeService (integration)', () => {
     service = module.get(TradeService);
     tradeRepository = module.get(TradeRepository);
     blockchainService = module.get(BlockchainService);
-    currencyService = module.get(CurrencyService);
     mongoDbTestingService = await module.resolve(MongoDbTestingService);
     mongoConnection = module.get<Connection>(getConnectionToken());
-    signatureService = module.get(SignatureServiceSolanaAdapter);
     blockchain = await blockchainService.getDefaultBlockChain();
 
     // Create test currencies for the trade
@@ -128,7 +97,10 @@ describe('TradeService (integration)', () => {
   afterAll(async () => {
     try {
       // Clean database first
-      if (mongoDbTestingService && typeof mongoDbTestingService.clean === 'function') {
+      if (
+        mongoDbTestingService &&
+        typeof mongoDbTestingService.clean === 'function'
+      ) {
         await mongoDbTestingService.clean();
       }
 
