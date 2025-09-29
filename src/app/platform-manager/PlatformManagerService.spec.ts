@@ -30,21 +30,6 @@ describe('PlatformManagerService', () => {
     getDefaultTradingParams: jest.fn(),
   };
 
-  const mockPumpFunTokenDiscovery: jest.Mocked<PlatformTokenDiscoveryPort> = {
-    platform: Platform.PUMP_FUN,
-    getActiveTokens: jest.fn(),
-    isTokenTradeable: jest.fn(),
-  };
-
-  const mockPumpFunTradingStrategy: jest.Mocked<PlatformTradingStrategyPort> = {
-    platform: Platform.PUMP_FUN,
-    shouldEnterPosition: jest.fn(),
-    shouldExitPosition: jest.fn(),
-    getTakeProfitPrice: jest.fn(),
-    getStopLossPrice: jest.fn(),
-    getDefaultTradingParams: jest.fn(),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -82,7 +67,7 @@ describe('PlatformManagerService', () => {
     it('should throw error when token discovery and trading strategy have different platforms', () => {
       const mismatchedStrategy = {
         ...mockTradingStrategy,
-        platform: Platform.RAYDIUM,
+        platform: Platform.HYPERLIQUID,
       };
 
       expect(() => {
@@ -94,12 +79,8 @@ describe('PlatformManagerService', () => {
   describe('getEnabledPlatforms', () => {
     it('should return only enabled platforms', () => {
       const enabledPlatforms = service.getEnabledPlatforms();
-
-      // Based on the default configuration, only DRIFT is enabled
       expect(enabledPlatforms).toContain(Platform.DRIFT);
-      expect(enabledPlatforms).not.toContain(Platform.PUMP_FUN);
-      expect(enabledPlatforms).not.toContain(Platform.RAYDIUM);
-      expect(enabledPlatforms).not.toContain(Platform.JUPITER);
+      expect(enabledPlatforms).not.toContain(Platform.HYPERLIQUID);
     });
   });
 

@@ -16,6 +16,7 @@ import {
   ItemExistsException,
   TradeNotification,
   SOL_MINT,
+  HL_DEFAULT_MINT_FROM,
 } from '../../shared';
 
 describe('TradeManagerService', () => {
@@ -74,25 +75,6 @@ describe('TradeManagerService', () => {
           },
         },
         {
-          provide: TradeService,
-          useValue: {
-            executeTrade: jest.fn(),
-            getTradesByTradePosition: jest.fn(),
-          },
-        },
-        {
-          provide: CurrencyService,
-          useValue: {
-            create: jest.fn(),
-          },
-        },
-        {
-          provide: BlockchainService,
-          useValue: {
-            getBySymbol: jest.fn(),
-          },
-        },
-        {
           provide: IndexerAdapter,
           useValue: {
             subscribe: jest.fn(),
@@ -113,12 +95,6 @@ describe('TradeManagerService', () => {
           },
         },
         {
-          provide: SettingsService,
-          useValue: {
-            getSettings: jest.fn(),
-          },
-        },
-        {
           provide: PerpService,
           useValue: {
             findByBaseAssetSymbol: jest.fn(),
@@ -134,12 +110,8 @@ describe('TradeManagerService', () => {
 
     service = module.get<TradeManagerService>(TradeManagerService);
     tradePositionService = module.get(TradePositionService);
-    tradeService = module.get(TradeService);
-    currencyService = module.get(CurrencyService);
-    blockchainService = module.get(BlockchainService);
     indexerAdapter = module.get(IndexerAdapter);
     platformManagerService = module.get(PlatformManagerService);
-    settingsService = module.get(SettingsService);
     perpService = module.get(PerpService);
   });
 
@@ -153,9 +125,8 @@ describe('TradeManagerService', () => {
 
   describe('startTrading', () => {
     beforeEach(() => {
-      blockchainService.getBySymbol.mockResolvedValue(mockBlockchain as any);
       platformManagerService.getPlatformConfiguration.mockReturnValue({
-        platform: Platform.DRIFT,
+        platform: Platform.HYPERLIQUID,
         enabled: true,
         priority: 1,
         maxOpenPositions: 3,
@@ -165,7 +136,7 @@ describe('TradeManagerService', () => {
           stopLossPercent: 15,
           takeProfitPercent: 25,
         },
-        defaultMintFrom: SOL_MINT,
+        defaultMintFrom: HL_DEFAULT_MINT_FROM,
       });
     });
 
