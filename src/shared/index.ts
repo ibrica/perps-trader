@@ -6,7 +6,5 @@ export * from './constants';
 export * from './models';
 export * from './services';
 export * from './errors';
-export * from './providers';
 export * from './tests';
-export * from './transformer';
 export * from './exceptions';
