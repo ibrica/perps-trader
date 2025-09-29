@@ -1,7 +1,7 @@
 import { TradeType, Blockchain, Currency } from '../../constants';
 import { Platform } from './Platform';
 
-export interface CreateTradeOptions {
+export interface EnterPositionOptions {
   blockchain: Blockchain;
 
   tradeType: TradeType;
@@ -15,8 +15,6 @@ export interface CreateTradeOptions {
   leverage?: number;
 
   amountIn: bigint;
-
-  amountOut?: bigint;
 
   expectedAmountOut?: bigint;
 }

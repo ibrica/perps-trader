@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
-import { Platform } from '../../models/trade/Platform';
+import { Platform } from '../../models/platform/Platform';
 
 export interface TokenDiscoveryParams {
   minBuyPosition?: number;

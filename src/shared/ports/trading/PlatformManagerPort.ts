@@ -1,4 +1,4 @@
-import { Platform } from '../../models/trade/Platform';
+import { Platform } from '../../models/platform/Platform';
 import { PlatformTokenDiscoveryPort } from './PlatformTokenDiscoveryPort';
 import {
   PlatformTradingStrategyPort,

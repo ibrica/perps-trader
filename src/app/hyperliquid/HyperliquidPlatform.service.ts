@@ -1,9 +1,6 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
-import {
-  BasePlatformService,
-  TradeExecutionResult,
-} from '../../shared/services/trade/BasePlatformService';
-import { CreateTradeOptions, Platform, TradeType } from '../../shared';
+import { BasePlatformService, PositionExecutionResult } from '../../shared';
+import { EnterPositionOptions, Platform, TradeType } from '../../shared';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 
 @Injectable()
@@ -23,14 +20,12 @@ export class HyperliquidPlatformService extends BasePlatformService {
   }
 
   async prepare(): Promise<void> {
-    throw new Error(
-      'Hyperliquid does not support transaction preparation',
-    );
+    throw new Error('Hyperliquid does not support transaction preparation');
   }
 
-  async executeTrade(
-    options: CreateTradeOptions,
-  ): Promise<TradeExecutionResult> {
+  async enterPosition(
+    options: EnterPositionOptions,
+  ): Promise<PositionExecutionResult> {
     this.logger.log(`Executing Hyperliquid trade`, {
       platform: options.platform,
       tradeType: options.tradeType,
@@ -51,7 +46,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         },
       );
       return {
-        transactionId: '',
+        orderId: '',
         status: 'failed',
         message:
           'Hyperliquid service not available - missing configuration or dependencies',
@@ -97,7 +92,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       });
 
       return {
-        transactionId: result.orderId,
+        orderId: result.orderId,
         status: 'success',
         message: `Hyperliquid ${direction} order placed for ${symbol}`,
       };
@@ -105,7 +100,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       this.logger.error('Failed to execute Hyperliquid trade', error);
 
       return {
-        transactionId: '',
+        orderId: '',
         status: 'failed',
         message: error instanceof Error ? error.message : 'Unknown error',
       };

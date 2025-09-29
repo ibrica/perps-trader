@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types */
-import { Platform } from '../../models/trade/Platform';
+import { Platform } from '../../models/platform/Platform';
 import { TradePositionDocument } from '../../../app/trade-position/TradePosition.schema';
 
 export interface PlatformTradingParams {
