@@ -17,9 +17,6 @@ import {
 } from '../../shared';
 import { TradeModule } from './Trade.module';
 import { TradeRepository } from './Trade.repository';
-import { BlockchainModule, BlockchainService } from '../blockchain';
-import { PumpFunModule } from '../pumpfun/PumpFun.module';
-import { RaydiumModule } from '../raydium/Raydium.module';
 import { BlockchainDocument } from '../blockchain/Blockchain.schema';
 import { MockAuthoritySignatureModule } from '../authority-signature/MockAuthoritySignature.module';
 import { AuthoritySignatureModule } from '../authority-signature/AuthoritySignature.module';
@@ -40,9 +37,7 @@ describe('TradeService (integration)', () => {
   let service: TradeService;
   let tradeRepository: TradeRepository;
   let mongoDbTestingService: MongoDbTestingService;
-  let blockchainService: BlockchainService;
   let module: TestingModule;
-  let blockchain: BlockchainDocument;
   let mongoConnection: Connection;
 
   beforeEach(async () => {
@@ -65,30 +60,9 @@ describe('TradeService (integration)', () => {
 
     service = module.get(TradeService);
     tradeRepository = module.get(TradeRepository);
-    blockchainService = module.get(BlockchainService);
+
     mongoDbTestingService = await module.resolve(MongoDbTestingService);
     mongoConnection = module.get<Connection>(getConnectionToken());
-    blockchain = await blockchainService.getDefaultBlockChain();
-
-    // Create test currencies for the trade
-    await currencyService.create(
-      createTestCurrencyDto(
-        String(blockchain._id),
-        'So11111111111111111111111111111111111111112', // SOL mint
-        9,
-        'SOL',
-      ),
-    );
-
-    await currencyService.create(
-      createTestCurrencyDto(
-        String(blockchain._id),
-        'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-        6,
-        'USDC',
-      ), // USDC mint
-    );
-  });
 
   afterEach(() => {
     jest.clearAllMocks();

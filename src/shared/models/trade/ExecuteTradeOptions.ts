@@ -1,26 +1,22 @@
-import { PoolType, SwapType, TradeType } from '../../constants2';
+import { TradeType, Blockchain, Currency } from '../../constants';
 import { Platform } from './Platform';
 
 export interface CreateTradeOptions {
-  blockchain: string;
+  blockchain: Blockchain;
 
   tradeType: TradeType;
 
   platform: Platform;
 
-  mintFrom: string;
+  currencyFrom: Currency;
 
-  mintTo: string;
+  currencyTo: Currency;
+
+  leverage?: number;
 
   amountIn: bigint;
 
   amountOut?: bigint;
 
-  expectedMarginalAmountOut?: bigint;
-
-  pool?: string;
-
-  poolType?: PoolType;
-
-  swapType?: SwapType;
+  expectedAmountOut?: bigint;
 }

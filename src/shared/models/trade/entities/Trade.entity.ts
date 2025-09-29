@@ -2,9 +2,9 @@ import { Entity } from '../../entity';
 import {
   TradeType,
   TradeStatus,
-  PoolType,
-  SwapType,
-} from '../../../constants2';
+  Currency,
+  Blockchain,
+} from '../../../constants';
 import { Platform } from '../Platform';
 
 export class Trade extends Entity {
@@ -16,23 +16,19 @@ export class Trade extends Entity {
 
   status: TradeStatus;
 
-  mintFrom: string;
+  currencyFrom: Currency;
 
-  mintTo: string;
+  currencyTo: Currency;
 
   amountIn: bigint;
 
   amountOut?: bigint;
 
-  expectedMarginalAmountOut?: bigint;
+  expectedAmountOut?: bigint;
 
-  blockchain?: string;
+  blockchain?: Blockchain;
 
-  pool?: string;
-
-  poolType?: PoolType;
-
-  swapType?: SwapType;
+  leverage?: number;
 
   createdAt?: Date;
 

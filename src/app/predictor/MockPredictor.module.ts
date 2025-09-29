@@ -4,7 +4,6 @@ import {
   PredictionResponse,
   Recommendation,
   TokenCategory,
-  PredictionHorizon
 } from '../../shared/models/predictor/types';
 
 @Module({

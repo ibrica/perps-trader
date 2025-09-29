@@ -1,9 +1,4 @@
 export enum Platform {
-  RAYDIUM = 'RAYDIUM',
-  METEORA = 'METEORA',
-  PUMP_FUN = 'PUMP_FUN',
-  JUPITER = 'JUPITER',
-  ORCA = 'ORCA',
   DRIFT = 'DRIFT',
   HYPERLIQUID = 'HYPERLIQUID',
 }
