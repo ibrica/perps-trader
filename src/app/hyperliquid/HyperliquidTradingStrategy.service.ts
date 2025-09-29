@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Platform, PositionDirection } from '../../shared';
+import { Currency, Platform, PositionDirection } from '../../shared';
 import {
   PlatformTradingStrategyPort,
   TradingDecision,
@@ -16,7 +16,6 @@ import {
   TokenCategory,
 } from '../../shared/models/predictor/types';
 import { PerpService } from '../perps/Perp.service';
-import { CurrencyDocument } from '../currency/Currency.schema';
 
 @Injectable()
 export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPort {
@@ -93,13 +92,12 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
           metadata: { direction: PositionDirection.LONG },
         };
       }
-      const tokenMintAddress = (perp.baseCurrency as CurrencyDocument)
-        .mintAddress;
+
       const tokenCategory = this.determineTokenCategory(baseAssetSymbol);
 
       // Get AI prediction
       const aiPrediction = await this.predictorAdapter.predictToken(
-        tokenMintAddress,
+        Currency.SOL,
         tokenCategory,
         PredictionHorizon.ONE_HOUR,
         true,

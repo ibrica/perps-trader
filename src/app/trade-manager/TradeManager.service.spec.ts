@@ -16,7 +16,7 @@ import {
   ItemExistsException,
   TradeNotification,
   SOL_MINT,
-  HL_DEFAULT_MINT_FROM,
+  HL_DEFAULT_CURRENCY_FROM,
 } from '../../shared';
 
 describe('TradeManagerService', () => {
@@ -136,7 +136,7 @@ describe('TradeManagerService', () => {
           stopLossPercent: 15,
           takeProfitPercent: 25,
         },
-        defaultMintFrom: HL_DEFAULT_MINT_FROM,
+        defaultMintFrom: HL_DEFAULT_CURRENCY_FROM,
       });
     });
 

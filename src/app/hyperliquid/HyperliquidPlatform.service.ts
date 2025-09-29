@@ -5,6 +5,9 @@ import { HyperliquidService } from '../../infrastructure/hyperliquid/Hyperliquid
 
 @Injectable()
 export class HyperliquidPlatformService extends BasePlatformService {
+  exitPosition(positionId: string): Promise<PositionExecutionResult> {
+    throw new Error('Method not implemented.');
+  }
   private readonly logger = new Logger(HyperliquidPlatformService.name);
 
   constructor(
@@ -29,8 +32,8 @@ export class HyperliquidPlatformService extends BasePlatformService {
     this.logger.log(`Executing Hyperliquid trade`, {
       platform: options.platform,
       tradeType: options.tradeType,
-      mintFrom: options.mintFrom,
-      mintTo: options.mintTo,
+      mintFrom: options.currencyFrom,
+      mintTo: options.currencyTo,
       amountIn: options.amountIn.toString(),
     });
 
@@ -69,7 +72,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       // Map token symbols to Hyperliquid format
       // For Hyperliquid perps, mintTo is the base asset (BTC, ETH, etc.)
       // and mintFrom would typically be USDC (the quote asset)
-      const symbol = this.mapTokenToSymbol(options.mintTo);
+      const symbol = this.mapTokenToSymbol(options.currencyTo);
 
       // Determine direction based on the trade
       // For perps, we're either going long or short on the base asset

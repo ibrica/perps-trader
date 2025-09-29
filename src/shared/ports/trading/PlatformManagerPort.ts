@@ -15,12 +15,12 @@ export interface PlatformConfiguration {
   priority: number; // Higher number = higher priority
   maxOpenPositions: number;
   tradingParams: PlatformTradingParams;
-  defaultMintFrom: string;
+  defaultCurrencyFrom: string;
 }
 
 export interface TradingOpportunity {
   platform: Platform;
-  tokenMintAddress: string;
+  token: string;
   tradingDecision: TradingDecision;
   priority: number;
 }

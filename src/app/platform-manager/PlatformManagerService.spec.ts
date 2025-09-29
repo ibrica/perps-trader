@@ -133,7 +133,7 @@ describe('PlatformManagerService', () => {
               _id: 'existing-position-id',
               tokenMint: 'token1',
               status: TradePositionStatus.OPEN,
-              platform: Platform.DRIFT,
+              platform: Platform.HYPERLIQUID,
             } as any);
           }
           return Promise.resolve(null);
@@ -377,7 +377,7 @@ describe('PlatformManagerService', () => {
       const config = service.getPlatformConfiguration(Platform.DRIFT);
 
       expect(config).toBeDefined();
-      expect(config.platform).toBe(Platform.DRIFT);
+      expect(config.platform).toBe(Platform.HYPERLIQUID);
       expect(config.enabled).toBe(true);
     });
 

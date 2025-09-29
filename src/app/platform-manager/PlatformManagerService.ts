@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   Platform,
   TradePositionStatus,
-  HL_DEFAULT_MINT_FROM,
+  HL_DEFAULT_CURRENCY_FROM,
 } from '../../shared';
 import {
   PlatformManagerPort,
@@ -58,7 +58,7 @@ export class PlatformManagerService extends PlatformManagerPort {
           stopLossPercent: 15,
           takeProfitPercent: 25,
         },
-        defaultMintFrom: HL_DEFAULT_MINT_FROM,
+        defaultMintFrom: HL_DEFAULT_CURRENCY_FROM,
       },
     ];
 

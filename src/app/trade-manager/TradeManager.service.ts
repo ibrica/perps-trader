@@ -16,6 +16,7 @@ import {
   TradingDecision,
   CreateTradePositionOptions,
   PriceAndDate,
+  Blockchain,
 } from '../../shared';
 import { TradeService } from '../trade/Trade.service';
 import { OnEvent } from '@nestjs/event-emitter';
@@ -178,23 +179,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     // Execute the trade
     const tradeType = this.getTradeTypeForPlatform(platform);
-    try {
-      if (tradeType !== TradeType.PERPETUAL) {
-        await this.currencyService.create({
-          symbol: `TOKEN_${tokenMintAddress.slice(0, 8)}`,
-          name: `${platform} Token ${tokenMintAddress.slice(0, 8)}`,
-          mintAddress: tokenMintAddress,
-          blockchain: String(blockchain._id),
-          decimals: platform === Platform.PUMP_FUN ? 6 : 9, // Default decimals based on platform
-        });
-      }
-    } catch (error) {
-      if (error instanceof ItemExistsException) {
-        this.logger.log('Currency already exists: ', { tokenMintAddress });
-      } else {
-        throw error;
-      }
-    }
 
     // Change this for perps
     await this.tradeService.executeTrade({
@@ -204,7 +188,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
           .defaultMintFrom,
       mintTo: tokenMintAddress,
       amountIn: tradingDecision.recommendedAmount || 1000000000n, // Default 1 SOL
-      blockchain: String(blockchain._id),
+      blockchain: Blockchain.HYPERLIQUID,
       tradeType,
     });
 
@@ -233,15 +217,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
         );
       }
     }
-
-    if (platform === Platform.PUMP_FUN) {
-      try {
-        await this.indexerAdapter.subscribe(tokenMintAddress);
-      } catch (error) {
-        this.logger.error('Failed to subscribe to token:', error);
-      }
-    }
-    // Note: Drift perpetuals don't require indexer subscription as positions are managed via Drift protocol
   }
 
   async unsubscribeFromAllTokens(): Promise<void> {
@@ -457,13 +432,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
   private getTradeTypeForPlatform(platform: Platform): TradeType {
     switch (platform) {
-      case Platform.PUMP_FUN:
-        return TradeType.LAUNCHPAD;
       case Platform.DRIFT:
       case Platform.HYPERLIQUID:
         return TradeType.PERPETUAL;
       default:
-        return TradeType.DEX;
+        return TradeType.PERPETUAL;
     }
   }
 
@@ -511,14 +484,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
         positionSize: tradingDecision.recommendedAmount || 100000000n, // Default 100 USDC
         entryPrice: defaultPrice,
         baseAssetSymbol: tokenMintAddress,
-      };
-    } else if (platform === Platform.PUMP_FUN) {
-      // Pump.fun specific data with default entry price
-      return {
-        ...baseData,
-        tokenMint: tokenMintAddress,
-        positionType: PositionType.SPOT,
-        entryPrice: 0,
       };
     } else {
       // Other DEX platforms
@@ -627,17 +592,8 @@ export class TradeManagerService implements OnApplicationBootstrap {
     const takeProfitPrice = tradePosition.takeProfitPrice ?? Number.MAX_VALUE;
     const currentPrice = price ?? tradePosition.currentPrice ?? 0;
 
-    const timePriceUpdated =
-      date ?? tradePosition.timeLastPriceUpdate ?? new Date('1970-01-01');
     const timePositionOpened =
       tradePosition.timeOpened ?? tradePosition.createdAt!;
-
-    if (TimeService.isBeforeNow(timePriceUpdated, 10)) {
-      this.logger.log(
-        `Closing position for ${tradePosition.tokenMint}: stale price data (${timePriceUpdated})`,
-      );
-      return true;
-    }
 
     if (TimeService.isBeforeNow(timePositionOpened, 24 * 60)) {
       this.logger.log(
