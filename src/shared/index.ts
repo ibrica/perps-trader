@@ -2,7 +2,7 @@ export * from './repository';
 export * from './interceptors';
 export * from './ports';
 export * from './utils';
-export * from './constants2';
+export * from './constants';
 export * from './models';
 export * from './services';
 export * from './errors';

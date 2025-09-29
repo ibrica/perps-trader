@@ -19,16 +19,11 @@ import {
 } from '../../shared';
 import { TradeService } from '../trade/Trade.service';
 import { OnEvent } from '@nestjs/event-emitter';
-import { SUBSCRIPTION_EVENTS } from '../events/types';
 import { IndexerAdapter } from '../../infrastructure';
 import { TradePositionService } from '../trade-position/TradePosition.service';
-import { CurrencyService } from '../currency';
-import { BlockchainService } from '../blockchain';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { PlatformManagerService } from '../platform-manager/PlatformManagerService';
-import { SettingsService } from '../settings/Settings.service';
 import { TimeService } from '../../infrastructure/services/TimeService';
-import { getPumpFunPriceFromCurvePosition } from '../../infrastructure/pump-fun/utils';
 import { PerpService } from '../perps/Perp.service';
 
 @Injectable()
@@ -36,13 +31,10 @@ export class TradeManagerService implements OnApplicationBootstrap {
   private logger = new Logger(TradeManagerService.name);
 
   constructor(
-    private currencyService: CurrencyService,
-    private blockchainService: BlockchainService,
     private tradePositionService: TradePositionService,
     private tradeService: TradeService,
     private indexerAdapter: IndexerAdapter,
     private platformManagerService: PlatformManagerService,
-    private settingsService: SettingsService,
     private perpService: PerpService,
   ) {}
 
@@ -182,10 +174,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     this.logger.log(
       `Executing trading opportunity: ${tokenMintAddress} on ${platform} (confidence: ${tradingDecision.confidence})`,
-    );
-
-    const blockchain = await this.blockchainService.getBySymbol(
-      BlockchainSymbol.SOL, // for now we only support SOL
     );
 
     // Execute the trade
