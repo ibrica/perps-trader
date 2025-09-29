@@ -3,12 +3,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { TradeManagerService } from './TradeManager.service';
 import { TradePositionService } from '../trade-position/TradePosition.service';
-import { TradeService } from '../trade/Trade.service';
-import { CurrencyService } from '../currency/Currency.service';
-import { BlockchainService } from '../blockchain/Blockchain.service';
 import { IndexerAdapter } from '../../infrastructure/indexer/IndexerAdapter';
 import { PlatformManagerService } from '../platform-manager/PlatformManagerService';
-import { SettingsService } from '../settings/Settings.service';
 import { PerpService } from '../perps/Perp.service';
 import {
   Platform,
@@ -25,12 +21,8 @@ import {
 describe('TradeManagerService', () => {
   let service: TradeManagerService;
   let tradePositionService: jest.Mocked<TradePositionService>;
-  let tradeService: jest.Mocked<TradeService>;
-  let currencyService: jest.Mocked<CurrencyService>;
-  let blockchainService: jest.Mocked<BlockchainService>;
   let indexerAdapter: jest.Mocked<IndexerAdapter>;
   let platformManagerService: jest.Mocked<PlatformManagerService>;
-  let settingsService: jest.Mocked<SettingsService>;
   let perpService: jest.Mocked<PerpService>;
 
   const mockBlockchain = {
