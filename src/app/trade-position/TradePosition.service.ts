@@ -50,24 +50,24 @@ export class TradePositionService {
   }
 
   async getTradePosition(
-    tokenMint: string,
-    currencyMint?: string,
+    token: string,
+    currency?: string,
   ): Promise<TradePositionDocument | null> {
     return this.tradePositionRepository.getOne({
       filter: {
-        $or: [{ tokenMint: tokenMint }, { baseAssetSymbol: tokenMint }],
-        ...(currencyMint && { currencyMint }),
+        token,
+        ...(currency && { currency }),
       },
     });
   }
 
-  async getTradePositionByTokenMint(
-    tokenMint: string,
+  async getTradePositionByToken(
+    token: string,
     status?: TradePositionStatus,
   ): Promise<TradePositionDocument | null> {
     return this.tradePositionRepository.getOne({
       filter: {
-        $or: [{ tokenMint: tokenMint }, { baseAssetSymbol: tokenMint }],
+        token,
         ...(status && { status }),
       },
     });

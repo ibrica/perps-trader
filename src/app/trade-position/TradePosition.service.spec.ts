@@ -46,8 +46,8 @@ describe('TradePositionService', () => {
     const mockCreateOptions: CreateTradePositionOptions = {
       platform: Platform.RAYDIUM,
       status: TradePositionStatus.PLAN,
-      tokenMint: 'tokenMintAddress',
-      currencyMint: 'currencyMintAddress',
+      token: 'tokenAddress',
+      currency: 'currencyAddress',
       amountIn: 1000000n,
       entryPrice: 0.005,
       timeOpened: new Date('2024-03-20T10:00:00Z'),
@@ -59,8 +59,8 @@ describe('TradePositionService', () => {
       expect(result).toBeDefined();
       expect(result.platform).toBe(mockCreateOptions.platform);
       expect(result.status).toBe(TradePositionStatus.PLAN);
-      expect(result.tokenMint).toBe(mockCreateOptions.tokenMint);
-      expect(result.currencyMint).toBe(mockCreateOptions.currencyMint);
+      expect(result.token).toBe(mockCreateOptions.token);
+      expect(result.currency).toBe(mockCreateOptions.currency);
       expect(result.amountIn).toBe(mockCreateOptions.amountIn);
       expect(result.entryPrice).toBe(mockCreateOptions.entryPrice);
       expect(result.timeOpened).toEqual(mockCreateOptions.timeOpened);
@@ -74,8 +74,8 @@ describe('TradePositionService', () => {
       const createOptions: CreateTradePositionOptions = {
         platform: Platform.RAYDIUM,
         status: TradePositionStatus.PLAN,
-        tokenMint: 'tokenMintAddress',
-        currencyMint: 'currencyMintAddress',
+        token: 'tokenAddress',
+        currency: 'currencyAddress',
         amountIn: 1000000n,
         timeOpened: new Date('2024-03-20T10:00:00Z'),
       };
@@ -91,7 +91,6 @@ describe('TradePositionService', () => {
         timeClosed: new Date('2024-03-20T10:05:00Z'),
         currentPrice: 0.008,
         takeProfitPrice: 0.01,
-        timeLastPriceUpdate: new Date('2024-03-20T10:05:00Z'),
       };
 
       const result = await service.updateTradePosition(
@@ -106,9 +105,6 @@ describe('TradePositionService', () => {
         expect(result.timeClosed).toEqual(mockUpdateOptions.timeClosed);
         expect(result.currentPrice).toBe(mockUpdateOptions.currentPrice);
         expect(result.takeProfitPrice).toBe(mockUpdateOptions.takeProfitPrice);
-        expect(result.timeLastPriceUpdate).toEqual(
-          mockUpdateOptions.timeLastPriceUpdate,
-        );
       }
     });
 
@@ -134,24 +130,24 @@ describe('TradePositionService', () => {
         {
           platform: Platform.RAYDIUM,
           status: TradePositionStatus.OPEN,
-          tokenMint: 'tokenMintAddress1',
-          currencyMint: 'currencyMintAddress1',
+          token: 'tokenAddress1',
+          currency: 'currencyAddress1',
           amountIn: 1000000n,
           timeOpened: new Date('2024-03-20T10:00:00Z'),
         },
         {
           platform: Platform.RAYDIUM,
           status: TradePositionStatus.OPEN,
-          tokenMint: 'tokenMintAddress2',
-          currencyMint: 'currencyMintAddress2',
+          token: 'tokenAddress2',
+          currency: 'currencyAddress2',
           amountIn: 2000000n,
           timeOpened: new Date('2024-03-20T11:00:00Z'),
         },
         {
           platform: Platform.RAYDIUM,
           status: TradePositionStatus.CLOSED,
-          tokenMint: 'tokenMintAddress3',
-          currencyMint: 'currencyMintAddress3',
+          token: 'tokenAddress3',
+          currency: 'currencyAddress3',
           amountIn: 3000000n,
           timeOpened: new Date('2024-03-20T12:00:00Z'),
         },
