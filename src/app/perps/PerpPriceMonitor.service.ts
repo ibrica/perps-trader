@@ -26,13 +26,6 @@ export interface PerpMonitoringResult {
   reason?: string;
 }
 
-export interface PlatformPriceService {
-  getMarketPrice(marketIndex: number): Promise<{ bid: number; ask: number }>;
-  getAvailableMarkets(): Promise<
-    Array<{ marketIndex: number; baseAssetSymbol: string }>
-  >;
-}
-
 @Injectable()
 export class PerpPriceMonitorService {
   private readonly logger = new Logger(PerpPriceMonitorService.name);

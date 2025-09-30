@@ -27,14 +27,11 @@ export class TradePosition {
   @Prop({ type: String, enum: TradePositionStatus, required: true })
   status: TradePositionStatus;
 
-  @Prop({ type: String, enum: PositionType, default: PositionType.SPOT })
+  @Prop({ type: String, enum: PositionType, default: PositionType.PERPETUAL })
   positionType: PositionType;
 
   @Prop({ type: String })
-  tokenMint?: string; // For spot trades
-
-  @Prop({ type: String })
-  baseAssetSymbol?: string; // For perp trades
+  token?: string;
 
   @Prop({ type: String, required: true })
   currency: string;
@@ -48,9 +45,6 @@ export class TradePosition {
   // Perpetual trading fields (Drift)
   @Prop({ type: String, enum: PositionDirection })
   positionDirection?: PositionDirection;
-
-  @Prop({ type: Number })
-  marketIndex?: number;
 
   @Prop({ type: Number })
   leverage?: number;

@@ -146,7 +146,7 @@ export class PlatformManagerService extends PlatformManagerPort {
           if (tradingDecision.shouldTrade) {
             opportunities.push({
               platform,
-              tokenMintAddress,
+              token,
               tradingDecision,
               priority: config.priority,
             });

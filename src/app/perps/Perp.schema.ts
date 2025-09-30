@@ -1,17 +1,8 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
-import { Platform } from '../../shared';
-import { CurrencyDocument } from '../currency/Currency.schema';
+import { Document } from 'mongoose';
+import { Currency, Platform } from '../../shared';
 
 export type PerpDocument = Perp & Document;
-
-export type PerpDocumentPopulated = Omit<
-  PerpDocument,
-  'baseCurrency' | 'quoteCurrency'
-> & {
-  baseCurrency: CurrencyDocument;
-  quoteCurrency: CurrencyDocument;
-};
 
 export enum MarketDirection {
   UP = 'up',
@@ -28,14 +19,14 @@ export class Perp {
   @Prop({ type: String, required: true })
   name: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'Currency', required: true })
-  baseCurrency: string | CurrencyDocument;
+  @Prop({ type: String, required: true }) // In future it can be some RWA
+  token: string;
 
-  @Prop({ type: Types.ObjectId, ref: 'Currency', required: true })
-  quoteCurrency: string | CurrencyDocument;
+  @Prop({ type: String, enum: Currency, required: true })
+  currency: Currency;
 
   @Prop({ type: String, required: true })
-  baseAssetSymbol: string;
+  perpSymbol: string;
 
   @Prop({ type: String, enum: Platform, required: true })
   platform: Platform;
@@ -50,14 +41,11 @@ export class Perp {
   })
   marketDirection: MarketDirection;
 
-  @Prop({ type: Number })
-  marketIndex?: number;
-
   @Prop({ type: Boolean, default: true })
   isActive: boolean;
 
   @Prop({ type: Number, default: 1 })
-  leverage?: number;
+  defaultLeverage?: number;
 
   @Prop({ type: String })
   recommendedAmount?: string;
@@ -70,6 +58,5 @@ export class Perp {
 export const PerpSchema = SchemaFactory.createForClass(Perp);
 
 PerpSchema.index({ platform: 1, buyFlag: 1 });
-PerpSchema.index({ marketIndex: 1 });
-PerpSchema.index({ baseAssetSymbol: 1 });
+PerpSchema.index({ token: 1 });
 PerpSchema.index({ isActive: 1 });

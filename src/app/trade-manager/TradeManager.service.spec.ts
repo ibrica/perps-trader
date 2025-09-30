@@ -769,44 +769,6 @@ describe('TradeManagerService', () => {
       expect(tradePositionService.updateTradePosition).toHaveBeenCalledTimes(1); // Only price update, no close
     });
 
-    it('should close position with exitFlag set through monitorAndClosePositions', async () => {
-      const mockSettings = {
-        closeAllPositions: false,
-      };
-
-      const positionWithExitFlag = {
-        ...mockOpenPosition,
-        exitFlag: true,
-        timeLastPriceUpdate: new Date(), // Recent position
-        stopLossPrice: 500, // Below current price
-        takeProfitPrice: 2000, // Above current price
-        createdAt: new Date(), // Recent creation
-      };
-
-      tradePositionService.getOpenTradePositions.mockResolvedValue([
-        positionWithExitFlag,
-      ] as any);
-      settingsService.getSettings.mockResolvedValue(mockSettings as any);
-      tradeService.getTradesByTradePosition.mockResolvedValue([]);
-      tradePositionService.updateTradePosition.mockResolvedValue({} as any);
-
-      indexerAdapter.getLastPrice.mockResolvedValue({
-        token_address: 'test-token-mint',
-        type: 'MEME' as any,
-        price: 1500,
-        timestamp: new Date().toISOString(),
-      });
-
-      const remainingPositions = await service.monitorAndClosePositions();
-
-      expect(remainingPositions).toBe(0); // Position should be closed due to exitFlag
-      expect(tradePositionService.updateTradePosition).toHaveBeenCalledTimes(2); // 1 price update + 1 close
-      // AI should not be called because exitFlag has highest priority
-      expect(
-        platformManagerService.evaluateExitDecisions,
-      ).not.toHaveBeenCalled();
-    });
-  });
 
   describe('shouldClosePosition', () => {
     it('should immediately close position when exitFlag is set', async () => {
@@ -1195,36 +1157,6 @@ describe('TradeManagerService', () => {
 
       // The error should be handled gracefully and position creation should not be called
       expect(tradePositionService.createTradePosition).not.toHaveBeenCalled();
-    });
-
-    it('should create PUMP_FUN spot position data', () => {
-      const createTradePositionData = (service as any).createTradePositionData;
-
-      const tradingDecision = { recommendedAmount: 1000000000n };
-
-      const result = createTradePositionData(
-        Platform.PUMP_FUN,
-        'test-token',
-        tradingDecision,
-      );
-
-      expect(result.positionType).toBe(PositionType.SPOT);
-      expect(result.entryPrice).toBe(0); // Default entry price
-    });
-
-    it('should create generic DEX spot position data', () => {
-      const createTradePositionData = (service as any).createTradePositionData;
-
-      const tradingDecision = { recommendedAmount: 500000000n };
-
-      const result = createTradePositionData(
-        Platform.RAYDIUM,
-        'test-token',
-        tradingDecision,
-      );
-
-      expect(result.positionType).toBe(PositionType.SPOT);
-      expect(result.platform).toBe(Platform.RAYDIUM);
     });
   });
 });
