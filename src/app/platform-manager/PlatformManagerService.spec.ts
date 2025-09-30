@@ -16,13 +16,13 @@ describe('PlatformManagerService', () => {
   let tradePositionService: jest.Mocked<TradePositionService>;
 
   const mockTokenDiscovery: jest.Mocked<PlatformTokenDiscoveryPort> = {
-    platform: Platform.DRIFT,
+    platform: Platform.HYPERLIQUID,
     getActiveTokens: jest.fn(),
     isTokenTradeable: jest.fn(),
   };
 
   const mockTradingStrategy: jest.Mocked<PlatformTradingStrategyPort> = {
-    platform: Platform.DRIFT,
+    platform: Platform.HYPERLIQUID,
     shouldEnterPosition: jest.fn(),
     shouldExitPosition: jest.fn(),
     getTakeProfitPrice: jest.fn(),
@@ -37,7 +37,7 @@ describe('PlatformManagerService', () => {
         {
           provide: TradePositionService,
           useValue: {
-            getTradePositionByTokenMint: jest.fn(),
+            getTradePositionByToken: jest.fn(),
           },
         },
       ],
@@ -61,17 +61,20 @@ describe('PlatformManagerService', () => {
         service.registerPlatform(mockTokenDiscovery, mockTradingStrategy);
       }).not.toThrow();
 
-      expect(service.getAvailablePlatforms()).toContain(Platform.DRIFT);
+      expect(service.getAvailablePlatforms()).toContain(Platform.HYPERLIQUID);
     });
 
     it('should throw error when token discovery and trading strategy have different platforms', () => {
-      const mismatchedStrategy = {
-        ...mockTradingStrategy,
-        platform: Platform.HYPERLIQUID,
+      const mismatchedTokenDiscovery = {
+        ...mockTokenDiscovery,
+        platform: Platform.DRIFT,
       };
 
       expect(() => {
-        service.registerPlatform(mockTokenDiscovery, mismatchedStrategy as any);
+        service.registerPlatform(
+          mismatchedTokenDiscovery as any,
+          mockTradingStrategy,
+        );
       }).toThrow('Platform mismatch');
     });
   });
@@ -79,8 +82,8 @@ describe('PlatformManagerService', () => {
   describe('getEnabledPlatforms', () => {
     it('should return only enabled platforms', () => {
       const enabledPlatforms = service.getEnabledPlatforms();
-      expect(enabledPlatforms).toContain(Platform.DRIFT);
-      expect(enabledPlatforms).not.toContain(Platform.HYPERLIQUID);
+      expect(enabledPlatforms).toContain(Platform.HYPERLIQUID);
+      expect(enabledPlatforms).not.toContain(Platform.DRIFT);
     });
   });
 
@@ -94,7 +97,7 @@ describe('PlatformManagerService', () => {
 
     it('should find trading opportunities when no existing positions exist', async () => {
       // Mock no existing positions
-      tradePositionService.getTradePositionByTokenMint.mockResolvedValue(null);
+      tradePositionService.getTradePositionByToken.mockResolvedValue(null);
 
       // Mock trading decisions
       mockTradingStrategy.shouldEnterPosition
@@ -116,8 +119,8 @@ describe('PlatformManagerService', () => {
       const opportunities = await service.findTradingOpportunities();
 
       expect(opportunities).toHaveLength(2);
-      expect(opportunities[0].tokenMintAddress).toBe('token1');
-      expect(opportunities[1].tokenMintAddress).toBe('token2');
+      expect(opportunities[0].token).toBe('token1');
+      expect(opportunities[1].token).toBe('token2');
       expect(opportunities[0].tradingDecision.confidence).toBe(0.8);
       expect(opportunities[1].tradingDecision.confidence).toBe(0.7);
       expect(opportunities[0]).not.toHaveProperty('marketData');
@@ -126,12 +129,12 @@ describe('PlatformManagerService', () => {
 
     it('should skip tokens with existing open positions (rebuy prevention)', async () => {
       // Mock existing position for token1, but none for token2
-      tradePositionService.getTradePositionByTokenMint.mockImplementation(
-        (tokenMint: string) => {
-          if (tokenMint === 'token1') {
+      tradePositionService.getTradePositionByToken.mockImplementation(
+        (token: string) => {
+          if (token === 'token1') {
             return Promise.resolve({
               _id: 'existing-position-id',
-              tokenMint: 'token1',
+              token: 'token1',
               status: TradePositionStatus.OPEN,
               platform: Platform.HYPERLIQUID,
             } as any);
@@ -153,18 +156,20 @@ describe('PlatformManagerService', () => {
 
       // Should only find opportunity for token2, token1 should be skipped
       expect(opportunities).toHaveLength(1);
-      expect(opportunities[0].tokenMintAddress).toBe('token2');
+      expect(opportunities[0].token).toBe('token2');
 
-      // Verify that getTradePositionByTokenMint was called for both tokens
+      // Verify that getTradePositionByToken was called for both tokens
       expect(
-        tradePositionService.getTradePositionByTokenMint,
+        tradePositionService.getTradePositionByToken,
       ).toHaveBeenCalledTimes(2);
-      expect(
-        tradePositionService.getTradePositionByTokenMint,
-      ).toHaveBeenCalledWith('token1', TradePositionStatus.OPEN);
-      expect(
-        tradePositionService.getTradePositionByTokenMint,
-      ).toHaveBeenCalledWith('token2', TradePositionStatus.OPEN);
+      expect(tradePositionService.getTradePositionByToken).toHaveBeenCalledWith(
+        'token1',
+        TradePositionStatus.OPEN,
+      );
+      expect(tradePositionService.getTradePositionByToken).toHaveBeenCalledWith(
+        'token2',
+        TradePositionStatus.OPEN,
+      );
 
       // Verify shouldEnterPosition was only called for token2 (token1 was skipped)
       expect(mockTradingStrategy.shouldEnterPosition).toHaveBeenCalledTimes(1);
@@ -174,54 +179,9 @@ describe('PlatformManagerService', () => {
       );
     });
 
-    it('should prevent rebuy across different platforms', async () => {
-      // Register PUMP_FUN platform as well
-      service.registerPlatform(
-        mockPumpFunTokenDiscovery,
-        mockPumpFunTradingStrategy,
-      );
-
-      // Enable PUMP_FUN for this test
-      await service.updatePlatformConfiguration(Platform.PUMP_FUN, {
-        enabled: true,
-      });
-
-      // Mock active tokens for both platforms
-      mockPumpFunTokenDiscovery.getActiveTokens.mockResolvedValue([
-        'token1', // Same token on different platform
-      ]);
-
-      // Mock existing position for token1 on DRIFT platform
-      tradePositionService.getTradePositionByTokenMint.mockImplementation(
-        (tokenMint: string) => {
-          if (tokenMint === 'token1') {
-            return Promise.resolve({
-              _id: 'existing-position-id',
-              tokenMint: 'token1',
-              status: TradePositionStatus.OPEN,
-              platform: Platform.DRIFT, // Existing position on DRIFT
-            } as any);
-          }
-          return Promise.resolve(null);
-        },
-      );
-
-      const opportunities = await service.findTradingOpportunities();
-
-      // Should find no opportunities for token1 on any platform
-      expect(
-        opportunities.filter((op) => op.tokenMintAddress === 'token1'),
-      ).toHaveLength(0);
-
-      // Verify the existing position check was called for token1 on both platforms
-      expect(
-        tradePositionService.getTradePositionByTokenMint,
-      ).toHaveBeenCalledWith('token1', TradePositionStatus.OPEN);
-    });
-
     it('should not recommend trades when trading strategy returns shouldTrade: false', async () => {
       // Mock no existing positions
-      tradePositionService.getTradePositionByTokenMint.mockResolvedValue(null);
+      tradePositionService.getTradePositionByToken.mockResolvedValue(null);
 
       // Mock trading decisions that don't recommend trading
       mockTradingStrategy.shouldEnterPosition.mockResolvedValue({
@@ -235,49 +195,6 @@ describe('PlatformManagerService', () => {
       const opportunities = await service.findTradingOpportunities();
 
       expect(opportunities).toHaveLength(0);
-    });
-
-    it('should sort opportunities by priority and confidence', async () => {
-      // Register multiple platforms with different priorities
-      service.registerPlatform(
-        mockPumpFunTokenDiscovery,
-        mockPumpFunTradingStrategy,
-      );
-      await service.updatePlatformConfiguration(Platform.PUMP_FUN, {
-        enabled: true,
-        priority: 5,
-      });
-
-      // Mock active tokens for both platforms
-      mockPumpFunTokenDiscovery.getActiveTokens.mockResolvedValue([
-        'pumpfun_token',
-      ]);
-
-      // Mock no existing positions
-      tradePositionService.getTradePositionByTokenMint.mockResolvedValue(null);
-
-      // Mock trading decisions with different priorities and confidence
-      mockTradingStrategy.shouldEnterPosition.mockResolvedValue({
-        shouldTrade: true,
-        reason: 'DRIFT opportunity',
-        confidence: 0.9, // Higher confidence but lower platform priority
-        recommendedAmount: 100000000n,
-        metadata: { direction: PositionDirection.LONG },
-      });
-
-      mockPumpFunTradingStrategy.shouldEnterPosition.mockResolvedValue({
-        shouldTrade: true,
-        reason: 'PUMP_FUN opportunity',
-        confidence: 0.6, // Lower confidence but higher platform priority
-        recommendedAmount: 50000000n,
-        metadata: { direction: PositionDirection.LONG },
-      });
-
-      const opportunities = await service.findTradingOpportunities();
-
-      expect(opportunities).toHaveLength(3); // 2 DRIFT + 1 PUMP_FUN
-      // PUMP_FUN should be first due to higher priority (5 vs 1)
-      expect(opportunities[0].platform).toBe(Platform.PUMP_FUN);
     });
 
     it('should handle errors gracefully and continue processing other platforms', async () => {
@@ -296,8 +213,8 @@ describe('PlatformManagerService', () => {
   describe('evaluateExitDecisions', () => {
     const mockOpenPosition = {
       _id: 'position-id',
-      tokenMint: 'token1',
-      platform: Platform.DRIFT,
+      token: 'token1',
+      platform: Platform.HYPERLIQUID,
       status: TradePositionStatus.OPEN,
       positionType: PositionType.PERPETUAL,
       positionDirection: PositionDirection.LONG,
@@ -343,8 +260,8 @@ describe('PlatformManagerService', () => {
 
     it('should sort exit decisions by urgency and confidence', async () => {
       const positions = [
-        { ...mockOpenPosition, _id: 'pos1', tokenMint: 'token1' },
-        { ...mockOpenPosition, _id: 'pos2', tokenMint: 'token2' },
+        { ...mockOpenPosition, _id: 'pos1', token: 'token1' },
+        { ...mockOpenPosition, _id: 'pos2', token: 'token2' },
       ];
 
       mockTradingStrategy.shouldExitPosition
@@ -374,7 +291,7 @@ describe('PlatformManagerService', () => {
 
   describe('getPlatformConfiguration', () => {
     it('should return configuration for existing platform', () => {
-      const config = service.getPlatformConfiguration(Platform.DRIFT);
+      const config = service.getPlatformConfiguration(Platform.HYPERLIQUID);
 
       expect(config).toBeDefined();
       expect(config.platform).toBe(Platform.HYPERLIQUID);
@@ -390,14 +307,19 @@ describe('PlatformManagerService', () => {
 
   describe('updatePlatformConfiguration', () => {
     it('should update platform configuration', async () => {
-      await service.updatePlatformConfiguration(Platform.PUMP_FUN, {
-        enabled: true,
-        maxOpenPositions: 10,
+      await service.updatePlatformConfiguration(Platform.HYPERLIQUID, {
+        enabled: false,
+        tradingParams: {
+          maxOpenPositions: 10,
+          defaultAmountIn: 200000000n,
+          stopLossPercent: 20,
+          takeProfitPercent: 30,
+        },
       });
 
-      const config = service.getPlatformConfiguration(Platform.PUMP_FUN);
-      expect(config.enabled).toBe(true);
-      expect(config.maxOpenPositions).toBe(10);
+      const config = service.getPlatformConfiguration(Platform.HYPERLIQUID);
+      expect(config.enabled).toBe(false);
+      expect(config.tradingParams?.maxOpenPositions).toBe(10);
     });
   });
 
@@ -407,8 +329,12 @@ describe('PlatformManagerService', () => {
     });
 
     it('should return registered services', () => {
-      const tokenDiscovery = service.getTokenDiscoveryService(Platform.DRIFT);
-      const tradingStrategy = service.getTradingStrategyService(Platform.DRIFT);
+      const tokenDiscovery = service.getTokenDiscoveryService(
+        Platform.HYPERLIQUID,
+      );
+      const tradingStrategy = service.getTradingStrategyService(
+        Platform.HYPERLIQUID,
+      );
 
       expect(tokenDiscovery).toBe(mockTokenDiscovery);
       expect(tradingStrategy).toBe(mockTradingStrategy);
@@ -416,12 +342,12 @@ describe('PlatformManagerService', () => {
 
     it('should throw error for unregistered platforms', () => {
       expect(() => {
-        service.getTokenDiscoveryService(Platform.RAYDIUM);
-      }).toThrow('Token discovery service not found for platform: RAYDIUM');
+        service.getTokenDiscoveryService(Platform.DRIFT);
+      }).toThrow('Token discovery service not found for platform: DRIFT');
 
       expect(() => {
-        service.getTradingStrategyService(Platform.RAYDIUM);
-      }).toThrow('Trading strategy service not found for platform: RAYDIUM');
+        service.getTradingStrategyService(Platform.DRIFT);
+      }).toThrow('Trading strategy service not found for platform: DRIFT');
     });
   });
 });

@@ -1,10 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Platform } from '../../shared';
-import {
-  PlatformTokenDiscoveryPort,
-  TokenDiscoveryParams,
-} from '../../shared/ports/trading/PlatformTokenDiscoveryPort';
+import { PlatformTokenDiscoveryPort } from '../../shared/ports/trading/PlatformTokenDiscoveryPort';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { PerpService } from '../perps/Perp.service';
 import { MarketStats } from './types';
@@ -29,7 +26,7 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
   /**
    * Get active tokens available for trading on Hyperliquid
    */
-  async getActiveTokens(params: TokenDiscoveryParams): Promise<string[]> {
+  async getActiveTokens(): Promise<string[]> {
     try {
       // Check if Hyperliquid is enabled
       const isEnabled = this.configService.get<boolean>('hyperliquid.enabled');
@@ -43,7 +40,7 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
         this.marketsCache.length > 0 &&
         Date.now() - this.lastFetch < this.cacheTtl
       ) {
-        return this.applyFilters(this.marketsCache, params);
+        return this.applyFilters(this.marketsCache);
       }
 
       // Fetch markets from Hyperliquid
@@ -78,8 +75,6 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
       this.logger.log(
         `Found ${availableSymbols.length} active tokens on Hyperliquid`,
       );
-
-      return this.applyFilters(availableSymbols, params);
     } catch (error) {
       this.logger.error('Failed to get active tokens', error);
       return [];
@@ -183,29 +178,6 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
       this.logger.debug(`Market ${marketName} appears inactive:`, error);
       return false;
     }
-  }
-
-  /**
-   * Apply filters to the list of tokens
-   */
-  private applyFilters(
-    tokens: string[],
-    params: TokenDiscoveryParams,
-  ): string[] {
-    let filtered = [...tokens];
-
-    // Apply limit
-    if (params.limit && params.limit > 0) {
-      filtered = filtered.slice(0, params.limit);
-    }
-
-    // Additional filtering could be added here based on params
-    // For example, volume filtering would require additional API calls
-
-    this.logger.debug(
-      `Filtered tokens from ${tokens.length} to ${filtered.length}`,
-    );
-    return filtered;
   }
 
   /**

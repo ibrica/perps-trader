@@ -117,10 +117,7 @@ export class PlatformManagerService extends PlatformManagerPort {
           continue;
         }
 
-        const activeTokens = await tokenDiscovery.getActiveTokens({
-          limit: 50, // TODO: Get rid of this if we will not work with meme coins
-          minTrades: 10,
-        });
+        const activeTokens = await tokenDiscovery.getActiveTokens();
 
         for (const token of activeTokens) {
           const existingPosition =
@@ -194,7 +191,7 @@ export class PlatformManagerService extends PlatformManagerPort {
         }
       } catch (error) {
         this.logger.error(
-          `Error evaluating exit for position ${position.tokenMint}:`,
+          `Error evaluating exit for position ${position.token}:`,
           error,
         );
 
