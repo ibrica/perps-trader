@@ -1,4 +1,4 @@
-import CryptoJS from 'crypto-js';
+import * as CryptoJS from 'crypto-js';
 import { BaseDecryptingService } from './BaseDecryptingService';
 
 export class CryptoJsService extends BaseDecryptingService {
