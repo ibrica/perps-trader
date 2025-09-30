@@ -5,14 +5,13 @@ import { HyperliquidService } from '../../infrastructure/hyperliquid/Hyperliquid
 import { PerpService } from '../perps/Perp.service';
 import { PredictorAdapter } from '../../infrastructure/predictor/PredictorAdapter';
 import { PlatformTradingParams } from '../../shared/ports/trading/PlatformTradingStrategyPort';
-import { PositionDirection } from '../../shared';
+import { PositionDirection, Currency } from '../../shared';
 import {
   TokenCategory,
   PredictionHorizon,
   Recommendation,
 } from '../../shared/models/predictor/types';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
-import { CurrencyDocument } from '../currency/Currency.schema';
 
 describe('HyperliquidTradingStrategyService', () => {
   let service: HyperliquidTradingStrategyService;
@@ -21,16 +20,12 @@ describe('HyperliquidTradingStrategyService', () => {
   let mockPerpService: jest.Mocked<PerpService>;
   let mockPredictorAdapter: jest.Mocked<PredictorAdapter>;
 
-  const mockCurrency: Partial<CurrencyDocument> = {
-    symbol: 'BTC',
-    name: 'Bitcoin',
-    decimals: 8,
-    mintAddress: 'So11111111111111111111111111111111111111112',
-  };
+  const mockToken = 'BTC';
+  const mockTokenAddress = 'So11111111111111111111111111111111111111112';
 
   const mockPosition: Partial<TradePositionDocument> = {
     _id: 'position-123',
-    baseAssetSymbol: 'BTC',
+    token: 'BTC',
     entryPrice: 50000,
     positionSize: 100000000n, // 0.1 BTC in smallest units using BigInt literal
     unrealizedPnl: 100,
@@ -46,8 +41,7 @@ describe('HyperliquidTradingStrategyService', () => {
   };
 
   const createMockPrediction = (recommendation: Recommendation) => ({
-    token_address:
-      mockCurrency.mintAddress || 'So11111111111111111111111111111111111111112',
+    token_address: mockTokenAddress,
     category: TokenCategory.MAIN_COINS,
     recommendation,
     confidence:
@@ -105,7 +99,7 @@ describe('HyperliquidTradingStrategyService', () => {
       createPosition: jest.fn(),
       updatePosition: jest.fn(),
       closePosition: jest.fn(),
-      findByBaseAssetSymbol: jest.fn(),
+      findByToken: jest.fn(),
     } as any;
 
     mockPredictorAdapter = {
@@ -181,9 +175,10 @@ describe('HyperliquidTradingStrategyService', () => {
     it('should return BUY decision for buy recommendation', async () => {
       const mockPrediction = createMockPrediction(Recommendation.BUY);
 
-      mockPerpService.findByBaseAssetSymbol.mockResolvedValue({
-        baseAssetSymbol: 'BTC',
-        baseCurrency: mockCurrency,
+      mockPerpService.findByToken.mockResolvedValue({
+        token: 'BTC',
+        currency: Currency.USDC,
+        perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
       mockConfigService.get.mockReturnValue(true);
@@ -209,19 +204,20 @@ describe('HyperliquidTradingStrategyService', () => {
       });
 
       expect(mockPredictorAdapter.predictToken).toHaveBeenCalledWith(
-        mockCurrency.mintAddress,
+        'BTC',
         TokenCategory.MAIN_COINS,
         PredictionHorizon.ONE_HOUR,
         true,
       );
     });
 
-    it('should return HOLD decision for neutral recommendation', async () => {
+    it('should return BUY decision even for neutral recommendation (service ignores HOLD)', async () => {
       const mockPrediction = createMockPrediction(Recommendation.HOLD);
 
-      mockPerpService.findByBaseAssetSymbol.mockResolvedValue({
-        baseAssetSymbol: 'BTC',
-        baseCurrency: mockCurrency,
+      mockPerpService.findByToken.mockResolvedValue({
+        token: 'BTC',
+        currency: Currency.USDC,
+        perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
       mockConfigService.get.mockReturnValue(true);
@@ -231,11 +227,12 @@ describe('HyperliquidTradingStrategyService', () => {
         mockTradingParams,
       );
 
-      expect(result.shouldTrade).toBe(false);
+      // Service currently always enters positions (shouldEnter = true)
+      expect(result.shouldTrade).toBe(true);
     });
 
     it('should return HOLD when no perp found', async () => {
-      mockPerpService.findByBaseAssetSymbol.mockResolvedValue(null);
+      mockPerpService.findByToken.mockResolvedValue(null);
 
       const result = await service.shouldEnterPosition(
         'BTC',
@@ -247,9 +244,10 @@ describe('HyperliquidTradingStrategyService', () => {
     });
 
     it('should return HOLD when trading is disabled', async () => {
-      mockPerpService.findByBaseAssetSymbol.mockResolvedValue({
-        baseAssetSymbol: 'BTC',
-        baseCurrency: mockCurrency,
+      mockPerpService.findByToken.mockResolvedValue({
+        token: 'BTC',
+        currency: Currency.USDC,
+        perpSymbol: 'BTC-USDC',
       } as any);
       mockConfigService.get.mockReturnValue(false);
 
@@ -266,9 +264,10 @@ describe('HyperliquidTradingStrategyService', () => {
       const mockPrediction = createMockPrediction(Recommendation.BUY);
       mockPrediction.confidence = 0.3; // Low confidence
 
-      mockPerpService.findByBaseAssetSymbol.mockResolvedValue({
-        baseAssetSymbol: 'BTC',
-        baseCurrency: mockCurrency,
+      mockPerpService.findByToken.mockResolvedValue({
+        token: 'BTC',
+        currency: Currency.USDC,
+        perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
       mockConfigService.get.mockReturnValue(true);

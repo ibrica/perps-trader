@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Currency, Platform, PositionDirection } from '../../shared';
+import { Platform, PositionDirection } from '../../shared';
 import {
   PlatformTradingStrategyPort,
   TradingDecision,
@@ -48,19 +48,18 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
    * Determine whether to enter a position based on AI predictions and market conditions
    */
   async shouldEnterPosition(
-    baseAssetSymbol: string,
+    token: string,
     tradingParams: PlatformTradingParams,
   ): Promise<TradingDecision> {
     try {
       // Get perp definition
-      const perp =
-        await this.perpService.findByBaseAssetSymbol(baseAssetSymbol);
+      const perp = await this.perpService.findByToken(token);
 
       if (!perp) {
-        this.logger.warn(`No perp found for token: ${baseAssetSymbol}`);
+        this.logger.warn(`No perp found for token: ${token}`);
         return {
           shouldTrade: false,
-          reason: `No perp definition found for ${baseAssetSymbol}`,
+          reason: `No perp definition found for ${token}`,
           confidence: 0,
           recommendedAmount: 0n,
           metadata: { direction: PositionDirection.LONG },
@@ -79,25 +78,11 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         };
       }
 
-      // Get token mint address for AI prediction
-      if (!perp.baseCurrency || typeof perp.baseCurrency === 'string') {
-        this.logger.error(
-          `Base currency not populated for perp: ${baseAssetSymbol}`,
-        );
-        return {
-          shouldTrade: false,
-          reason: `Base currency not populated for ${baseAssetSymbol}`,
-          confidence: 0,
-          recommendedAmount: 0n,
-          metadata: { direction: PositionDirection.LONG },
-        };
-      }
-
-      const tokenCategory = this.determineTokenCategory(baseAssetSymbol);
+      const tokenCategory = this.determineTokenCategory(token);
 
       // Get AI prediction
       const aiPrediction = await this.predictorAdapter.predictToken(
-        Currency.SOL,
+        token,
         tokenCategory,
         PredictionHorizon.ONE_HOUR,
         true,
@@ -147,15 +132,12 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
             leverage:
               tradingParams.defaultLeverage ||
               this.configService.get<number>('hyperliquid.defaultLeverage', 3),
-            marketIndex: perp.marketIndex,
           },
         };
       }
 
       // Fallback: use market direction if no AI prediction
-      const ticker = await this.hyperliquidService.getTicker(
-        baseAssetSymbol || 'SOL',
-      );
+      const ticker = await this.hyperliquidService.getTicker(token);
       const markPrice = parseFloat(ticker.mark);
       const bidPrice = parseFloat(ticker.bid);
       const askPrice = parseFloat(ticker.ask);
@@ -187,7 +169,6 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
           leverage:
             tradingParams.defaultLeverage ||
             this.configService.get<number>('hyperliquid.defaultLeverage', 3),
-          marketIndex: perp.marketIndex,
           markPrice,
           spread,
         },
@@ -210,13 +191,10 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
     tradePosition: TradePositionDocument,
     tradingParams: PlatformTradingParams,
   ): Promise<ExitDecision> {
+    const { token } = tradePosition;
     try {
-      const baseAssetSymbol = tradePosition.tokenMint; // Assuming this holds the symbol
-
       // Get current market data
-      const ticker = await this.hyperliquidService.getTicker(
-        baseAssetSymbol || tradePosition.baseAssetSymbol || 'SOL',
-      );
+      const ticker = await this.hyperliquidService.getTicker(token);
       const currentPrice = parseFloat(ticker.mark);
 
       // Calculate PnL
@@ -263,13 +241,10 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
 
       // Try to get AI prediction for exit decision
       try {
-        const tokenMintAddress = tradePosition.tokenMint;
-        const tokenCategory = this.determineTokenCategory(
-          baseAssetSymbol || tradePosition.baseAssetSymbol || 'SOL',
-        );
+        const tokenCategory = this.determineTokenCategory(token);
 
         const aiPrediction = await this.predictorAdapter.predictToken(
-          tokenMintAddress || tradePosition.tokenMint || '',
+          token,
           tokenCategory,
           PredictionHorizon.ONE_HOUR,
           true,

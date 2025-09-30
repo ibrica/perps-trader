@@ -29,6 +29,15 @@ export class MongoDbTestingService {
   }
 
   async clean(): Promise<void> {
+    const collections = await this.connection?.db?.collections();
+    if (collections) {
+      for (const collection of collections) {
+        await collection.deleteMany({});
+      }
+    }
+  }
+
+  async close(): Promise<void> {
     await this.connection?.db?.dropDatabase();
     await this.connection.destroy();
   }

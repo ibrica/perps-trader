@@ -1,12 +1,21 @@
 import { Logger } from '@nestjs/common';
-import axios from 'axios';
-import { parseAxiosError } from '../axios';
+import axios, { AxiosError } from 'axios';
 import {
   PredictionHorizon,
   PredictionResponse,
   TokenCategory,
   retryCallback,
 } from '../../shared';
+
+const parseAxiosError = (error: unknown): string => {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError;
+    return axiosError.response?.data
+      ? JSON.stringify(axiosError.response.data)
+      : axiosError.message;
+  }
+  return error instanceof Error ? error.message : String(error);
+};
 
 export class PredictorAdapter {
   private logger = new Logger(PredictorAdapter.name);

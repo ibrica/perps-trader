@@ -1,3 +1,3 @@
 import { Platform } from '../../shared';
 
-export const allowedPerpPlatforms = [Platform.DRIFT];
+export const allowedPerpPlatforms = [Platform.HYPERLIQUID];

@@ -6,19 +6,19 @@ import {
   toObjectId,
   Optional,
   PositionDirection,
+  Currency,
 } from '../../shared';
 
 export interface CreatePerpDto {
   name: string;
-  baseCurrency: string;
-  quoteCurrency: string;
+  token: string;
+  currency: Currency;
+  perpSymbol: string;
   platform: Platform;
   buyFlag?: boolean;
   marketDirection?: MarketDirection;
-  marketIndex?: number;
-  baseAssetSymbol: string;
   isActive?: boolean;
-  leverage?: number;
+  defaultLeverage?: number;
   recommendedAmount?: string;
 }
 
@@ -27,7 +27,7 @@ export interface UpdatePerpDto {
   buyFlag?: boolean;
   marketDirection?: MarketDirection;
   isActive?: boolean;
-  leverage?: number;
+  defaultLeverage?: number;
   recommendedAmount?: string;
 }
 
@@ -38,24 +38,18 @@ export class PerpService {
   async create(createPerpDto: CreatePerpDto): Promise<PerpDocument> {
     const perpData = {
       ...createPerpDto,
-      baseCurrency: toObjectId(createPerpDto.baseCurrency),
-      quoteCurrency: toObjectId(createPerpDto.quoteCurrency),
       buyFlag: createPerpDto.buyFlag ?? false,
       marketDirection: createPerpDto.marketDirection ?? MarketDirection.NEUTRAL,
       isActive: createPerpDto.isActive ?? true,
-      leverage: createPerpDto.leverage ?? 1,
+      defaultLeverage: createPerpDto.defaultLeverage ?? 1,
       recommendedAmount: createPerpDto.recommendedAmount,
     };
 
-    return this.perpRepository.create(perpData, {
-      queryOptions: { populate: ['baseCurrency', 'quoteCurrency'] },
-    });
+    return this.perpRepository.create(perpData);
   }
 
   async findAll(): Promise<PerpDocument[]> {
-    return this.perpRepository.getAll({
-      queryOptions: { populate: ['baseCurrency', 'quoteCurrency'] },
-    });
+    return this.perpRepository.getAll();
   }
 
   async findByPlatformAndBuyFlag(
@@ -65,26 +59,16 @@ export class PerpService {
     return this.perpRepository.findByPlatformAndBuyFlag(platform, buyFlag);
   }
 
-  async findByMarketIndex(marketIndex: number): Promise<PerpDocument | null> {
-    return this.perpRepository.findByMarketIndex(marketIndex);
+  async findByToken(token: string): Promise<PerpDocument | null> {
+    return this.perpRepository.findByToken(token);
   }
 
-  async findByBaseAssetSymbol(
-    baseAssetSymbol: string,
-  ): Promise<PerpDocument | null> {
-    return this.perpRepository.findByBaseAssetSymbol(baseAssetSymbol);
-  }
-
-  async findByBaseCurrencyMint(
-    mintAddress: string,
-  ): Promise<PerpDocument | null> {
-    return this.perpRepository.findByBaseCurrencyMint(mintAddress);
+  async findByCurrency(currency: Currency): Promise<PerpDocument | null> {
+    return this.perpRepository.findByCurrency(currency);
   }
 
   async findById(id: string): Promise<PerpDocument> {
-    const perp = await this.perpRepository.getById(id, {
-      queryOptions: { populate: ['baseCurrency', 'quoteCurrency'] },
-    });
+    const perp = await this.perpRepository.getById(id);
     return Optional.of(perp).getOrThrow(
       new NotFoundException(`Perp with id ${id} not found`),
     );
@@ -94,9 +78,7 @@ export class PerpService {
     id: string,
     updatePerpDto: UpdatePerpDto,
   ): Promise<PerpDocument> {
-    const perp = await this.perpRepository.updateById(id, updatePerpDto, {
-      queryOptions: { populate: ['baseCurrency', 'quoteCurrency'] },
-    });
+    const perp = await this.perpRepository.updateById(id, updatePerpDto);
     return Optional.of(perp).getOrThrow(
       new NotFoundException(`Perp with id ${id} not found`),
     );
@@ -113,7 +95,6 @@ export class PerpService {
   async getAllPerpsForTrading(): Promise<PerpDocument[]> {
     return this.perpRepository.getAll({
       filter: { buyFlag: true, isActive: true },
-      queryOptions: { populate: ['baseCurrency', 'quoteCurrency'] },
     });
   }
 

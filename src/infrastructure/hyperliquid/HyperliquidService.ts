@@ -16,7 +16,7 @@ import {
   HL_SYMBOL_MAP,
   HL_SYMBOL_REVERSE_MAP,
   HL_BASE_CURRENCY_DECIMALS,
-} from '../../shared/constants2/hyperliquid';
+} from '../../shared/constants/hyperliquid';
 
 // Use types from the SDK
 export type HLMarket = Meta['universe'][0] & {
@@ -158,7 +158,7 @@ export class HyperliquidService {
 
       return {
         coin: mappedSymbol,
-        levels: l2Book.levels || [],
+        levels: l2Book.levels || [[], []],
       };
     } catch (error) {
       this.logger.error(`Failed to fetch orderbook for ${symbol}`, error);

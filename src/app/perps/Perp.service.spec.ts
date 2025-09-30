@@ -8,42 +8,31 @@ import {
   createTestingModuleWithProviders,
   MongoDbTestingModule,
   MongoDbTestingService,
-  createTestCurrencyDto,
   forceGC,
   Platform,
+  Currency,
 } from '../../shared';
-import { BlockchainModule, BlockchainService } from '../blockchain';
-import { CurrencyModule, CurrencyService } from '../currency';
-import { BlockchainDocument } from '../blockchain/Blockchain.schema';
-import { CurrencyDocument } from '../currency/Currency.schema';
 
 // Test helper function to create a test perp DTO
 const createTestPerpDto = (
-  baseCurrency: string,
-  quoteCurrency: string,
   options?: Partial<CreatePerpDto>,
 ): CreatePerpDto => ({
   name: options?.name || 'SOL-USDC Perpetual',
-  baseCurrency,
-  quoteCurrency,
-  platform: options?.platform || Platform.DRIFT,
+  token: options?.token || 'SOL',
+  currency: options?.currency || Currency.USDC,
+  perpSymbol: options?.perpSymbol || 'SOL-USDC',
+  platform: options?.platform || Platform.HYPERLIQUID,
   buyFlag: options?.buyFlag ?? false,
   marketDirection: options?.marketDirection ?? MarketDirection.NEUTRAL,
-  marketIndex: options?.marketIndex,
-  baseAssetSymbol: options?.baseAssetSymbol || 'SOL',
   isActive: options?.isActive ?? true,
+  defaultLeverage: options?.defaultLeverage,
+  recommendedAmount: options?.recommendedAmount,
 });
 
 describe('PerpService', () => {
   let service: PerpService;
   let mongoDbTestingService: MongoDbTestingService;
-  let blockchainService: BlockchainService;
-  let currencyService: CurrencyService;
-
   let module: TestingModule;
-  let blockchain: BlockchainDocument;
-  let baseCurrency: CurrencyDocument;
-  let quoteCurrency: CurrencyDocument;
 
   beforeEach(async () => {
     module = await createTestingModuleWithProviders({
@@ -51,92 +40,83 @@ describe('PerpService', () => {
         MongooseModule.forFeature([{ name: Perp.name, schema: PerpSchema }]),
         TestingModule,
         MongoDbTestingModule,
-        BlockchainModule,
-        CurrencyModule,
       ],
       providers: [PerpService, PerpRepository],
     }).compile();
 
     service = module.get(PerpService);
-    blockchainService = module.get(BlockchainService);
-    currencyService = module.get(CurrencyService);
-
     mongoDbTestingService = await module.resolve(MongoDbTestingService);
-
-    // Set up test data
-    blockchain = await blockchainService.getDefaultBlockChain();
-    baseCurrency = await currencyService.create(
-      createTestCurrencyDto(String(blockchain._id), 'solMint', 9, 'SOL'),
-    );
-    quoteCurrency = await currencyService.create(
-      createTestCurrencyDto(String(blockchain._id), 'usdcMint', 6, 'USDC'),
-    );
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     jest.clearAllMocks();
+    await mongoDbTestingService.clean();
   });
 
   afterAll(async () => {
-    await mongoDbTestingService.clean();
+    await mongoDbTestingService.close();
     await module.close();
     forceGC();
   });
 
   describe('create', () => {
     it('should create a perp with default values', async () => {
-      const createDto = createTestPerpDto(
-        String(baseCurrency._id),
-        String(quoteCurrency._id),
-      );
+      const createDto = createTestPerpDto();
 
       const perp = await service.create(createDto);
 
       expect(perp).toBeDefined();
       expect(perp.name).toBe('SOL-USDC Perpetual');
-      expect(perp.platform).toBe(Platform.DRIFT);
+      expect(perp.platform).toBe(Platform.HYPERLIQUID);
       expect(perp.buyFlag).toBe(false);
       expect(perp.marketDirection).toBe(MarketDirection.NEUTRAL);
       expect(perp.isActive).toBe(true);
-      expect(perp.baseAssetSymbol).toBe('SOL');
+      expect(perp.token).toBe('SOL');
+      expect(perp.currency).toBe(Currency.USDC);
+      expect(perp.perpSymbol).toBe('SOL-USDC');
+      expect(perp.defaultLeverage).toBe(1);
     });
 
     it('should create a perp with custom values', async () => {
-      const createDto = createTestPerpDto(
-        String(baseCurrency._id),
-        String(quoteCurrency._id),
-        {
-          name: 'BTC-USDC Perpetual',
-          buyFlag: true,
-          marketDirection: MarketDirection.UP,
-          marketIndex: 1,
-          baseAssetSymbol: 'BTC',
-          isActive: false,
-        },
-      );
+      const createDto = createTestPerpDto({
+        name: 'BTC-USDT Perpetual',
+        token: 'BTC',
+        currency: Currency.USDT,
+        perpSymbol: 'BTC-USDT',
+        buyFlag: true,
+        marketDirection: MarketDirection.UP,
+        isActive: false,
+        defaultLeverage: 5,
+        recommendedAmount: '1000',
+      });
 
       const perp = await service.create(createDto);
 
-      expect(perp.name).toBe('BTC-USDC Perpetual');
+      expect(perp.name).toBe('BTC-USDT Perpetual');
+      expect(perp.token).toBe('BTC');
+      expect(perp.currency).toBe(Currency.USDT);
+      expect(perp.perpSymbol).toBe('BTC-USDT');
       expect(perp.buyFlag).toBe(true);
       expect(perp.marketDirection).toBe(MarketDirection.UP);
-      expect(perp.marketIndex).toBe(1);
-      expect(perp.baseAssetSymbol).toBe('BTC');
       expect(perp.isActive).toBe(false);
+      expect(perp.defaultLeverage).toBe(5);
+      expect(perp.recommendedAmount).toBe('1000');
     });
   });
 
   describe('findAll', () => {
     it('should return all perps', async () => {
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
+        createTestPerpDto({
           name: 'SOL-USDC Perpetual',
+          token: 'SOL',
         }),
       );
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
+        createTestPerpDto({
           name: 'BTC-USDC Perpetual',
-          baseAssetSymbol: 'BTC',
+          token: 'BTC',
+          perpSymbol: 'BTC-USDC',
         }),
       );
 
@@ -156,165 +136,78 @@ describe('PerpService', () => {
   describe('findByPlatformAndBuyFlag', () => {
     it('should find perps by platform and buy flag', async () => {
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.DRIFT,
+        createTestPerpDto({
+          platform: Platform.HYPERLIQUID,
           buyFlag: true,
         }),
       );
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.DRIFT,
+        createTestPerpDto({
+          platform: Platform.HYPERLIQUID,
           buyFlag: false,
         }),
       );
-      await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.PUMP_FUN,
-          buyFlag: true,
-        }),
-      );
 
-      const driftBuyPerps = await service.findByPlatformAndBuyFlag(
-        Platform.DRIFT,
+      const hyperliquidBuyPerps = await service.findByPlatformAndBuyFlag(
+        Platform.HYPERLIQUID,
         true,
       );
-      const driftNoBuyPerps = await service.findByPlatformAndBuyFlag(
-        Platform.DRIFT,
+      const hyperliquidNoBuyPerps = await service.findByPlatformAndBuyFlag(
+        Platform.HYPERLIQUID,
         false,
       );
-      const pumpfunBuyPerps = await service.findByPlatformAndBuyFlag(
-        Platform.PUMP_FUN,
-        true,
-      );
 
-      expect(driftBuyPerps).toHaveLength(1);
-      expect(driftNoBuyPerps).toHaveLength(1);
-      expect(pumpfunBuyPerps).toHaveLength(1);
+      expect(hyperliquidBuyPerps).toHaveLength(1);
+      expect(hyperliquidNoBuyPerps).toHaveLength(1);
     });
   });
 
-  describe('findByMarketIndex', () => {
-    it('should find perp by market index', async () => {
+  describe('findByToken', () => {
+    it('should find perp by token', async () => {
       const perp = await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          marketIndex: 42,
+        createTestPerpDto({
+          token: 'ETH',
+          perpSymbol: 'ETH-USDC',
         }),
       );
 
-      const foundPerp = await service.findByMarketIndex(42);
+      const foundPerp = await service.findByToken('ETH');
       expect(foundPerp).toBeDefined();
       expect(String(foundPerp!._id)).toBe(String(perp._id));
+      expect(foundPerp!.token).toBe('ETH');
     });
 
-    it('should return null for non-existent market index', async () => {
-      const foundPerp = await service.findByMarketIndex(999);
-      expect(foundPerp).toBeNull();
-    });
-
-    it('should not find inactive perp', async () => {
-      await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          marketIndex: 42,
-          isActive: false,
-        }),
-      );
-
-      const foundPerp = await service.findByMarketIndex(42);
+    it('should return null for non-existent token', async () => {
+      const foundPerp = await service.findByToken('UNKNOWN');
       expect(foundPerp).toBeNull();
     });
   });
 
-  describe('findByBaseAssetSymbol', () => {
-    it('should find perp by base asset symbol', async () => {
+  describe('findByCurrency', () => {
+    it('should find perp by currency', async () => {
       const perp = await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          baseAssetSymbol: 'ETH',
+        createTestPerpDto({
+          currency: Currency.SOL,
+          token: 'SOL',
+          perpSymbol: 'SOL-USD',
         }),
       );
 
-      const foundPerp = await service.findByBaseAssetSymbol('ETH');
+      const foundPerp = await service.findByCurrency(Currency.SOL);
       expect(foundPerp).toBeDefined();
       expect(String(foundPerp!._id)).toBe(String(perp._id));
+      expect(foundPerp!.currency).toBe(Currency.SOL);
     });
 
-    it('should return null for non-existent base asset symbol', async () => {
-      const foundPerp = await service.findByBaseAssetSymbol('UNKNOWN');
+    it('should return null for non-existent currency', async () => {
+      const foundPerp = await service.findByCurrency(Currency.BTC);
       expect(foundPerp).toBeNull();
-    });
-  });
-
-  describe('findByBaseCurrencyMint', () => {
-    it('should find perp by base currency mint address', async () => {
-      const perp = await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          baseAssetSymbol: 'SOL',
-        }),
-      );
-
-      const foundPerp = await service.findByBaseCurrencyMint('solMint');
-      expect(foundPerp).toBeDefined();
-      expect(String(foundPerp!._id)).toBe(String(perp._id));
-      expect(foundPerp!.baseAssetSymbol).toBe('SOL');
-    });
-
-    it('should return null for non-existent mint address', async () => {
-      const foundPerp = await service.findByBaseCurrencyMint('nonExistentMint');
-      expect(foundPerp).toBeNull();
-    });
-
-    it('should not find inactive perp', async () => {
-      await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          baseAssetSymbol: 'SOL',
-          isActive: false,
-        }),
-      );
-
-      const foundPerp = await service.findByBaseCurrencyMint('solMint');
-      expect(foundPerp).toBeNull();
-    });
-
-    it('should find correct perp when multiple perps exist with different base currencies', async () => {
-      // Create another currency for testing
-      const ethCurrency = await currencyService.create(
-        createTestCurrencyDto(String(blockchain._id), 'ethMint', 18, 'ETH'),
-      );
-
-      // Create perp with SOL as base currency
-      const solPerp = await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          baseAssetSymbol: 'SOL',
-          name: 'SOL-USDC Perpetual',
-        }),
-      );
-
-      // Create perp with ETH as base currency
-      const ethPerp = await service.create(
-        createTestPerpDto(String(ethCurrency._id), String(quoteCurrency._id), {
-          baseAssetSymbol: 'ETH',
-          name: 'ETH-USDC Perpetual',
-        }),
-      );
-
-      // Find by SOL mint address
-      const foundSolPerp = await service.findByBaseCurrencyMint('solMint');
-      expect(foundSolPerp).toBeDefined();
-      expect(String(foundSolPerp!._id)).toBe(String(solPerp._id));
-      expect(foundSolPerp!.baseAssetSymbol).toBe('SOL');
-
-      // Find by ETH mint address
-      const foundEthPerp = await service.findByBaseCurrencyMint('ethMint');
-      expect(foundEthPerp).toBeDefined();
-      expect(String(foundEthPerp!._id)).toBe(String(ethPerp._id));
-      expect(foundEthPerp!.baseAssetSymbol).toBe('ETH');
     });
   });
 
   describe('findById', () => {
     it('should find perp by id', async () => {
-      const perp = await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id)),
-      );
+      const perp = await service.create(createTestPerpDto());
 
       const foundPerp = await service.findById(String(perp._id));
       expect(foundPerp).toBeDefined();
@@ -333,9 +226,10 @@ describe('PerpService', () => {
   describe('update', () => {
     it('should update perp successfully', async () => {
       const perp = await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
+        createTestPerpDto({
           buyFlag: false,
           marketDirection: MarketDirection.NEUTRAL,
+          defaultLeverage: 1,
         }),
       );
 
@@ -343,6 +237,8 @@ describe('PerpService', () => {
         buyFlag: true,
         marketDirection: MarketDirection.UP,
         name: 'Updated Perp Name',
+        defaultLeverage: 3,
+        recommendedAmount: '500',
       };
 
       const updatedPerp = await service.update(String(perp._id), updateDto);
@@ -350,6 +246,8 @@ describe('PerpService', () => {
       expect(updatedPerp.buyFlag).toBe(true);
       expect(updatedPerp.marketDirection).toBe(MarketDirection.UP);
       expect(updatedPerp.name).toBe('Updated Perp Name');
+      expect(updatedPerp.defaultLeverage).toBe(3);
+      expect(updatedPerp.recommendedAmount).toBe('500');
     });
 
     it('should throw NotFoundException for non-existent id', async () => {
@@ -364,9 +262,7 @@ describe('PerpService', () => {
 
   describe('delete', () => {
     it('should delete perp successfully', async () => {
-      const perp = await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id)),
-      );
+      const perp = await service.create(createTestPerpDto());
 
       await service.delete(String(perp._id));
 
@@ -380,100 +276,93 @@ describe('PerpService', () => {
   describe('getPerpsForTrading', () => {
     it('should return only perps marked for trading on specified platform', async () => {
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.DRIFT,
+        createTestPerpDto({
+          platform: Platform.HYPERLIQUID,
           buyFlag: true,
           name: 'SOL-USDC Trading',
         }),
       );
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.DRIFT,
+        createTestPerpDto({
+          platform: Platform.HYPERLIQUID,
           buyFlag: false,
           name: 'BTC-USDC No Trading',
         }),
       );
-      await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.PUMP_FUN,
-          buyFlag: true,
-          name: 'ETH-USDC Pumpfun Trading',
-        }),
+
+      const hyperliquidTradingPerps = await service.getPerpsForTrading(
+        Platform.HYPERLIQUID,
       );
 
-      const driftTradingPerps = await service.getPerpsForTrading(
-        Platform.DRIFT,
-      );
-      const pumpfunTradingPerps = await service.getPerpsForTrading(
-        Platform.PUMP_FUN,
-      );
-
-      expect(driftTradingPerps).toHaveLength(1);
-      expect(driftTradingPerps[0].name).toBe('SOL-USDC Trading');
-      expect(driftTradingPerps[0].buyFlag).toBe(true);
-
-      expect(pumpfunTradingPerps).toHaveLength(1);
-      expect(pumpfunTradingPerps[0].name).toBe('ETH-USDC Pumpfun Trading');
+      expect(hyperliquidTradingPerps).toHaveLength(1);
+      expect(hyperliquidTradingPerps[0].name).toBe('SOL-USDC Trading');
+      expect(hyperliquidTradingPerps[0].buyFlag).toBe(true);
     });
 
     it('should return empty array when no perps are marked for trading', async () => {
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.DRIFT,
+        createTestPerpDto({
+          platform: Platform.HYPERLIQUID,
           buyFlag: false,
         }),
       );
 
-      const tradingPerps = await service.getPerpsForTrading(Platform.DRIFT);
+      const tradingPerps = await service.getPerpsForTrading(
+        Platform.HYPERLIQUID,
+      );
       expect(tradingPerps).toEqual([]);
     });
   });
 
   describe('getAllPerpsForTrading', () => {
-    it('should return all perps marked for trading across all platforms', async () => {
+    it('should return all perps marked for trading', async () => {
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.DRIFT,
+        createTestPerpDto({
+          platform: Platform.HYPERLIQUID,
           buyFlag: true,
-          name: 'SOL-USDC Drift Trading',
+          isActive: true,
+          name: 'SOL-USDC Trading',
         }),
       );
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.DRIFT,
+        createTestPerpDto({
+          platform: Platform.HYPERLIQUID,
           buyFlag: false,
+          isActive: true,
           name: 'BTC-USDC No Trading',
         }),
       );
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.PUMP_FUN,
+        createTestPerpDto({
+          platform: Platform.HYPERLIQUID,
           buyFlag: true,
-          name: 'ETH-USDC Pumpfun Trading',
+          isActive: true,
+          name: 'ETH-USDC Trading',
         }),
       );
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.RAYDIUM,
+        createTestPerpDto({
+          platform: Platform.HYPERLIQUID,
           buyFlag: true,
-          name: 'AVAX-USDC Raydium Trading',
+          isActive: false,
+          name: 'AVAX-USDC Inactive',
         }),
       );
 
       const allTradingPerps = await service.getAllPerpsForTrading();
 
-      expect(allTradingPerps).toHaveLength(3); // Only buyFlag: true perps
+      expect(allTradingPerps).toHaveLength(2); // Only buyFlag: true and isActive: true perps
       const names = allTradingPerps.map((p) => p.name);
-      expect(names).toContain('SOL-USDC Drift Trading');
-      expect(names).toContain('ETH-USDC Pumpfun Trading');
-      expect(names).toContain('AVAX-USDC Raydium Trading');
+      expect(names).toContain('SOL-USDC Trading');
+      expect(names).toContain('ETH-USDC Trading');
       expect(names).not.toContain('BTC-USDC No Trading'); // buyFlag: false
+      expect(names).not.toContain('AVAX-USDC Inactive'); // isActive: false
     });
 
     it('should return empty array when no perps are marked for trading', async () => {
       await service.create(
-        createTestPerpDto(String(baseCurrency._id), String(quoteCurrency._id), {
-          platform: Platform.DRIFT,
+        createTestPerpDto({
+          platform: Platform.HYPERLIQUID,
           buyFlag: false,
         }),
       );
@@ -486,19 +375,16 @@ describe('PerpService', () => {
   describe('integration tests', () => {
     it('should handle complete CRUD lifecycle', async () => {
       // Create
-      const createDto = createTestPerpDto(
-        String(baseCurrency._id),
-        String(quoteCurrency._id),
-        {
-          name: 'Lifecycle Test Perp',
-          buyFlag: false,
-          marketDirection: MarketDirection.NEUTRAL,
-          marketIndex: 100,
-        },
-      );
+      const createDto = createTestPerpDto({
+        name: 'Lifecycle Test Perp',
+        buyFlag: false,
+        marketDirection: MarketDirection.NEUTRAL,
+        defaultLeverage: 2,
+      });
 
       const createdPerp = await service.create(createDto);
       expect(createdPerp.name).toBe('Lifecycle Test Perp');
+      expect(createdPerp.defaultLeverage).toBe(2);
 
       // Read
       const foundPerp = await service.findById(String(createdPerp._id));
@@ -508,12 +394,16 @@ describe('PerpService', () => {
       const updatedPerp = await service.update(String(createdPerp._id), {
         buyFlag: true,
         marketDirection: MarketDirection.UP,
+        defaultLeverage: 5,
       });
       expect(updatedPerp.buyFlag).toBe(true);
       expect(updatedPerp.marketDirection).toBe(MarketDirection.UP);
+      expect(updatedPerp.defaultLeverage).toBe(5);
 
       // Verify it appears in trading perps
-      const tradingPerps = await service.getPerpsForTrading(Platform.DRIFT);
+      const tradingPerps = await service.getPerpsForTrading(
+        Platform.HYPERLIQUID,
+      );
       expect(tradingPerps).toHaveLength(1);
       expect(String(tradingPerps[0]._id)).toBe(String(createdPerp._id));
 
@@ -522,6 +412,41 @@ describe('PerpService', () => {
       await expect(service.findById(String(createdPerp._id))).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('determinePositionDirection', () => {
+    it('should return LONG for UP market direction', async () => {
+      const perp = await service.create(
+        createTestPerpDto({
+          marketDirection: MarketDirection.UP,
+        }),
+      );
+
+      const direction = service.determinePositionDirection(perp);
+      expect(direction).toBe('LONG');
+    });
+
+    it('should return SHORT for DOWN market direction', async () => {
+      const perp = await service.create(
+        createTestPerpDto({
+          marketDirection: MarketDirection.DOWN,
+        }),
+      );
+
+      const direction = service.determinePositionDirection(perp);
+      expect(direction).toBe('SHORT');
+    });
+
+    it('should return LONG for NEUTRAL market direction', async () => {
+      const perp = await service.create(
+        createTestPerpDto({
+          marketDirection: MarketDirection.NEUTRAL,
+        }),
+      );
+
+      const direction = service.determinePositionDirection(perp);
+      expect(direction).toBe('LONG');
     });
   });
 });

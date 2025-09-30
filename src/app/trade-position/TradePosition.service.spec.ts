@@ -34,6 +34,7 @@ describe('TradePositionService', () => {
   });
 
   afterAll(async () => {
+    await mongoDbTestingService.close();
     await module.close();
     forceGC();
   });
