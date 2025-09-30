@@ -44,7 +44,7 @@ describe('TradePositionService', () => {
 
   describe('createTradePosition', () => {
     const mockCreateOptions: CreateTradePositionOptions = {
-      platform: Platform.RAYDIUM,
+      platform: Platform.HYPERLIQUID,
       status: TradePositionStatus.PLAN,
       token: 'tokenAddress',
       currency: 'currencyAddress',
@@ -72,7 +72,7 @@ describe('TradePositionService', () => {
 
     beforeEach(async () => {
       const createOptions: CreateTradePositionOptions = {
-        platform: Platform.RAYDIUM,
+        platform: Platform.HYPERLIQUID,
         status: TradePositionStatus.PLAN,
         token: 'tokenAddress',
         currency: 'currencyAddress',
@@ -128,7 +128,7 @@ describe('TradePositionService', () => {
       // Create some test positions
       const positions = [
         {
-          platform: Platform.RAYDIUM,
+          platform: Platform.HYPERLIQUID,
           status: TradePositionStatus.OPEN,
           token: 'tokenAddress1',
           currency: 'currencyAddress1',
@@ -136,7 +136,7 @@ describe('TradePositionService', () => {
           timeOpened: new Date('2024-03-20T10:00:00Z'),
         },
         {
-          platform: Platform.RAYDIUM,
+          platform: Platform.HYPERLIQUID,
           status: TradePositionStatus.OPEN,
           token: 'tokenAddress2',
           currency: 'currencyAddress2',
@@ -144,7 +144,7 @@ describe('TradePositionService', () => {
           timeOpened: new Date('2024-03-20T11:00:00Z'),
         },
         {
-          platform: Platform.RAYDIUM,
+          platform: Platform.HYPERLIQUID,
           status: TradePositionStatus.CLOSED,
           token: 'tokenAddress3',
           currency: 'currencyAddress3',

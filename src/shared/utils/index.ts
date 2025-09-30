@@ -1,8 +1,3 @@
-export * from './convertLegacyTransactionToVersionedTransaction';
-export * from './createJitoTipIx';
-export * from './createPriorityFeeIx';
-export * from './createComputeBudgetLimitIx';
-export * from './stringToKeypair';
 export * from './IsNil';
 export * from './delay';
 export * from './retryCallback';
@@ -15,7 +10,6 @@ export * from './isError';
 export * from './timedPromise';
 export * from './isObject';
 export * from './never';
-export * from './solana';
 export * from './tests';
 export * from './formatMs';
 export * from './stringify';
