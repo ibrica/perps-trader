@@ -13,4 +13,3 @@ export * from './PositionDirection';
 export * from './PositionType';
 export * from './hyperliquid';
 export * from './Currency';
-export * from './solana';

@@ -1,13 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import {
-  BlockchainSymbol,
   isNil,
   Platform,
-  SOL_MINT,
   TradePositionStatus,
-  ItemExistsException,
-  TradeNotification,
   TradeType,
   PositionDirection,
   PositionType,
