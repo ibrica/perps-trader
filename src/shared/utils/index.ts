@@ -10,6 +10,5 @@ export * from './isError';
 export * from './timedPromise';
 export * from './isObject';
 export * from './never';
-export * from './tests';
 export * from './formatMs';
 export * from './stringify';

@@ -4,13 +4,12 @@ import { Connection } from 'mongoose';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongoDbTestingService } from './MongoDbTestingService';
 import appConfig from '../../config/app.config';
-import blockchainConfig from '../../config/blockchain.config';
 import { isNil } from '../utils';
 
 @Module({
   imports: [
     ConfigModule.forRoot({
-      load: [appConfig, blockchainConfig],
+      load: [appConfig],
       isGlobal: true,
     }),
     MongooseModule.forRootAsync({

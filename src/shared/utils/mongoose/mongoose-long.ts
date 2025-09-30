@@ -1,11 +1,21 @@
 import mongoose from 'mongoose';
-import mongooseLong from 'mongoose-long';
 import BigNumber from 'bignumber.js';
 import { castMongoDBBigNumber, castMongoDBBigInt } from './decimal128ToBigInt';
 
-mongooseLong(mongoose);
+// Load mongoose-long conditionally for runtime
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const mongooseLongModule = require('mongoose-long');
+  if (typeof mongooseLongModule === 'function') {
+    mongooseLongModule(mongoose);
+  } else if (mongooseLongModule?.default) {
+    mongooseLongModule.default(mongoose);
+  }
+} catch (e) {
+  // Not available in test environment or already loaded
+}
 
-export const { Long } = mongoose.Schema.Types;
+export const Long = (mongoose.Schema.Types as any).Long;
 export const { Decimal128 } = mongoose.Schema.Types;
 
 export const deserializeLong = <T>(obj: T, fields: string[]): T => {

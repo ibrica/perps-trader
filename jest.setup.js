@@ -1,4 +1,5 @@
 require('reflect-metadata');
+require('dotenv').config({ path: '.env.test' });
 
 // Jest setup for module aliases
 const moduleNameMapper = require('./package.json').jest.projects[0].moduleNameMapper;

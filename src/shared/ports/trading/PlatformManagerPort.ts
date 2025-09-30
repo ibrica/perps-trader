@@ -7,7 +7,6 @@ import {
   PlatformTradingParams,
 } from './PlatformTradingStrategyPort';
 import { TradePositionDocument } from '../../../app/trade-position/TradePosition.schema';
-import { PlatformPriceService } from '../../../app/perps';
 
 export interface PlatformConfiguration {
   platform: Platform;
@@ -51,8 +50,6 @@ export abstract class PlatformManagerPort {
   abstract getTradingStrategyService(
     platform: Platform,
   ): PlatformTradingStrategyPort;
-
-  abstract getPlatformService(platform: Platform): PlatformPriceService;
 
   abstract getPlatformConfiguration(platform: Platform): PlatformConfiguration;
 
