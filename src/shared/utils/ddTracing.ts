@@ -6,11 +6,11 @@ import {
 import { isLocalMode } from './envChecks';
 import * as net from 'net';
 
-export type LoggerServices = 'ATRADER' | 'CRON_ATRADER';
+export type LoggerServices = 'PERPS_TRADER' | 'CRON_PERPS_TRADER';
 
 export const ddServiceName = (
   env: string,
-  service: LoggerServices = 'ATRADER',
+  service: LoggerServices = 'PERPS_TRADER',
 ): string => {
   const name = `${env}_${service}/API`.toUpperCase();
   // eslint-disable-next-line no-console
