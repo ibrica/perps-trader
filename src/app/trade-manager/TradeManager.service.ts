@@ -18,8 +18,6 @@ import {
   PriceAndDate,
   Blockchain,
 } from '../../shared';
-import { TradeService } from '../trade/Trade.service';
-import { OnEvent } from '@nestjs/event-emitter';
 import { IndexerAdapter } from '../../infrastructure';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
@@ -33,86 +31,23 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
   constructor(
     private tradePositionService: TradePositionService,
-    private tradeService: TradeService,
     private indexerAdapter: IndexerAdapter,
     private platformManagerService: PlatformManagerService,
     private perpService: PerpService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
-    this.logger.log('Starting multi-platform trading on application bootstrap');
+    this.logger.log('Starting trade manager on application bootstrap');
     try {
       await this.startTrading();
-      this.logger.log('Successfully started multi-platform trading');
+      this.logger.log('Successfully started trade manager');
     } catch (error) {
-      this.logger.error('Failed to start multi-platform trading', error);
-    }
-  }
-
-  @OnEvent(SUBSCRIPTION_EVENTS.TRADE_INDEXER)
-  async handleTradeIndexerEvent(event: TradeNotification): Promise<void> {
-    // Meme tokens only for now
-    this.logger.debug('Trade for token event received', event);
-    const tradePosition =
-      await this.tradePositionService.getTradePositionByTokenMint(
-        event.tokenMint,
-        TradePositionStatus.OPEN,
-      );
-
-    if (isNil(tradePosition)) {
-      this.logger.warn(
-        `No open trade position found for token: ${event.tokenMint}`,
-      );
-      this.logger.log('unsubscribing from token monitoring', event.tokenMint);
-      await this.safeUnsubscribe(event.tokenMint);
-      return;
-    }
-
-    const exitDecisions =
-      await this.platformManagerService.evaluateExitDecisions(
-        [tradePosition],
-        [tradePosition.platform],
-      );
-
-    if (exitDecisions.length > 0 && exitDecisions[0].decision.shouldExit) {
-      const decision = exitDecisions[0].decision;
-      this.logger.log(
-        `Exiting position for ${tradePosition.tokenMint} on ${tradePosition.platform}: ${decision.reason} (confidence: ${decision.confidence}, urgency: ${decision.urgency})`,
-      );
-
-      // Fetch current price for accurate P&L calculation
-      let currentPrice = tradePosition.currentPrice || 0;
-      try {
-        const priceAndDate = await this.getPriceForPosition(tradePosition);
-        if (priceAndDate.price) {
-          currentPrice = priceAndDate.price;
-        }
-      } catch (error) {
-        this.logger.warn(
-          `Failed to fetch current price for ${tradePosition.tokenMint}, using cached price: ${currentPrice}`,
-          error,
-        );
-      }
-
-      await this.closePosition(tradePosition, currentPrice);
-      await this.startTrading();
-    } else if (tradePosition.platform === Platform.PUMP_FUN) {
-      // Update price for Pump.fun positions based on curve position
-      const curvePosition = BigInt(event.trade.CurvePosition);
-      const currentPrice = getPumpFunPriceFromCurvePosition(curvePosition);
-
-      await this.tradePositionService.updateTradePosition(
-        String(tradePosition._id),
-        {
-          currentPrice,
-          timeLastPriceUpdate: new Date(),
-        },
-      );
+      this.logger.error('Failed to start trade manager', error);
     }
   }
 
   async startTrading(): Promise<void> {
-    this.logger.log('Starting multi-platform trading process');
+    this.logger.log('Starting  trading process');
 
     const currentOpenPositions =
       await this.tradePositionService.getOpenTradePositions();
@@ -219,38 +154,9 @@ export class TradeManagerService implements OnApplicationBootstrap {
     }
   }
 
-  async unsubscribeFromAllTokens(): Promise<void> {
-    this.logger.log('Unsubscribing from all tokens');
-    try {
-      await this.indexerAdapter.unsubscribeFromAll();
-    } catch (error) {
-      this.logger.warn(`Failed to unsubscribe from all tokens: ${error}`);
-    }
-  }
-
-  private async safeUnsubscribe(tokenMint: string): Promise<void> {
-    try {
-      if (
-        this.indexerAdapter.isConnected() &&
-        this.indexerAdapter.getSubscriptions().includes(tokenMint)
-      ) {
-        await this.indexerAdapter.unsubscribe(tokenMint);
-      } else {
-        this.logger.debug(
-          `Token ${tokenMint} is not subscribed or WebSocket not connected, skipping unsubscribe`,
-        );
-      }
-    } catch (error) {
-      this.logger.warn(
-        `Failed to unsubscribe from token ${tokenMint}: ${error}`,
-      );
-    }
-  }
-
   async monitorAndClosePositions(): Promise<number> {
     const tradePositions =
       await this.tradePositionService.getOpenTradePositions();
-    const settings = await this.settingsService.getSettings();
 
     let nrOfOpenPositions = tradePositions.length;
 

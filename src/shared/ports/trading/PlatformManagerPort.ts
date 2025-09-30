@@ -11,8 +11,6 @@ import { TradePositionDocument } from '../../../app/trade-position/TradePosition
 export interface PlatformConfiguration {
   platform: Platform;
   enabled: boolean;
-  priority: number; // Higher number = higher priority
-  maxOpenPositions: number;
   tradingParams: PlatformTradingParams;
   defaultCurrencyFrom: string;
 }
@@ -21,7 +19,6 @@ export interface TradingOpportunity {
   platform: Platform;
   token: string;
   tradingDecision: TradingDecision;
-  priority: number;
 }
 
 export abstract class PlatformManagerPort {

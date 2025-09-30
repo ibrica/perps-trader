@@ -50,15 +50,13 @@ export class PlatformManagerService extends PlatformManagerPort {
       {
         platform: Platform.HYPERLIQUID,
         enabled: true,
-        priority: 1,
-        maxOpenPositions: 3,
         tradingParams: {
           maxOpenPositions: 3,
           defaultAmountIn: 100000000n, // 100 USDC
           stopLossPercent: 15,
           takeProfitPercent: 25,
         },
-        defaultMintFrom: HL_DEFAULT_CURRENCY_FROM,
+        defaultCurrencyFrom: HL_DEFAULT_CURRENCY_FROM,
       },
     ];
 
@@ -124,22 +122,22 @@ export class PlatformManagerService extends PlatformManagerPort {
           minTrades: 10,
         });
 
-        for (const tokenMintAddress of activeTokens) {
+        for (const token of activeTokens) {
           const existingPosition =
-            await this.tradePositionService.getTradePositionByTokenMint(
-              tokenMintAddress,
+            await this.tradePositionService.getTradePositionByToken(
+              token,
               TradePositionStatus.OPEN,
             );
 
           if (existingPosition) {
             this.logger.debug(
-              `Skipping ${tokenMintAddress} on ${platform} - already have open position`,
+              `Skipping ${token} on ${platform} - already have open position`,
             );
             continue;
           }
 
           const tradingDecision = await tradingStrategy.shouldEnterPosition(
-            tokenMintAddress,
+            token,
             config.tradingParams,
           );
 
@@ -148,7 +146,6 @@ export class PlatformManagerService extends PlatformManagerPort {
               platform,
               token,
               tradingDecision,
-              priority: config.priority,
             });
           }
         }
@@ -160,13 +157,7 @@ export class PlatformManagerService extends PlatformManagerPort {
       }
     }
 
-    // Sort by priority (higher priority first) and then by confidence
-    return opportunities.sort((a, b) => {
-      if (a.priority !== b.priority) {
-        return b.priority - a.priority;
-      }
-      return b.tradingDecision.confidence - a.tradingDecision.confidence;
-    });
+    return opportunities;
   }
 
   async evaluateExitDecisions(
