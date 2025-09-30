@@ -2,27 +2,27 @@ import {
   PositionDirection,
   PositionType,
   TradePositionStatus,
-} from '../../constants2';
+} from '../../constants';
 import { Platform } from '..';
 
 export interface CreateTradePositionOptions {
   platform: Platform;
   status: TradePositionStatus;
-  tokenMint?: string; // For spot trades
-  baseAssetSymbol?: string; // For perp trades
-  currencyMint: string;
+  positionType?: PositionType;
+  token?: string;
+  currency: string;
   amountIn: bigint;
   amountOut?: bigint;
-  timeOpened?: Date;
-  timeClosed?: Date;
+  positionDirection?: PositionDirection;
+  leverage?: number;
+  positionSize?: bigint;
   entryPrice?: number;
   currentPrice?: number;
   takeProfitPrice?: number;
   stopLossPrice?: number;
-  positionSize?: bigint;
-  positionDirection?: PositionDirection;
-  positionType?: PositionType;
-  leverage?: number;
-  marketIndex?: number;
+  unrealizedPnl?: number;
   realizedPnl?: number;
+  timeOpened?: Date;
+  timeClosed?: Date;
+  exitFlag?: boolean;
 }

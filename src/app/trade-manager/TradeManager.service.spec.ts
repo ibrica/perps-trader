@@ -26,11 +26,6 @@ describe('TradeManagerService', () => {
   let platformManagerService: jest.Mocked<PlatformManagerService>;
   let perpService: jest.Mocked<PerpService>;
 
-  const mockBlockchain = {
-    _id: 'blockchain-id',
-    symbol: BlockchainSymbol.SOL,
-    name: 'Solana',
-  };
 
   const mockTradingOpportunity = {
     platform: Platform.DRIFT,
