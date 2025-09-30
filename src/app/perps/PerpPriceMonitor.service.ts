@@ -1,6 +1,5 @@
 import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
 import { PerpService } from './Perp.service';
-import { DriftService } from '../drift/Drift.service';
 import { Platform } from '../../shared';
 import { MarketDirection, PerpDocument } from './Perp.schema';
 import { allowedPerpPlatforms } from './constants';
@@ -32,11 +31,7 @@ export class PerpPriceMonitorService {
   private priceHistory: Map<string, PerpPriceData[]> = new Map();
   private readonly MAX_PRICE_HISTORY = 50; // Keep last 50 price points per perp
 
-  constructor(
-    private perpService: PerpService,
-    @Inject(forwardRef(() => DriftService))
-    private driftService: DriftService,
-  ) {}
+  constructor(private perpService: PerpService) {}
 
   async monitorAllActivePerps(): Promise<PerpMonitoringResult[]> {
     try {

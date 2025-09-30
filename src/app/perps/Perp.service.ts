@@ -1,13 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PerpRepository } from './Perp.repository';
 import { PerpDocument, MarketDirection } from './Perp.schema';
-import {
-  Platform,
-  toObjectId,
-  Optional,
-  PositionDirection,
-  Currency,
-} from '../../shared';
+import { Platform, Optional, PositionDirection, Currency } from '../../shared';
 
 export interface CreatePerpDto {
   name: string;

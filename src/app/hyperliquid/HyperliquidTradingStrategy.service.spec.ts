@@ -20,7 +20,6 @@ describe('HyperliquidTradingStrategyService', () => {
   let mockPerpService: jest.Mocked<PerpService>;
   let mockPredictorAdapter: jest.Mocked<PredictorAdapter>;
 
-  const mockToken = 'BTC';
   const mockTokenAddress = 'So11111111111111111111111111111111111111112';
 
   const mockPosition: Partial<TradePositionDocument> = {
