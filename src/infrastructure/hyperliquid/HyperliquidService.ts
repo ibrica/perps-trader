@@ -173,10 +173,6 @@ export class HyperliquidService {
     params: PlacePerpOrderParams,
   ): Promise<{ orderId: string }> {
     try {
-      if (params.symbol === 'ETH') {
-        throw new HyperliquidError('No eth perp symbol is allowed');
-      }
-
       const mappedSymbol = this.mapSymbolToHL(params.symbol);
       const market = await this.getMarket(mappedSymbol);
 
