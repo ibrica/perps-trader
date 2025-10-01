@@ -10,7 +10,7 @@ export class LockService {
     name: string,
     leaseUntil: Date,
   ): Promise<LockDocument | null> {
-    const lock = await this.lockRepository.findOneAndUpdate(
+    const lock = await this.lockRepository.getOneAndUpdate(
       {
         name,
         $or: [

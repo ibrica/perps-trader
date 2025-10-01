@@ -190,6 +190,20 @@ export class BaseMongoRepository<T> {
     return deserialized ? this.deserialize(value) : value;
   }
 
+  async getOneAndUpdate(
+    filter: FilterQuery<T>,
+    updateDto: UpdateQuery<T>,
+    options?: { upsert?: boolean; new?: boolean; session?: ClientSession },
+  ): Promise<T | null> {
+    return this.model
+      .findOneAndUpdate(filter, updateDto, {
+        upsert: options?.upsert ?? false,
+        new: options?.new ?? false,
+        session: options?.session,
+      })
+      .exec();
+  }
+
   async create(
     createDto: AnyKeys<T>,
     options?: RepositoryQueryOptions<T>,
