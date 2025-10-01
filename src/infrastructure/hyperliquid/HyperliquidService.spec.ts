@@ -8,7 +8,7 @@ import {
 } from './HyperliquidService';
 import { HyperliquidClient, HyperliquidError } from './HyperliquidClient';
 import { HyperliquidSignatureAdapter } from './HyperliquidSignatureAdapter';
-import { HL_SYMBOL_MAP } from '../../shared/constants2/hyperliquid';
+import { HL_SYMBOL_MAP } from '../../shared';
 
 // Add HL_ACTION_TYPES for backwards compatibility in tests
 const HL_ACTION_TYPES = {
@@ -31,7 +31,7 @@ describe('HyperliquidService', () => {
       name: 'BTC',
       szDecimals: 3,
       pxDecimals: 2,
-      minSize: 0.001,
+      minSize: 0.00001,
       maxLeverage: 20,
       onlyIsolated: false,
     },
@@ -39,7 +39,7 @@ describe('HyperliquidService', () => {
       name: 'ETH',
       szDecimals: 3,
       pxDecimals: 2,
-      minSize: 0.01,
+      minSize: 0.00001,
       maxLeverage: 15,
       onlyIsolated: false,
     },
@@ -175,8 +175,8 @@ describe('HyperliquidService', () => {
       const result = await service.getMarkets();
 
       expect(result).toEqual([
-        { ...mockMarkets[0], pxDecimals: 5, minSize: 0.001 },
-        { ...mockMarkets[1], pxDecimals: 5, minSize: 0.001 },
+        { ...mockMarkets[0], pxDecimals: 8, minSize: 0.00001 },
+        { ...mockMarkets[1], pxDecimals: 8, minSize: 0.00001 },
       ]);
       expect(mockClient.getInfo).toHaveBeenCalledWith('metaAndAssetCtxs');
     });
@@ -195,19 +195,18 @@ describe('HyperliquidService', () => {
       const result = await service.getMarkets();
 
       expect(result).toEqual([
-        { ...mockMarkets[0], pxDecimals: 5, minSize: 0.001 },
-        { ...mockMarkets[1], pxDecimals: 5, minSize: 0.001 },
+        { ...mockMarkets[0], pxDecimals: 8, minSize: 0.00001 },
+        { ...mockMarkets[1], pxDecimals: 8, minSize: 0.00001 },
       ]);
       expect(mockClient.getInfo).not.toHaveBeenCalled();
     });
 
     it('should refetch markets after cache expires', async () => {
       // First call to populate cache
-      (mockClient.getInfo as any).mockResolvedValue({
-        meta: {
-          universe: mockMarkets,
-        },
-      });
+      (mockClient.getInfo as any).mockResolvedValue([
+        { universe: mockMarkets },
+        [],
+      ]);
 
       await service.getMarkets();
 
@@ -234,13 +233,13 @@ describe('HyperliquidService', () => {
       const result = await service.getMarkets();
 
       expect(result).toEqual([
-        { ...mockMarkets[0], pxDecimals: 5, minSize: 0.001 },
-        { ...mockMarkets[1], pxDecimals: 5, minSize: 0.001 },
+        { ...mockMarkets[0], pxDecimals: 8, minSize: 0.00001 },
+        { ...mockMarkets[1], pxDecimals: 8, minSize: 0.00001 },
         {
           name: 'SOL',
           szDecimals: 2,
-          pxDecimals: 5,
-          minSize: 0.001,
+          pxDecimals: 8,
+          minSize: 0.00001,
           maxLeverage: 10,
           onlyIsolated: false,
         },
@@ -371,9 +370,9 @@ describe('HyperliquidService', () => {
         ...mockTicker,
         mark: '50000', // Ensure mark price is available for size calculation
       });
-      jest.spyOn(service as any, 'getAssetIndex').mockResolvedValue(0);
       jest.spyOn(service as any, 'updateLeverage').mockResolvedValue(undefined);
       jest.spyOn(service as any, 'mapSymbolToHL').mockReturnValue('BTC');
+      jest.spyOn(service, 'getPositions').mockResolvedValue([]);
     });
 
     it('should place a LONG order successfully', async () => {
@@ -483,7 +482,7 @@ describe('HyperliquidService', () => {
       await service.placePerpOrder(params);
 
       // 100 USDC / 50000 price = 0.002 BTC
-      // Rounded to minSize step (0.001) = 0.002
+      // Rounded to minSize step (0.00001) = 0.002
       expect(mockClient.exchangeAction).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'order',
@@ -507,7 +506,7 @@ describe('HyperliquidService', () => {
       };
 
       await expect(service.placePerpOrder(params)).rejects.toThrow(
-        'Order size 0 is below minimum 0.001',
+        'Order size 0 is below minimum 0.00001',
       );
     });
 
