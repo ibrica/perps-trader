@@ -61,7 +61,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     this.logger.log(
       `Found ${tradingOpportunities.length} trading opportunities across platforms: ${tradingOpportunities
-        .map((op) => `${op.tokenMintAddress} on ${op.platform}`)
+        .map((op) => `${op.token} on ${op.platform}`)
         .join(', ')}`,
     );
 
@@ -82,7 +82,9 @@ export class TradeManagerService implements OnApplicationBootstrap {
         (pos) => pos.platform === opportunity.platform,
       ).length;
 
-      if (platformOpenPositions >= platformConfig.maxOpenPositions) {
+      if (
+        platformOpenPositions >= platformConfig.tradingParams.maxOpenPositions
+      ) {
         this.logger.log(
           `Platform ${opportunity.platform} has reached max open positions (${platformConfig.maxOpenPositions})`,
         );
@@ -94,7 +96,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         remainingSlots--;
       } catch (error) {
         this.logger.error(
-          `Failed to execute trading opportunity for ${opportunity.tokenMintAddress} on ${opportunity.platform}:`,
+          `Failed to execute trading opportunity for ${opportunity.token} on ${opportunity.platform}:`,
           error,
         );
       }
@@ -102,10 +104,10 @@ export class TradeManagerService implements OnApplicationBootstrap {
   }
 
   private async enterPosition(opportunity: TradingOpportunity): Promise<void> {
-    const { platform, tokenMintAddress, tradingDecision } = opportunity;
+    const { platform, token, tradingDecision } = opportunity;
 
     this.logger.log(
-      `Executing trading opportunity: ${tokenMintAddress} on ${platform} (confidence: ${tradingDecision.confidence})`,
+      `Executing trading opportunity: ${token} on ${platform} (confidence: ${tradingDecision.confidence})`,
     );
 
     // Execute the trade
@@ -235,17 +237,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
       String(tradePosition._id),
       updateData,
     );
-
-    if (
-      tradePosition.tokenMint &&
-      tradePosition.platform === Platform.PUMP_FUN
-    ) {
-      this.logger.log(
-        'unsubscribing from token monitoring',
-        tradePosition.tokenMint,
-      );
-      await this.safeUnsubscribe(tradePosition.tokenMint);
-    }
   }
 
   /**
