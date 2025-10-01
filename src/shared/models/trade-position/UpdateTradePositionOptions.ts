@@ -20,7 +20,6 @@ export interface UpdateTradePositionOptions {
   currentPrice?: number;
   takeProfitPrice?: number;
   stopLossPrice?: number;
-  unrealizedPnl?: number;
   realizedPnl?: number;
   timeOpened?: Date;
   timeClosed?: Date;

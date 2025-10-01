@@ -7,6 +7,7 @@ import {
   TradePositionStatus,
   PositionDirection,
   PositionType,
+  Currency,
 } from '../../shared';
 
 export type TradePositionDocument = TradePosition & Document;
@@ -33,8 +34,8 @@ export class TradePosition {
   @Prop({ type: String })
   token?: string;
 
-  @Prop({ type: String, required: true })
-  currency: string;
+  @Prop({ type: String, enum: Currency, required: true })
+  currency: Currency;
 
   @Prop({ type: Decimal128, required: true })
   amountIn: bigint;
@@ -63,9 +64,6 @@ export class TradePosition {
 
   @Prop({ type: Number })
   stopLossPrice?: number;
-
-  @Prop({ type: Number })
-  unrealizedPnl?: number;
 
   @Prop({ type: Number })
   realizedPnl?: number;
