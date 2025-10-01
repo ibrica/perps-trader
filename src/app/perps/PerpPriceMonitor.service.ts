@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PerpService } from './Perp.service';
 import { Platform } from '../../shared';
 import { MarketDirection, PerpDocument } from './Perp.schema';
@@ -271,21 +271,6 @@ export class PerpPriceMonitorService {
       this.priceHistory.delete(perpId);
     } else {
       this.priceHistory.clear();
-    }
-  }
-
-  private getPlatformService(platform: Platform): PlatformPriceService | null {
-    switch (platform) {
-      case Platform.DRIFT:
-        return this.driftService;
-      // Add other platforms here as they are implemented
-      // case Platform.RAYDIUM:
-      //   return this.raydiumService;
-      // case Platform.JUPITER:
-      //   return this.jupiterService;
-      default:
-        this.logger.error(`Platform service not implemented for ${platform}`);
-        return null;
     }
   }
 }

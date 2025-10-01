@@ -44,7 +44,8 @@ export class HyperliquidPlatformService extends BasePlatformService {
         {
           hyperliquidServiceAvailable: !!this.hyperliquidService,
           serviceType: this.hyperliquidService
-            ? (this.hyperliquidService as any).constructor?.name
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              (this.hyperliquidService as any).constructor?.name
             : 'undefined',
           serviceInstance: this.hyperliquidService,
         },
@@ -70,10 +71,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         );
       }
 
-      // Map token symbols to Hyperliquid format
-      // For Hyperliquid perps, mintTo is the base asset (BTC, ETH, etc.)
-      // and mintFrom would typically be USDC (the quote asset)
-      const symbol = this.mapTokenToSymbol(options.currencyTo);
+      const symbol = options.currencyTo;
 
       // Determine direction based on the trade
       // For perps, we're either going long or short on the base asset

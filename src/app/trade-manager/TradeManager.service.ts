@@ -13,6 +13,7 @@ import {
   CreateTradePositionOptions,
   PriceAndDate,
   Blockchain,
+  MAX_TOTAL_POSITIONS,
 } from '../../shared';
 import { IndexerAdapter } from '../../infrastructure';
 import { TradePositionService } from '../trade-position/TradePosition.service';
@@ -65,8 +66,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         .join(', ')}`,
     );
 
-    const maxTotalPositions = 10; // TODO: Make this configurable
-    let remainingSlots = maxTotalPositions - currentOpenPositions.length;
+    let remainingSlots = MAX_TOTAL_POSITIONS - currentOpenPositions.length;
 
     for (const opportunity of tradingOpportunities) {
       if (remainingSlots <= 0) {
@@ -113,8 +113,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
     // Execute the trade
     const tradeType = this.getTradeTypeForPlatform(platform);
 
+    const platformService =
+      this.platformManagerService.getPlatformService(platform);
+
     // Change this for perps
-    await this.tradeService.executeTrade({
+    await platformService.enterPosition({
       platform,
       mintFrom:
         this.platformManagerService.getPlatformConfiguration(platform)

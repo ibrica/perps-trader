@@ -3,3 +3,4 @@ export * from './indexer';
 export * from './predictor';
 export * from './clickhouse';
 export * from './platform';
+export * from './hyperliquid';

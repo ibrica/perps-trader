@@ -85,7 +85,7 @@ export class PlatformManagerService extends PlatformManagerPort {
 
   registerPlatformService(
     platform: Platform,
-    platformService: PlatformPriceService,
+    platformService: PlatformSer,
   ): void {
     this.platformServices.set(platform, platformService);
     this.logger.log(`Registered platform service: ${platform}`);
