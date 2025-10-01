@@ -4,10 +4,6 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
 import { TradeManagerService } from '../trade-manager/TradeManager.service';
 
-interface LockDoc {
-  _id: string;
-  leaseUntil: Date;
-}
 
 @Injectable()
 export class TradeMonitorScheduler {
@@ -26,22 +22,9 @@ export class TradeMonitorScheduler {
     const leaseUntil = new Date(now.getTime() + TradeMonitorScheduler.LEASE_MS);
 
     try {
-      const lock = await this.locks.findOneAndUpdate(
-        {
-          _id: TradeMonitorScheduler.LOCK_ID,
-          $or: [
-            { leaseUntil: { $lte: now } },
-            { leaseUntil: { $exists: false } },
-          ],
-        },
-        { _id: TradeMonitorScheduler.LOCK_ID, leaseUntil },
-        { upsert: true, new: true },
-      );
+      if 
 
-      // If we didn't acquire (someone else did), skip
-      if (lock.leaseUntil.getTime() < leaseUntil.getTime() - 1) {
-        return;
-      }
+
 
       this.logger.log('Trade Monitor Scheduler started');
       const open = await this.tradeManager.monitorAndClosePositions();
