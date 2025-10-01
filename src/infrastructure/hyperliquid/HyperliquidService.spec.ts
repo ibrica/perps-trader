@@ -1,14 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { HyperliquidService } from './HyperliquidService';
+import { HyperliquidClient, HyperliquidError } from './HyperliquidClient';
+import { HyperliquidSignatureAdapter } from './HyperliquidSignatureAdapter';
 import {
-  HyperliquidService,
+  HL_SYMBOL_MAP,
   HLMarket,
   HLTicker,
   PlacePerpOrderParams,
-} from './HyperliquidService';
-import { HyperliquidClient, HyperliquidError } from './HyperliquidClient';
-import { HyperliquidSignatureAdapter } from './HyperliquidSignatureAdapter';
-import { HL_SYMBOL_MAP } from '../../shared';
+} from '../../shared';
 
 // Add HL_ACTION_TYPES for backwards compatibility in tests
 const HL_ACTION_TYPES = {
