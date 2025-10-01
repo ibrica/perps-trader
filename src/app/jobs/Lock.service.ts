@@ -1,15 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { LockRepository } from './Lock.repository';
-import { LockDocument } from './Lock.schema';
 
 @Injectable()
 export class LockService {
   constructor(private readonly lockRepository: LockRepository) {}
 
-  async acquireLock(
-    name: string,
-    leaseUntil: Date,
-  ): Promise<LockDocument | null> {
+  async acquireLock(name: string, leaseUntil: Date): Promise<boolean> {
     const lock = await this.lockRepository.getOneAndUpdate(
       {
         name,
@@ -23,13 +19,10 @@ export class LockService {
     );
 
     // If we didn't acquire (someone else did), skip
-    if (lock.leaseUntil.getTime() < leaseUntil.getTime() - 1) {
-      return;
-    }
-    return lock;
+    return lock.leaseUntil.getTime() > leaseUntil.getTime() - 1;
   }
 
-  async releaseLock(id: string): Promise<void> {
-    await this.lockRepository.deleteOne({ _id: id });
+  async releaseLock(name: string): Promise<void> {
+    this.lockRepository.deleteOne({ filter: { name } });
   }
 }
