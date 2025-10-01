@@ -1,16 +1,14 @@
-import { TradeType, Blockchain, Currency } from '../../constants';
+import { TradeType, Currency } from '../../constants';
 import { Platform } from './Platform';
 
 export interface EnterPositionOptions {
-  blockchain: Blockchain;
-
   tradeType: TradeType;
 
   platform: Platform;
 
-  currencyFrom: Currency;
+  currency: Currency;
 
-  currencyTo: Currency;
+  token: string;
 
   leverage?: number;
 

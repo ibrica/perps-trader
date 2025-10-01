@@ -7,12 +7,14 @@ import {
   PlatformTradingParams,
 } from './PlatformTradingStrategyPort';
 import { TradePositionDocument } from '../../../app/trade-position/TradePosition.schema';
+import { BasePlatformService } from '@perps/shared/models/platform';
+import { Currency } from '@perps/shared/constants';
 
 export interface PlatformConfiguration {
   platform: Platform;
   enabled: boolean;
   tradingParams: PlatformTradingParams;
-  defaultCurrencyFrom: string;
+  defaultCurrencyFrom: Currency;
 }
 
 export interface TradingOpportunity {
@@ -25,6 +27,7 @@ export abstract class PlatformManagerPort {
   abstract registerPlatform(
     tokenDiscovery: PlatformTokenDiscoveryPort,
     tradingStrategy: PlatformTradingStrategyPort,
+    platformService: BasePlatformService,
   ): void;
 
   abstract getAvailablePlatforms(): Platform[];

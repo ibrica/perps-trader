@@ -1,18 +1,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import {
-  isNil,
   Platform,
   TradePositionStatus,
   TradeType,
   PositionDirection,
   PositionType,
   TradingOpportunity,
-  UpdateTradePositionOptions,
   TradingDecision,
   CreateTradePositionOptions,
-  PriceAndDate,
-  Blockchain,
   MAX_TOTAL_POSITIONS,
 } from '../../shared';
 import { IndexerAdapter } from '../../infrastructure';
@@ -117,20 +113,28 @@ export class TradeManagerService implements OnApplicationBootstrap {
       this.platformManagerService.getPlatformService(platform);
 
     // Change this for perps
-    await platformService.enterPosition({
+    const result = await platformService.enterPosition({
       platform,
-      mintFrom:
+      currency:
         this.platformManagerService.getPlatformConfiguration(platform)
-          .defaultMintFrom,
-      mintTo: tokenMintAddress,
-      amountIn: tradingDecision.recommendedAmount || 1000000000n, // Default 1 SOL
-      blockchain: Blockchain.HYPERLIQUID,
+          .defaultCurrencyFrom,
+      token,
+      amountIn: tradingDecision.recommendedAmount,
       tradeType,
     });
 
+    // TODO: pending state handling
+    if (result.status !== 'success') {
+      this.logger.error(
+        `Failed to execute trading opportunity for ${token} on ${platform}:`,
+        result,
+      );
+      return;
+    }
+
     const tradePositionData = this.createTradePositionData(
       platform,
-      tokenMintAddress,
+      token,
       tradingDecision,
     );
 
@@ -138,108 +142,17 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     if (tradeType === TradeType.PERPETUAL) {
       try {
-        const perp =
-          await this.perpService.findByBaseAssetSymbol(tokenMintAddress);
+        const perp = await this.perpService.findByToken(token);
         if (perp && perp.buyFlag) {
           await this.perpService.update(String(perp._id), { buyFlag: false });
           this.logger.log(
-            `Successfully purchased perp ${tokenMintAddress}, setting buyFlag to false`,
+            `Successfully purchased perp ${token}, setting buyFlag to false`,
           );
         }
       } catch (error) {
-        this.logger.warn(
-          `Failed to reset buyFlag for perp ${tokenMintAddress}:`,
-          error,
-        );
+        this.logger.warn(`Failed to reset buyFlag for perp ${token}:`, error);
       }
     }
-  }
-
-  async monitorAndClosePositions(): Promise<number> {
-    const tradePositions =
-      await this.tradePositionService.getOpenTradePositions();
-
-    let nrOfOpenPositions = tradePositions.length;
-
-    for (const tradePosition of tradePositions) {
-      const priceAndDate = await this.getPriceForPosition(tradePosition);
-      const { price, date } = priceAndDate;
-      if (price && date) {
-        await this.tradePositionService.updateTradePosition(
-          String(tradePosition._id),
-          { currentPrice: price, timeLastPriceUpdate: date },
-        );
-      }
-
-      const shouldClosePosition = await this.shouldClosePosition(
-        tradePosition,
-        settings,
-        price,
-        date,
-      );
-
-      if (shouldClosePosition) {
-        try {
-          await this.closePosition(
-            tradePosition,
-            price || tradePosition.currentPrice || 0,
-          );
-          nrOfOpenPositions--;
-        } catch (error) {
-          this.logger.error(`Failed to close position: ${error}`);
-        }
-      }
-    }
-
-    return nrOfOpenPositions;
-  }
-
-  async closePosition(
-    tradePosition: TradePositionDocument,
-    price: number = 0,
-  ): Promise<void> {
-    // Handle platform-specific position closing
-    if (tradePosition.positionType === PositionType.PERPETUAL) {
-      await this.closePerpetualPosition(tradePosition, price);
-      return;
-    }
-
-    // Handle spot trading positions (DEX platforms)
-    const openTrades = await this.tradeService.getTradesByTradePosition(
-      String(tradePosition._id),
-    );
-
-    for (const trade of openTrades) {
-      await this.tradeService.executeTrade({
-        platform: trade.platform,
-        mintFrom: trade.mintTo,
-        mintTo: trade.mintFrom,
-        amountIn: trade.amountOut!,
-        blockchain: String(trade.blockchain),
-        tradeType: trade.tradeType,
-      });
-    }
-
-    // Prepare update data based on position type
-    const updateData: UpdateTradePositionOptions = {
-      status: TradePositionStatus.CLOSED,
-      timeClosed: new Date(),
-      exitFlag: false,
-    };
-
-    // TODO: get real price from executed trade
-    updateData.realizedPnl =
-      this.calculateRealizedPnl(
-        tradePosition.entryPrice,
-        price,
-        tradePosition.positionSize,
-        tradePosition.positionDirection,
-      ) ?? 0;
-
-    await this.tradePositionService.updateTradePosition(
-      String(tradePosition._id),
-      updateData,
-    );
   }
 
   /**
@@ -342,30 +255,16 @@ export class TradeManagerService implements OnApplicationBootstrap {
     tradingDecision: TradingDecision,
   ): CreateTradePositionOptions {
     const baseData = {
-      currencyMint: SOL_MINT,
-      amountIn: tradingDecision.recommendedAmount || 1000000000n,
+      currency:
+        this.platformManagerService.getPlatformConfiguration(platform)
+          .defaultCurrencyFrom,
+      amountIn: tradingDecision.recommendedAmount,
       amountOut: 0n,
       platform,
       status: TradePositionStatus.OPEN,
     };
 
-    if (platform === Platform.DRIFT) {
-      // Use metadata from trading decision for Drift positions
-      const marketIndex = tradingDecision.metadata?.marketIndex || 1; // Default market index
-      const defaultPrice = 0.0001; // Default entry price
-
-      return {
-        ...baseData,
-        positionType: PositionType.PERPETUAL,
-        positionDirection:
-          tradingDecision.metadata?.direction || PositionDirection.LONG,
-        marketIndex,
-        leverage: tradingDecision.metadata?.leverage || 5,
-        positionSize: tradingDecision.recommendedAmount || 1000000000n,
-        entryPrice: defaultPrice,
-        baseAssetSymbol: tokenMintAddress,
-      };
-    } else if (platform === Platform.HYPERLIQUID) {
+    if (platform === Platform.HYPERLIQUID) {
       // Use metadata from trading decision for Hyperliquid positions
       const marketIndex = tradingDecision.metadata?.marketIndex || 0; // Default market index
       const defaultPrice = 0.0001; // Default entry price
@@ -390,69 +289,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
         entryPrice: 0,
       };
     }
-  }
-
-  private async getPriceForPosition(
-    tradePosition: TradePositionDocument,
-  ): Promise<PriceAndDate> {
-    let price: number | undefined;
-    let date: Date | undefined;
-    if (tradePosition.positionType === PositionType.PERPETUAL) {
-      // For perpetual positions, get the actual current price
-      try {
-        if (
-          tradePosition.platform === Platform.DRIFT &&
-          tradePosition.marketIndex
-        ) {
-          const platformService =
-            this.platformManagerService.getPlatformService(
-              tradePosition.platform,
-            );
-          const priceData = await platformService.getMarketPrice(
-            tradePosition.marketIndex,
-          );
-          // Use bid price for selling (closing long position) or ask price for buying (closing short position)
-          price =
-            tradePosition.positionDirection === PositionDirection.LONG
-              ? priceData.bid
-              : priceData.ask;
-          date = new Date();
-        } else if (
-          tradePosition.platform === Platform.HYPERLIQUID &&
-          tradePosition.marketIndex !== undefined
-        ) {
-          const platformService =
-            this.platformManagerService.getPlatformService(
-              tradePosition.platform,
-            );
-          const priceData = await platformService.getMarketPrice(
-            tradePosition.marketIndex,
-          );
-          // Use bid price for selling (closing long position) or ask price for buying (closing short position)
-          price =
-            tradePosition.positionDirection === PositionDirection.LONG
-              ? priceData.bid
-              : priceData.ask;
-          date = new Date();
-        }
-      } catch (error) {
-        this.logger.log(
-          `Failed to get current price for perpetual position mint ${tradePosition.tokenMint}: ${error}`,
-        );
-      }
-    }
-
-    // fallback to indexer if price is not available from platform service
-    // TODO: correct later for launchpad positions
-    if (isNil(price)) {
-      const lastPriceResponse = await this.indexerAdapter.getLastPrice(
-        tradePosition.tokenMint!,
-      );
-      price = lastPriceResponse.price;
-      date = new Date(lastPriceResponse.timestamp);
-    }
-
-    return { price, date };
   }
 
   /**

@@ -3,6 +3,7 @@ import {
   Platform,
   TradePositionStatus,
   HL_DEFAULT_CURRENCY_FROM,
+  BasePlatformService,
 } from '../../shared';
 import {
   PlatformManagerPort,
@@ -37,7 +38,7 @@ export class PlatformManagerService extends PlatformManagerPort {
     Platform,
     PlatformTradingStrategyPort
   >();
-  private platformServices = new Map<Platform, PlatformPriceService>();
+  private platformServices = new Map<Platform, BasePlatformService>();
   private platformConfigurations = new Map<Platform, PlatformConfiguration>();
 
   constructor(private readonly tradePositionService: TradePositionService) {
@@ -68,6 +69,7 @@ export class PlatformManagerService extends PlatformManagerPort {
   registerPlatform(
     tokenDiscovery: PlatformTokenDiscoveryPort,
     tradingStrategy: PlatformTradingStrategyPort,
+    platformService: BasePlatformService,
   ): void {
     const platform = tokenDiscovery.platform;
 
@@ -78,17 +80,12 @@ export class PlatformManagerService extends PlatformManagerPort {
     }
 
     this.tokenDiscoveryServices.set(platform, tokenDiscovery);
+
     this.tradingStrategyServices.set(platform, tradingStrategy);
 
-    this.logger.log(`Registered platform: ${platform}`);
-  }
-
-  registerPlatformService(
-    platform: Platform,
-    platformService: PlatformSer,
-  ): void {
     this.platformServices.set(platform, platformService);
-    this.logger.log(`Registered platform service: ${platform}`);
+
+    this.logger.log(`Registered platform: ${platform}`);
   }
 
   getAvailablePlatforms(): Platform[] {
@@ -240,7 +237,7 @@ export class PlatformManagerService extends PlatformManagerPort {
     return service;
   }
 
-  getPlatformService(platform: Platform): PlatformPriceService {
+  getPlatformService(platform: Platform): BasePlatformService {
     const service = this.platformServices.get(platform);
     if (!service) {
       throw new Error(`Platform service not found for platform: ${platform}`);

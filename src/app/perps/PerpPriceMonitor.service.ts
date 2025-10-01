@@ -4,27 +4,6 @@ import { Platform } from '../../shared';
 import { MarketDirection, PerpDocument } from './Perp.schema';
 import { allowedPerpPlatforms } from './constants';
 
-export interface PerpPriceData {
-  perpId: string;
-  currentPrice: number;
-  previousPrice?: number;
-  priceChange?: number;
-  priceChangePercent?: number;
-  marketDirection: MarketDirection;
-  shouldTriggerBuy?: boolean;
-  timestamp: Date;
-}
-
-export interface PerpMonitoringResult {
-  perpId: string;
-  name: string;
-  platform: Platform;
-  currentPrice: number;
-  marketDirection: MarketDirection;
-  shouldTriggerBuy: boolean;
-  reason?: string;
-}
-
 @Injectable()
 export class PerpPriceMonitorService {
   private readonly logger = new Logger(PerpPriceMonitorService.name);

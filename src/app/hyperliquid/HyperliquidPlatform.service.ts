@@ -30,12 +30,14 @@ export class HyperliquidPlatformService extends BasePlatformService {
   async enterPosition(
     options: EnterPositionOptions,
   ): Promise<PositionExecutionResult> {
+    const { platform, tradeType, currency, token, amountIn } = options;
+
     this.logger.log(`Executing Hyperliquid trade`, {
-      platform: options.platform,
-      tradeType: options.tradeType,
-      mintFrom: options.currencyFrom,
-      mintTo: options.currencyTo,
-      amountIn: options.amountIn.toString(),
+      platform,
+      tradeType,
+      currency,
+      token,
+      amountIn: amountIn.toString(),
     });
 
     if (!this.hyperliquidService) {
@@ -71,7 +73,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         );
       }
 
-      const symbol = options.currencyTo;
+      const symbol = token;
 
       // Determine direction based on the trade
       // For perps, we're either going long or short on the base asset
@@ -107,19 +109,6 @@ export class HyperliquidPlatformService extends BasePlatformService {
         message: error instanceof Error ? error.message : 'Unknown error',
       };
     }
-  }
-
-  private mapTokenToSymbol(mint: string): string {
-    // Map token mints/addresses to Hyperliquid symbols
-    // This is a simplified mapping - in production you'd want a proper registry
-    const tokenMapping: Record<string, string> = {
-      BTC: 'BTC',
-      ETH: 'ETH',
-      SOL: 'SOL',
-      // Add more mappings as needed
-    };
-
-    return tokenMapping[mint] || mint;
   }
 
   private determineDirection(): 'LONG' | 'SHORT' {
