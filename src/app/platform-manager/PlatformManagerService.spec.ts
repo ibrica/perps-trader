@@ -17,7 +17,7 @@ describe('PlatformManagerService', () => {
 
   const mockTokenDiscovery: jest.Mocked<PlatformTokenDiscoveryPort> = {
     platform: Platform.HYPERLIQUID,
-    getActiveTokens: jest.fn(),
+    getTokensToTrade: jest.fn(),
     isTokenTradeable: jest.fn(),
   };
 
@@ -92,7 +92,7 @@ describe('PlatformManagerService', () => {
 
     beforeEach(() => {
       service.registerPlatform(mockTokenDiscovery, mockTradingStrategy);
-      mockTokenDiscovery.getActiveTokens.mockResolvedValue(mockActiveTokens);
+      mockTokenDiscovery.getTokensToTrade.mockResolvedValue(mockActiveTokens);
     });
 
     it('should find trading opportunities when no existing positions exist', async () => {
@@ -198,8 +198,8 @@ describe('PlatformManagerService', () => {
     });
 
     it('should handle errors gracefully and continue processing other platforms', async () => {
-      // Make getActiveTokens throw an error
-      mockTokenDiscovery.getActiveTokens.mockRejectedValue(
+      // Make getTokensToTrade throw an error
+      mockTokenDiscovery.getTokensToTrade.mockRejectedValue(
         new Error('Network error'),
       );
 

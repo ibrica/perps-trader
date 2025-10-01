@@ -26,7 +26,7 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
   /**
    * Get active tokens available for trading on Hyperliquid
    */
-  async getActiveTokens(): Promise<string[]> {
+  async getTokensToTrade(): Promise<string[]> {
     try {
       // Check if Hyperliquid is enabled
       const isEnabled = this.configService.get<boolean>('hyperliquid.enabled');
@@ -40,7 +40,7 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
         this.marketsCache.length > 0 &&
         Date.now() - this.lastFetch < this.cacheTtl
       ) {
-        return this.applyFilters(this.marketsCache);
+        return this.marketsCache;
       }
 
       // Fetch markets from Hyperliquid
@@ -53,10 +53,9 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
         try {
           // Check if we have a perp definition for this market
           const symbol = this.extractBaseSymbol(market.name);
-          const perp = await this.perpService.findByBaseAssetSymbol(symbol);
+          const perp = await this.perpService.findByToken(symbol);
 
           if (perp) {
-            // Verify the market is actually tradeable
             const isActive = await this.isMarketActive(market.name);
             if (isActive) {
               availableSymbols.push(symbol);
@@ -75,6 +74,8 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
       this.logger.log(
         `Found ${availableSymbols.length} active tokens on Hyperliquid`,
       );
+
+      return availableSymbols;
     } catch (error) {
       this.logger.error('Failed to get active tokens', error);
       return [];
@@ -93,7 +94,7 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
       }
 
       // Check if we have a perp definition
-      const perp = await this.perpService.findByBaseAssetSymbol(tokenSymbol);
+      const perp = await this.perpService.findByToken(tokenSymbol);
       if (!perp) {
         return false;
       }
@@ -222,7 +223,7 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
   async getMarketStats(
     symbols?: string[],
   ): Promise<Record<string, MarketStats>> {
-    const tokensToCheck = symbols || (await this.getActiveTokens({}));
+    const tokensToCheck = symbols || (await this.getTokensToTrade());
     const stats: Record<string, MarketStats> = {};
 
     for (const symbol of tokensToCheck) {

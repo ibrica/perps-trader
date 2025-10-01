@@ -117,7 +117,7 @@ export class PlatformManagerService extends PlatformManagerPort {
           continue;
         }
 
-        const activeTokens = await tokenDiscovery.getActiveTokens();
+        const activeTokens = await tokenDiscovery.getTokensToTrade();
 
         for (const token of activeTokens) {
           const existingPosition =

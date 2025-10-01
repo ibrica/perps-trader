@@ -376,7 +376,7 @@ describe('HyperliquidModule Integration', () => {
 
     it('should have all required methods in TokenDiscoveryService', () => {
       const methods = [
-        'getActiveTokens',
+        'getTokensToTrade',
         'isTokenTradeable',
         'getPreferredSymbols',
         'getAvailablePreferredSymbols',

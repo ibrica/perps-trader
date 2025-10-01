@@ -4,7 +4,7 @@ import { Platform } from '../../models/platform/Platform';
 export abstract class PlatformTokenDiscoveryPort {
   abstract readonly platform: Platform;
 
-  abstract getActiveTokens(): Promise<string[]>;
+  abstract getTokensToTrade(): Promise<string[]>;
 
   abstract isTokenTradeable(token: string): Promise<boolean>;
 }

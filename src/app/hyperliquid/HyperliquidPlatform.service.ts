@@ -17,7 +17,8 @@ export class HyperliquidPlatformService extends BasePlatformService {
     this.logger.log(`HyperliquidPlatformService constructor called`, {
       hyperliquidServiceAvailable: !!this.hyperliquidService,
       hyperliquidServiceType: this.hyperliquidService
-        ? (this.hyperliquidService as any).constructor?.name
+        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (this.hyperliquidService as any).constructor?.name
         : 'undefined',
     });
   }
