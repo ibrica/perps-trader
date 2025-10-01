@@ -1,6 +1,5 @@
 /**
  * Price Client for Sol-Indexer REST API
- * Adapted from sol-indexer client for atrader integration
  */
 
 import { Logger, Injectable } from '@nestjs/common';

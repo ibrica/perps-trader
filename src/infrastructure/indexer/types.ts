@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * TypeScript interfaces for Sol-Indexer REST API
- * Adapted from sol-indexer types for atrader integration
  */
 
 // ============================================================================

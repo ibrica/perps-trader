@@ -157,7 +157,7 @@ export const getLogger = async (
               timestamp,
               level,
               message,
-              service: service || 'ATRADER',
+              service: service || 'PERPS_TRADER',
             };
 
             if (context) {
