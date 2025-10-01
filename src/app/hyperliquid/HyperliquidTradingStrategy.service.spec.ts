@@ -27,7 +27,6 @@ describe('HyperliquidTradingStrategyService', () => {
     token: 'BTC',
     entryPrice: 50000,
     positionSize: 100000000n, // 0.1 BTC in smallest units using BigInt literal
-    unrealizedPnl: 100,
     leverage: 10,
     exitFlag: false,
   };

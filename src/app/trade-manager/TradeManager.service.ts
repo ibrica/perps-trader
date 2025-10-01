@@ -222,12 +222,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
         this.logger.log(
           `Successfully placed closing order for ${tokenSymbol} position`,
         );
-      } else if (platform === Platform.DRIFT) {
-        // TODO: Implement Drift position closing logic
-        this.logger.warn(
-          `Drift perpetual position closing not yet implemented`,
-        );
-        throw new Error('Drift perpetual position closing not yet implemented');
       } else {
         throw new Error(
           `Unsupported platform for perpetual position closing: ${platform}`,
@@ -241,7 +235,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
   private getTradeTypeForPlatform(platform: Platform): TradeType {
     switch (platform) {
-      case Platform.DRIFT:
       case Platform.HYPERLIQUID:
         return TradeType.PERPETUAL;
       default:
