@@ -7,7 +7,7 @@ import { HyperliquidModule } from '../hyperliquid/Hyperliquid.module';
 import { TradePositionModule } from '../trade-position/TradePosition.module';
 import { PerpModule } from '../perps/Perp.module';
 import { PredictorModule } from '../predictor/Predictor.module';
-import { Platform } from '../../shared';
+import { HyperliquidPlatformService } from '../hyperliquid/HyperliquidPlatform.service';
 
 @Module({
   imports: [
@@ -27,18 +27,13 @@ import { Platform } from '../../shared';
         platformManager: PlatformManagerService,
         hyperliquidTokenDiscovery: HyperliquidTokenDiscoveryService,
         hyperliquidTradingStrategy: HyperliquidTradingStrategyService,
-        hyperliquidService: HyperliquidService,
+        hyperliquidPlatformService: HyperliquidPlatformService,
       ): boolean => {
         // Register only Hyperliquid platform
         platformManager.registerPlatform(
           hyperliquidTokenDiscovery,
           hyperliquidTradingStrategy,
-        );
-
-        // Register Hyperliquid platform service
-        platformManager.registerPlatformService(
-          Platform.HYPERLIQUID,
-          hyperliquidService,
+          hyperliquidPlatformService,
         );
 
         return true;
@@ -47,7 +42,7 @@ import { Platform } from '../../shared';
         PlatformManagerService,
         HyperliquidTokenDiscoveryService,
         HyperliquidTradingStrategyService,
-        HyperliquidService,
+        HyperliquidPlatformService,
       ],
     },
   ],

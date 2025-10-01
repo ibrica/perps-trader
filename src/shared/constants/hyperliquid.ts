@@ -1,4 +1,5 @@
 // Hyperliquid API Constants
+import { Currency } from './Currency';
 
 // API Endpoints
 export const HL_ENDPOINTS = {
@@ -127,4 +128,4 @@ export const HL_SYMBOL_REVERSE_MAP: Record<string, string> = Object.entries(
 
 export const HL_BASE_CURRENCY_DECIMALS = 6;
 
-export const HL_DEFAULT_CURRENCY_FROM = 'USDC';
+export const HL_DEFAULT_CURRENCY_FROM = Currency.USDC;

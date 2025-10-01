@@ -18,14 +18,6 @@ import {
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 
-// Import the PlatformPriceService interface
-interface PlatformPriceService {
-  getMarketPrice(marketIndex: number): Promise<{ bid: number; ask: number }>;
-  getAvailableMarkets(): Promise<
-    Array<{ marketIndex: number; baseAssetSymbol: string }>
-  >;
-}
-
 @Injectable()
 export class PlatformManagerService extends PlatformManagerPort {
   private readonly logger = new Logger(PlatformManagerService.name);
