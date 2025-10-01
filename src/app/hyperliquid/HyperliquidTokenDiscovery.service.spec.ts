@@ -13,7 +13,7 @@ describe('HyperliquidTokenDiscoveryService', () => {
 
   const mockMarkets = [
     {
-      name: 'BTC',
+      name: 'BTC-USD',
       szDecimals: 3,
       pxDecimals: 8,
       minSize: 0.00001,
@@ -21,7 +21,7 @@ describe('HyperliquidTokenDiscoveryService', () => {
       onlyIsolated: false,
     },
     {
-      name: 'ETH',
+      name: 'ETH-USD',
       szDecimals: 3,
       pxDecimals: 8,
       minSize: 0.00001,
@@ -29,12 +29,30 @@ describe('HyperliquidTokenDiscoveryService', () => {
       onlyIsolated: false,
     },
     {
-      name: 'SOL',
+      name: 'SOL-USD',
       szDecimals: 2,
       pxDecimals: 8,
       minSize: 0.00001,
       maxLeverage: 10,
       onlyIsolated: false,
+    },
+  ];
+
+  const mockPerps = [
+    {
+      name: 'Bitcoin',
+      token: 'BTC',
+      platform: Platform.HYPERLIQUID,
+    },
+    {
+      name: 'Ethereum',
+      token: 'ETH',
+      platform: Platform.HYPERLIQUID,
+    },
+    {
+      name: 'Solana',
+      token: 'SOL',
+      platform: Platform.HYPERLIQUID,
     },
   ];
 
@@ -83,6 +101,7 @@ describe('HyperliquidTokenDiscoveryService', () => {
 
     mockPerpService = {
       findByToken: jest.fn(),
+      getPerpsForTrading: jest.fn(),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -128,11 +147,8 @@ describe('HyperliquidTokenDiscoveryService', () => {
 
   describe('getTokensToTrade', () => {
     it('should return active tokens when enabled', async () => {
+      mockPerpService.getPerpsForTrading.mockResolvedValue(mockPerps as any);
       mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
-      mockPerpService.findByToken
-        .mockResolvedValueOnce({ token: 'BTC' } as any)
-        .mockResolvedValueOnce({ token: 'ETH' } as any)
-        .mockResolvedValueOnce({ token: 'SOL' } as any);
       mockHyperliquidService.getTicker
         .mockResolvedValueOnce(mockTickers.BTC)
         .mockResolvedValueOnce(mockTickers.ETH)
@@ -141,6 +157,9 @@ describe('HyperliquidTokenDiscoveryService', () => {
       const result = await service.getTokensToTrade();
 
       expect(result).toEqual(['BTC', 'ETH', 'SOL']);
+      expect(mockPerpService.getPerpsForTrading).toHaveBeenCalledWith(
+        Platform.HYPERLIQUID,
+      );
       expect(mockHyperliquidService.getMarkets).toHaveBeenCalled();
     });
 
@@ -150,15 +169,13 @@ describe('HyperliquidTokenDiscoveryService', () => {
       const result = await service.getTokensToTrade();
 
       expect(result).toEqual([]);
+      expect(mockPerpService.getPerpsForTrading).not.toHaveBeenCalled();
       expect(mockHyperliquidService.getMarkets).not.toHaveBeenCalled();
     });
 
     it('should use cached markets if within TTL', async () => {
+      mockPerpService.getPerpsForTrading.mockResolvedValue(mockPerps as any);
       mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
-      mockPerpService.findByToken
-        .mockResolvedValueOnce({ token: 'BTC' } as any)
-        .mockResolvedValueOnce({ token: 'ETH' } as any)
-        .mockResolvedValueOnce({ token: 'SOL' } as any);
       mockHyperliquidService.getTicker
         .mockResolvedValueOnce(mockTickers.BTC)
         .mockResolvedValueOnce(mockTickers.ETH)
@@ -172,15 +189,13 @@ describe('HyperliquidTokenDiscoveryService', () => {
       const result = await service.getTokensToTrade();
 
       expect(result).toEqual(['BTC', 'ETH', 'SOL']);
+      expect(mockPerpService.getPerpsForTrading).not.toHaveBeenCalled();
       expect(mockHyperliquidService.getMarkets).not.toHaveBeenCalled();
     });
 
     it('should refetch markets after cache expires', async () => {
+      mockPerpService.getPerpsForTrading.mockResolvedValue(mockPerps as any);
       mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
-      mockPerpService.findByToken
-        .mockResolvedValueOnce({ token: 'BTC' } as any)
-        .mockResolvedValueOnce({ token: 'ETH' } as any)
-        .mockResolvedValueOnce({ token: 'SOL' } as any);
       mockHyperliquidService.getTicker
         .mockResolvedValueOnce(mockTickers.BTC)
         .mockResolvedValueOnce(mockTickers.ETH)
@@ -193,10 +208,7 @@ describe('HyperliquidTokenDiscoveryService', () => {
       (service as any).lastFetch = Date.now() - 400000;
       jest.clearAllMocks();
 
-      mockPerpService.findByToken
-        .mockResolvedValueOnce({ token: 'BTC' } as any)
-        .mockResolvedValueOnce({ token: 'ETH' } as any)
-        .mockResolvedValueOnce({ token: 'SOL' } as any);
+      mockPerpService.getPerpsForTrading.mockResolvedValue(mockPerps as any);
       mockHyperliquidService.getTicker
         .mockResolvedValueOnce(mockTickers.BTC)
         .mockResolvedValueOnce(mockTickers.ETH)
@@ -205,11 +217,14 @@ describe('HyperliquidTokenDiscoveryService', () => {
       // Second call should refetch
       await service.getTokensToTrade();
 
+      expect(mockPerpService.getPerpsForTrading).toHaveBeenCalledWith(
+        Platform.HYPERLIQUID,
+      );
       expect(mockHyperliquidService.getMarkets).toHaveBeenCalled();
     });
 
     it('should handle API errors gracefully', async () => {
-      mockHyperliquidService.getMarkets.mockRejectedValue(
+      mockPerpService.getPerpsForTrading.mockRejectedValue(
         new Error('API Error'),
       );
 
@@ -217,27 +232,34 @@ describe('HyperliquidTokenDiscoveryService', () => {
       expect(result).toEqual([]);
     });
 
-    it('should skip tokens without perp definitions', async () => {
+    it('should skip perps without active markets on Hyperliquid', async () => {
+      const perpsWithMissing = [
+        ...mockPerps,
+        {
+          name: 'Cardano',
+          token: 'ADA',
+          platform: Platform.HYPERLIQUID,
+        },
+      ];
+
+      mockPerpService.getPerpsForTrading.mockResolvedValue(
+        perpsWithMissing as any,
+      );
       mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
-      mockPerpService.findByToken
-        .mockResolvedValueOnce({ token: 'BTC' } as any)
-        .mockResolvedValueOnce(null) // ETH has no perp
-        .mockResolvedValueOnce({ token: 'SOL' } as any);
       mockHyperliquidService.getTicker
         .mockResolvedValueOnce(mockTickers.BTC)
+        .mockResolvedValueOnce(mockTickers.ETH)
         .mockResolvedValueOnce(mockTickers.SOL);
 
       const result = await service.getTokensToTrade();
 
-      expect(result).toEqual(['BTC', 'SOL']);
+      // ADA should be skipped because it doesn't have a market on Hyperliquid
+      expect(result).toEqual(['BTC', 'ETH', 'SOL']);
     });
 
     it('should skip inactive markets', async () => {
+      mockPerpService.getPerpsForTrading.mockResolvedValue(mockPerps as any);
       mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
-      mockPerpService.findByToken
-        .mockResolvedValueOnce({ token: 'BTC' } as any)
-        .mockResolvedValueOnce({ token: 'ETH' } as any)
-        .mockResolvedValueOnce({ token: 'SOL' } as any);
       mockHyperliquidService.getTicker
         .mockResolvedValueOnce(mockTickers.BTC)
         .mockResolvedValueOnce({
@@ -251,16 +273,28 @@ describe('HyperliquidTokenDiscoveryService', () => {
 
       expect(result).toEqual(['BTC', 'SOL']);
     });
+
+    it('should skip markets with wide spreads', async () => {
+      mockPerpService.getPerpsForTrading.mockResolvedValue(mockPerps as any);
+      mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
+      mockHyperliquidService.getTicker
+        .mockResolvedValueOnce(mockTickers.BTC)
+        .mockResolvedValueOnce({
+          ...mockTickers.ETH,
+          bid: '3000.00',
+          ask: '3500.00', // 16.67% spread - too wide
+        })
+        .mockResolvedValueOnce(mockTickers.SOL);
+
+      const result = await service.getTokensToTrade();
+
+      expect(result).toEqual(['BTC', 'SOL']);
+    });
   });
 
   describe('isTokenTradeable', () => {
     it('should return true for tradeable token', async () => {
-      const marketsWithUSD = [
-        { ...mockMarkets[0], name: 'BTC-USD' },
-        { ...mockMarkets[1], name: 'ETH-USD' },
-        { ...mockMarkets[2], name: 'SOL-USD' },
-      ];
-      mockHyperliquidService.getMarkets.mockResolvedValue(marketsWithUSD);
+      mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
       mockPerpService.findByToken.mockResolvedValue({ token: 'BTC' } as any);
       mockHyperliquidService.getTicker.mockResolvedValue(mockTickers.BTC);
 
@@ -328,13 +362,7 @@ describe('HyperliquidTokenDiscoveryService', () => {
 
   describe('getAvailablePreferredSymbols', () => {
     it('should return available preferred symbols', async () => {
-      const marketsWithUSD = [
-        { ...mockMarkets[0], name: 'BTC-USD' },
-        { ...mockMarkets[1], name: 'ETH-USD' },
-        { ...mockMarkets[2], name: 'SOL-USD' },
-      ];
-
-      mockHyperliquidService.getMarkets.mockResolvedValue(marketsWithUSD);
+      mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
 
       // Mock for all preferred symbols
       mockPerpService.findByToken
@@ -388,6 +416,31 @@ describe('HyperliquidTokenDiscoveryService', () => {
           openInterest: '250000',
           fundingRate: '0.0002',
           spread: '0.0333',
+        },
+      });
+    });
+
+    it('should fetch market stats for all tokens to trade if no symbols provided', async () => {
+      mockPerpService.getPerpsForTrading.mockResolvedValue([
+        mockPerps[0],
+      ] as any);
+      mockHyperliquidService.getMarkets.mockResolvedValue([mockMarkets[0]]);
+      mockHyperliquidService.getTicker
+        .mockResolvedValueOnce(mockTickers.BTC)
+        .mockResolvedValueOnce(mockTickers.BTC);
+
+      const result = await service.getMarketStats();
+
+      expect(result).toEqual({
+        BTC: {
+          price: '50000.50',
+          volume24h: '1000000',
+          bid: '50000.00',
+          ask: '50001.00',
+          mark: '50000.50',
+          openInterest: '500000',
+          fundingRate: '0.0001',
+          spread: '0.0020',
         },
       });
     });

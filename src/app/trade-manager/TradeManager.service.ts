@@ -86,7 +86,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         platformOpenPositions >= platformConfig.tradingParams.maxOpenPositions
       ) {
         this.logger.log(
-          `Platform ${opportunity.platform} has reached max open positions (${platformConfig.maxOpenPositions})`,
+          `Platform ${opportunity.platform} has reached max open positions (${platformConfig.tradingParams.maxOpenPositions})`,
         );
         continue;
       }

@@ -49,20 +49,29 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
       // Extract symbols that are available for trading
       const availableSymbols: string[] = [];
 
-      for (const market of markets) {
+      const perpsToTrade = await this.perpService.getPerpsForTrading(
+        Platform.HYPERLIQUID,
+      );
+
+      for (const perp of perpsToTrade) {
         try {
           // Check if we have a perp definition for this market
-          const symbol = this.extractBaseSymbol(market.name);
-          const perp = await this.perpService.findByToken(symbol);
+          const symbol = perp.token;
+          const market = markets.find(
+            (m) => m.name === this.constructMarketName(symbol),
+          );
 
-          if (perp) {
+          if (market) {
             const isActive = await this.isMarketActive(market.name);
             if (isActive) {
               availableSymbols.push(symbol);
             }
           }
         } catch (error) {
-          this.logger.debug(`Error checking market ${market.name}:`, error);
+          this.logger.debug(
+            `Error checking perp for trading: ${perp.name}:`,
+            error,
+          );
           continue;
         }
       }
