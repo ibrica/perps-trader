@@ -5,6 +5,5 @@ export * from './utils';
 export * from './constants';
 export * from './models';
 export * from './services';
-export * from './errors';
 export * from './tests';
 export * from './exceptions';

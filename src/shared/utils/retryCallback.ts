@@ -1,9 +1,7 @@
 import { Logger } from '@nestjs/common';
-import { BehaviorSubject } from 'rxjs';
-import { BaseSolanaError, ProcessedTransactionError } from '..';
 import { delay } from '.';
 
-export type RetryResponse<R> = { result?: R; error?: BaseSolanaError };
+export type RetryResponse<R> = { result?: R; error?: Error };
 
 export interface RetryOptions {
   maxCount?: number;
@@ -12,7 +10,6 @@ export interface RetryOptions {
   // eslint-disable-next-line
   stopErrors?: any[];
   logger?: Logger;
-  criticalErrorSignal?: BehaviorSubject<BaseSolanaError | undefined>;
 }
 
 const defaultOptions: RetryOptions = {
@@ -31,9 +28,7 @@ export const retryCallback = async <R>(
     maxCount,
     delayMs = 0,
     endPredicate,
-    stopErrors,
     logger,
-    criticalErrorSignal,
   } = { ...defaultOptions, ...options };
 
   const attempt = async (count: number): Promise<RetryResponse<R>> => {
@@ -43,19 +38,8 @@ export const retryCallback = async <R>(
     } catch (e) {
       logger?.warn(`retryCallback failed, with ${count - 1} attempts left`);
       logger?.warn(e);
-      const error = e; // Use appropriate error processing if necessary
+      const error = e; // TODO: check if there are errors that should not be retried
       logger?.warn(JSON.stringify(error));
-
-      if (stopErrors) {
-        for (const stopError of stopErrors) {
-          if (error instanceof stopError) {
-            if (!(error instanceof ProcessedTransactionError)) {
-              criticalErrorSignal?.next(error);
-            }
-            return { error };
-          }
-        }
-      }
 
       if (count <= 0 || (await endPredicate?.())) {
         return { error };
