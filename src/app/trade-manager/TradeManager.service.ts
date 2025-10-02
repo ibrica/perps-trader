@@ -111,10 +111,9 @@ export class TradeManagerService implements OnApplicationBootstrap {
     let nrOfOpenPositions = tradePositions.length;
 
     for (const tradePosition of tradePositions) {
+      const { platform, token } = tradePosition;
       // TODO: check what is happening when no price is available
-      const priceResponse = await this.indexerAdapter.getLastPrice(
-        tradePosition.token,
-      );
+      const priceResponse = await this.indexerAdapter.getLastPrice(token);
 
       const { price } = priceResponse;
 
@@ -124,7 +123,9 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
       if (shouldClosePosition) {
         try {
-          await this.closePosition(tradePosition);
+          await this.platformManagerService
+            .getPlatformService(platform)
+            .exitPosition(tradePosition);
           nrOfOpenPositions--;
         } catch (error) {
           this.logger.error(`Failed to close position: ${error}`);
@@ -188,82 +189,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
       } catch (error) {
         this.logger.warn(`Failed to reset buyFlag for perp ${token}:`, error);
       }
-    }
-  }
-
-  /**
-   * Close a perpetual futures position by placing a reducing order
-   */
-  private async closePosition(
-    tradePosition: TradePositionDocument,
-  ): Promise<void> {
-    try {
-      const platform = tradePosition.platform;
-      const { token } = tradePosition;
-
-      if (!token) {
-        throw new Error('No token symbol found for position');
-      }
-
-      if (platform === Platform.HYPERLIQUID) {
-        // Get the trading strategy service which should have access to HyperliquidService
-        const tradingStrategy =
-          this.platformManagerService.getTradingStrategyService(platform);
-        const hyperliquidService = (tradingStrategy as any).hyperliquidService;
-
-        if (!hyperliquidService?.placePerpOrder) {
-          throw new Error(
-            'Hyperliquid service not available or does not support perpetual orders',
-          );
-        }
-
-        // Determine the opposite direction to close the position
-        const closeDirection =
-          tradePosition.positionDirection === PositionDirection.LONG
-            ? 'SHORT'
-            : 'LONG';
-
-        // For closing, we need to use the current market price and size
-        // The position size should be in base asset terms, but we need quote amount for the order
-        const ticker = await hyperliquidService.getTicker(tokenSymbol);
-        const currentPrice = parseFloat(ticker.mark);
-        const positionSizeAbs = Math.abs(
-          Number(tradePosition.positionSize || 0),
-        );
-        const quoteAmount = BigInt(
-          Math.floor(positionSizeAbs * currentPrice * 1000000),
-        ); // Convert to USDC (6 decimals)
-
-        this.logger.log(
-          `Closing ${tradePosition.positionDirection} position for ${tokenSymbol}`,
-          {
-            closeDirection,
-            positionSize: positionSizeAbs,
-            currentPrice,
-            quoteAmount: quoteAmount.toString(),
-            platform,
-          },
-        );
-
-        await hyperliquidService.placePerpOrder({
-          symbol: tokenSymbol,
-          direction: closeDirection,
-          quoteAmount,
-          reduceOnly: true, // Ensure this order only reduces the position
-          tif: 'Ioc', // Immediate or Cancel for market execution
-        });
-
-        this.logger.log(
-          `Successfully placed closing order for ${tokenSymbol} position`,
-        );
-      } else {
-        throw new Error(
-          `Unsupported platform for perpetual position closing: ${platform}`,
-        );
-      }
-    } catch (error) {
-      this.logger.error(`Failed to close perpetual position`, error);
-      throw error;
     }
   }
 

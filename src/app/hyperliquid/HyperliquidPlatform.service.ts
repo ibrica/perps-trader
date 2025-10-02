@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import {
   BasePlatformService,
+  PositionDirection,
   PositionExecutionResult,
   PositionExecutionStatus,
 } from '../../shared';
@@ -80,16 +81,49 @@ export class HyperliquidPlatformService extends BasePlatformService {
     }
   }
 
-  exitPosition(
+  async exitPosition(
     tradePosition: TradePositionDocument,
   ): Promise<PositionExecutionResult> {
-    const { token } = tradePosition;
+    // TODO: finish this!
+    const { token, platform, positionDirection } = tradePosition;
+
+    if (platform !== Platform.HYPERLIQUID) {
+      throw new Error(`Invalid platform for Hyperliquid service: ${platform}`);
+    }
+
+    const closeDirection =
+      positionDirection === PositionDirection.LONG
+        ? PositionDirection.SHORT
+        : PositionDirection.LONG;
+
+    // For closing, we need to use the current market price and size
+    // The position size should be in base asset terms, but we need quote amount for the order
+    const ticker = await this.hyperliquidService.getTicker(token);
+    const currentPrice = parseFloat(ticker.mark);
+    const positionSizeAbs = Math.abs(Number(tradePosition.positionSize || 0));
+    const quoteAmount = BigInt(
+      Math.floor(positionSizeAbs * currentPrice * 1000000),
+    ); // Convert to USDC (6 decimals)
+
+    this.logger.log(
+      `Closing ${tradePosition.positionDirection} position for ${token}`,
+      {
+        closeDirection,
+        positionSize: positionSizeAbs,
+        currentPrice,
+        quoteAmount: quoteAmount.toString(),
+        platform,
+      },
+    );
+
+    this.logger.log(`Successfully placed closing order for ${token} position`);
 
     const result = await this.hyperliquidService.placePerpOrder({
       symbol: token,
-      direction: 'SHORT',
-      quoteAmount: tradePosition.positionSize,
-      reduceOnly: true,
+      direction: closeDirection,
+      quoteAmount,
+      reduceOnly: true, // Ensure this order only reduces the position
+      tif: 'Ioc', // Immediate or Cancel for market execution
     });
   }
 
