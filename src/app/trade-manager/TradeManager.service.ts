@@ -17,6 +17,8 @@ import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { PlatformManagerService } from '../platform-manager/PlatformManagerService';
 import { TimeService } from '../../infrastructure/services/TimeService';
 import { PerpService } from '../perps/Perp.service';
+import { SettingsService } from '../settings/Settings.service';
+import { SettingsDocument } from '../settings/Settings.schema';
 
 @Injectable()
 export class TradeManagerService implements OnApplicationBootstrap {
@@ -27,6 +29,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
     private indexerAdapter: IndexerAdapter,
     private platformManagerService: PlatformManagerService,
     private perpService: PerpService,
+    private settingsService: SettingsService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -103,25 +106,25 @@ export class TradeManagerService implements OnApplicationBootstrap {
     const tradePositions =
       await this.tradePositionService.getOpenTradePositions();
 
+    const settings = await this.settingsService.getSettings();
+
     let nrOfOpenPositions = tradePositions.length;
 
     for (const tradePosition of tradePositions) {
-      const priceAndDate = await this.getPriceForPosition(tradePosition);
-      const { price, date } = priceAndDate;
-
-      const shouldClosePosition = await this.shouldClosePosition(
-        tradePosition,
-        settings,
-        price,
-        date,
+      // TODO: check what is happening when no price is available
+      const priceResponse = await this.indexerAdapter.getLastPrice(
+        tradePosition.token,
       );
+
+      const { price } = priceResponse;
+
+      const shouldClosePosition =
+        settings.closeAllPositions ||
+        (await this.shouldClosePosition(tradePosition, price));
 
       if (shouldClosePosition) {
         try {
-          await this.closePosition(
-            tradePosition,
-            price || tradePosition.currentPrice || 0,
-          );
+          await this.closePosition(tradePosition);
           nrOfOpenPositions--;
         } catch (error) {
           this.logger.error(`Failed to close position: ${error}`);
@@ -193,14 +196,12 @@ export class TradeManagerService implements OnApplicationBootstrap {
    */
   private async closePosition(
     tradePosition: TradePositionDocument,
-    price: number = 0,
   ): Promise<void> {
     try {
       const platform = tradePosition.platform;
-      const tokenSymbol =
-        tradePosition.baseAssetSymbol || tradePosition.tokenMint;
+      const { token } = tradePosition;
 
-      if (!tokenSymbol) {
+      if (!token) {
         throw new Error('No token symbol found for position');
       }
 
@@ -319,15 +320,12 @@ export class TradeManagerService implements OnApplicationBootstrap {
    * Determines whether a position should be closed based on various conditions
    * Checks traditional conditions first (cheaper to evaluate), then AI if needed
    * @param tradePosition - The trade position to evaluate
-   * @param settings - Current system settings
-   * @param price - Current price (if available)
-   * @param date - Current price date (if available)
+   * @param currentPrice - Current price (if available)
    * @returns Promise<boolean> - Whether the position should be closed
    */
   private async shouldClosePosition(
     tradePosition: TradePositionDocument,
-    settings: any,
-    price?: number,
+    currentPrice: number,
   ): Promise<boolean> {
     if (settings.closeAllPositions) {
       this.logger.log(

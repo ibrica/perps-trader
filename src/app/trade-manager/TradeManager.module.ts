@@ -4,6 +4,8 @@ import { TradePositionModule } from '../trade-position/TradePosition.module';
 import { PredictorModule } from '../predictor/Predictor.module';
 import { PlatformManagerModule } from '../platform-manager/PlatformManager.module';
 import { PerpModule } from '../perps/Perp.module';
+import { SettingsModule } from '../settings/Settings.module';
+import { IndexerModule } from '../indexer/Indexer.module';
 
 @Global()
 @Module({
@@ -12,6 +14,8 @@ import { PerpModule } from '../perps/Perp.module';
     PredictorModule,
     PlatformManagerModule,
     PerpModule,
+    SettingsModule,
+    IndexerModule,
   ],
   providers: [TradeManagerService],
   exports: [TradeManagerService],
