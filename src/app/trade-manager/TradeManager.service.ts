@@ -99,6 +99,39 @@ export class TradeManagerService implements OnApplicationBootstrap {
     }
   }
 
+  async monitorAndClosePositions(): Promise<number> {
+    const tradePositions =
+      await this.tradePositionService.getOpenTradePositions();
+
+    let nrOfOpenPositions = tradePositions.length;
+
+    for (const tradePosition of tradePositions) {
+      const priceAndDate = await this.getPriceForPosition(tradePosition);
+      const { price, date } = priceAndDate;
+
+      const shouldClosePosition = await this.shouldClosePosition(
+        tradePosition,
+        settings,
+        price,
+        date,
+      );
+
+      if (shouldClosePosition) {
+        try {
+          await this.closePosition(
+            tradePosition,
+            price || tradePosition.currentPrice || 0,
+          );
+          nrOfOpenPositions--;
+        } catch (error) {
+          this.logger.error(`Failed to close position: ${error}`);
+        }
+      }
+    }
+
+    return nrOfOpenPositions;
+  }
+
   private async enterPosition(opportunity: TradingOpportunity): Promise<void> {
     const { platform, token, tradingDecision } = opportunity;
 
@@ -158,7 +191,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
   /**
    * Close a perpetual futures position by placing a reducing order
    */
-  private async closePerpetualPosition(
+  private async closePosition(
     tradePosition: TradePositionDocument,
     price: number = 0,
   ): Promise<void> {
@@ -244,7 +277,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
   private createTradePositionData(
     platform: Platform,
-    tokenMintAddress: string,
+    token: string,
     tradingDecision: TradingDecision,
   ): CreateTradePositionOptions {
     const baseData = {
@@ -259,7 +292,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     if (platform === Platform.HYPERLIQUID) {
       // Use metadata from trading decision for Hyperliquid positions
-      const marketIndex = tradingDecision.metadata?.marketIndex || 0; // Default market index
       const defaultPrice = 0.0001; // Default entry price
 
       return {
@@ -267,17 +299,16 @@ export class TradeManagerService implements OnApplicationBootstrap {
         positionType: PositionType.PERPETUAL,
         positionDirection:
           tradingDecision.metadata?.direction || PositionDirection.LONG,
-        marketIndex,
         leverage: tradingDecision.metadata?.leverage || 3,
         positionSize: tradingDecision.recommendedAmount || 100000000n, // Default 100 USDC
         entryPrice: defaultPrice,
-        baseAssetSymbol: tokenMintAddress,
+        token,
       };
     } else {
-      // Other DEX platforms
+      //  DEX platforms
       return {
         ...baseData,
-        tokenMint: tokenMintAddress, // TODO: check for each platform how is it handling
+        token,
         positionType: PositionType.SPOT,
         entryPrice: 0,
       };
@@ -297,18 +328,17 @@ export class TradeManagerService implements OnApplicationBootstrap {
     tradePosition: TradePositionDocument,
     settings: any,
     price?: number,
-    date?: Date,
   ): Promise<boolean> {
     if (settings.closeAllPositions) {
       this.logger.log(
-        `Closing position for ${tradePosition.tokenMint}: closeAllPositions setting enabled`,
+        `Closing position for ${tradePosition.token}: closeAllPositions setting enabled`,
       );
       return true;
     }
 
     if (tradePosition.exitFlag) {
       this.logger.log(
-        `Closing position for ${tradePosition.tokenMint}: exitFlag is set`,
+        `Closing position for ${tradePosition.token}: exitFlag is set`,
       );
       return true;
     }
@@ -357,7 +387,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         const decision = exitDecisions[0].decision;
         if (decision.reason === 'Error during evaluation') {
           this.logger.warn(
-            `Ignoring AI exit recommendation for ${tradePosition.tokenMint}: based on evaluation error`,
+            `Ignoring AI exit recommendation for ${tradePosition.token}: based on evaluation error`,
           );
           return false;
         }
