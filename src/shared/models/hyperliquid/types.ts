@@ -1,3 +1,4 @@
+import { PositionDirection } from '@perps/shared/constants';
 import {
   ClearinghouseState,
   L2Book,
@@ -40,7 +41,7 @@ export type HLOrderbook = L2Book & {
 
 export interface PlacePerpOrderParams {
   symbol: string;
-  direction: 'LONG' | 'SHORT';
+  direction: PositionDirection;
   quoteAmount: bigint;
   price?: number;
   tif?: Tif;

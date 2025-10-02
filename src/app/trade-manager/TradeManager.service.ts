@@ -90,7 +90,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
       }
 
       try {
-        await this.enterPosition(opportunity); // TODO: check if try catch rethrows the error in platform service
+        await this.enterPosition(opportunity);
         remainingSlots--;
       } catch (error) {
         this.logger.error(
@@ -150,14 +150,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
     tradePosition: TradePositionDocument,
     currentPrice: number,
   ): Promise<boolean> {
-    const { token } = tradePosition;
-
-    if (tradePosition.exitFlag) {
-      this.logger.log(
-        `Closing position for ${tradePosition.token}: exitFlag is set`,
-      );
-      return true;
-    }
+    const { token, platform } = tradePosition;
 
     const stopLossPrice = tradePosition.stopLossPrice ?? -1;
     const takeProfitPrice = tradePosition.takeProfitPrice ?? Number.MAX_VALUE;
@@ -173,38 +166,36 @@ export class TradeManagerService implements OnApplicationBootstrap {
     }
 
     try {
-      const enabledPlatforms =
-        this.platformManagerService.getEnabledPlatforms();
-      if (!enabledPlatforms.includes(tradePosition.platform)) {
+      if (
+        !this.platformManagerService.getEnabledPlatforms().includes(platform)
+      ) {
         this.logger.debug(
-          `Skipping AI evaluation for ${token}: platform ${tradePosition.platform} not enabled`,
+          `Skipping AI evaluation for ${token}: platform ${platform} not enabled`,
         );
         return false;
       }
 
-      const exitDecisions =
+      const exitDecision =
         await this.platformManagerService.evaluateExitDecision(tradePosition);
 
-      if (exitDecisions.length > 0 && exitDecisions[0].decision.shouldExit) {
-        const decision = exitDecisions[0].decision;
-        if (decision.reason === 'Error during evaluation') {
+      if (exitDecision?.shouldExit) {
+        if (exitDecision.reason === 'Error during evaluation') {
           this.logger.warn(
-            `Ignoring AI exit recommendation for ${tradePosition.token}: based on evaluation error`,
+            `Ignoring AI exit recommendation for ${token}: based on evaluation error`,
           );
           return false;
         }
 
         this.logger.log(
-          `AI recommends exiting position for ${tradePosition.tokenMint} on ${tradePosition.platform}: ${decision.reason} (confidence: ${decision.confidence}, urgency: ${decision.urgency})`,
+          `AI recommends exiting position for ${token} on ${platform}: ${exitDecision.reason} (confidence: ${exitDecision.confidence}, urgency: ${exitDecision.urgency})`,
         );
         return true;
       }
     } catch (error) {
       this.logger.warn(
-        `Failed to evaluate AI exit decision for position ${tradePosition.tokenMint}:`,
+        `Failed to evaluate AI exit decision for position ${token}:`,
         error,
       );
-      // Continue without AI recommendation if it fails
     }
 
     return false;

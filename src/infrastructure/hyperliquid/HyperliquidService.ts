@@ -20,6 +20,7 @@ import {
   PlacePerpOrderParams,
   HLOrderResponse,
   HLPosition,
+  PositionDirection,
 } from '../../shared';
 
 @Injectable()
@@ -130,9 +131,7 @@ export class HyperliquidService {
   /**
    * Place a perpetual order
    */
-  async placePerpOrder(
-    params: PlacePerpOrderParams,
-  ): Promise<{ orderId: string }> {
+  async placePerpOrder(params: PlacePerpOrderParams): Promise<string> {
     try {
       const mappedSymbol = this.mapSymbolToHL(params.symbol);
       const market = await this.getMarket(mappedSymbol);
@@ -203,12 +202,9 @@ export class HyperliquidService {
         );
       }
 
-      const isBuy = params.direction === 'LONG';
-
-      // Create order using SDK format
       const order: Order = {
         coin: mappedSymbol,
-        is_buy: isBuy,
+        is_buy: params.direction === PositionDirection.LONG,
         sz: preciseSize.toString(),
         limit_px: (params.price || markPrice).toString(),
         order_type: {
@@ -233,7 +229,7 @@ export class HyperliquidService {
       const orderId = orderStatus?.resting?.oid || orderStatus?.filled?.oid;
 
       if (!orderId) {
-        throw new HyperliquidError(`Failed to place order: Unknown error`);
+        throw new HyperliquidError(`Failed to place order: error ${response}`);
       }
 
       this.logger.log(`Placed ${params.direction} order for ${params.symbol}`, {
@@ -242,7 +238,7 @@ export class HyperliquidService {
         price: params.price || markPrice,
       });
 
-      return { orderId: orderId.toString() };
+      return orderId.toString();
     } catch (error) {
       this.logger.error('Failed to place perp order', error);
       throw error;

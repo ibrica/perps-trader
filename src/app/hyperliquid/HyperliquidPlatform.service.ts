@@ -50,7 +50,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       // amountIn represents the quote amount (USDC) we want to use
       const direction = this.determineDirection();
 
-      const result = await this.hyperliquidService.placePerpOrder({
+      const orderId = await this.hyperliquidService.placePerpOrder({
         symbol,
         direction,
         quoteAmount: options.amountIn,
@@ -59,16 +59,16 @@ export class HyperliquidPlatformService extends BasePlatformService {
       });
 
       this.logger.log(`Hyperliquid order placed successfully`, {
-        orderId: result.orderId,
+        orderId,
         symbol,
         direction,
         quoteAmount: options.amountIn.toString(),
       });
 
       return {
-        orderId: result.orderId,
+        orderId,
         status: PositionExecutionStatus.SUCCESS,
-        message: `Hyperliquid ${direction} order placed for ${symbol}`,
+        message: '',
       };
     } catch (error) {
       this.logger.error('Failed to execute Hyperliquid trade', error);
@@ -84,50 +84,70 @@ export class HyperliquidPlatformService extends BasePlatformService {
   async exitPosition(
     tradePosition: TradePositionDocument,
   ): Promise<PositionExecutionResult> {
-    // TODO: finish this!
-    const { token, platform, positionDirection } = tradePosition;
+    try {
+      const { token, platform, positionDirection } = tradePosition;
 
-    if (platform !== Platform.HYPERLIQUID) {
-      throw new Error(`Invalid platform for Hyperliquid service: ${platform}`);
+      if (platform !== Platform.HYPERLIQUID) {
+        throw new Error(
+          `Invalid platform for Hyperliquid service: ${platform}`,
+        );
+      }
+
+      const closeDirection =
+        positionDirection === PositionDirection.LONG
+          ? PositionDirection.SHORT
+          : PositionDirection.LONG;
+
+      // For closing, we need to use the current market price and size
+      // The position size should be in base asset terms, but we need quote amount for the order
+      const ticker = await this.hyperliquidService.getTicker(token);
+      const currentPrice = parseFloat(ticker.mark);
+      const positionSizeAbs = Math.abs(Number(tradePosition.positionSize || 0));
+      const quoteAmount = BigInt(
+        Math.floor(positionSizeAbs * currentPrice * 1000000),
+      ); // Convert to USDC (6 decimals)
+
+      this.logger.log(
+        `Closing ${tradePosition.positionDirection} position for ${token}`,
+        {
+          closeDirection,
+          positionSize: positionSizeAbs,
+          currentPrice,
+          quoteAmount: quoteAmount.toString(),
+          platform,
+        },
+      );
+
+      const orderId = await this.hyperliquidService.placePerpOrder({
+        symbol: token,
+        direction: closeDirection,
+        quoteAmount,
+        reduceOnly: true, // Ensure this order only reduces the position
+        tif: 'Ioc', // Immediate or Cancel for market execution
+      });
+
+      this.logger.log(
+        `Successfully placed closing order for ${token} position`,
+      );
+
+      return {
+        orderId,
+        status: PositionExecutionStatus.SUCCESS,
+        message: '',
+      };
+    } catch (error) {
+      this.logger.error('Failed to execute Hyperliquid trade', error);
+
+      return {
+        orderId: '',
+        status: PositionExecutionStatus.FAILED,
+        message: error instanceof Error ? error.message : 'Unknown error',
+      };
     }
-
-    const closeDirection =
-      positionDirection === PositionDirection.LONG
-        ? PositionDirection.SHORT
-        : PositionDirection.LONG;
-
-    // For closing, we need to use the current market price and size
-    // The position size should be in base asset terms, but we need quote amount for the order
-    const ticker = await this.hyperliquidService.getTicker(token);
-    const currentPrice = parseFloat(ticker.mark);
-    const positionSizeAbs = Math.abs(Number(tradePosition.positionSize || 0));
-    const quoteAmount = BigInt(
-      Math.floor(positionSizeAbs * currentPrice * 1000000),
-    ); // Convert to USDC (6 decimals)
-
-    this.logger.log(
-      `Closing ${tradePosition.positionDirection} position for ${token}`,
-      {
-        closeDirection,
-        positionSize: positionSizeAbs,
-        currentPrice,
-        quoteAmount: quoteAmount.toString(),
-        platform,
-      },
-    );
-
-    this.logger.log(`Successfully placed closing order for ${token} position`);
-
-    const result = await this.hyperliquidService.placePerpOrder({
-      symbol: token,
-      direction: closeDirection,
-      quoteAmount,
-      reduceOnly: true, // Ensure this order only reduces the position
-      tif: 'Ioc', // Immediate or Cancel for market execution
-    });
   }
 
-  private determineDirection(): 'LONG' | 'SHORT' {
+  private determineDirection(): PositionDirection {
+    // TODO: finish this!
     // For now, we'll default to LONG
     // In a real implementation, you'd determine this based on:
     // - AI prediction/recommendation
@@ -136,6 +156,6 @@ export class HyperliquidPlatformService extends BasePlatformService {
     //
     // This could be extended to use additional fields in CreateTradeOptions
     // or be determined by the trading strategy
-    return 'LONG';
+    return PositionDirection.LONG;
   }
 }
