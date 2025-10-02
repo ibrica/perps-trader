@@ -10,6 +10,7 @@ import {
   TradingDecision,
   CreateTradePositionOptions,
   MAX_TOTAL_POSITIONS,
+  PositionExecutionStatus,
 } from '../../shared';
 import { IndexerAdapter } from '../../infrastructure';
 import { TradePositionService } from '../trade-position/TradePosition.service';
@@ -18,7 +19,6 @@ import { PlatformManagerService } from '../platform-manager/PlatformManagerServi
 import { TimeService } from '../../infrastructure/services/TimeService';
 import { PerpService } from '../perps/Perp.service';
 import { SettingsService } from '../settings/Settings.service';
-import { SettingsDocument } from '../settings/Settings.schema';
 
 @Injectable()
 export class TradeManagerService implements OnApplicationBootstrap {
@@ -160,7 +160,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
     });
 
     // TODO: pending state handling
-    if (result.status !== 'success') {
+    if (result.status !== PositionExecutionStatus.SUCCESS) {
       this.logger.error(
         `Failed to execute trading opportunity for ${token} on ${platform}:`,
         result,

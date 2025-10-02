@@ -1,30 +1,19 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
-import { BasePlatformService, PositionExecutionResult } from '../../shared';
+import { Injectable, Logger } from '@nestjs/common';
+import {
+  BasePlatformService,
+  PositionExecutionResult,
+  PositionExecutionStatus,
+} from '../../shared';
 import { EnterPositionOptions, Platform, TradeType } from '../../shared';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
+import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 
 @Injectable()
 export class HyperliquidPlatformService extends BasePlatformService {
-  exitPosition(positionId: string): Promise<PositionExecutionResult> {
-    throw new Error('Method not implemented.');
-  }
   private readonly logger = new Logger(HyperliquidPlatformService.name);
 
-  constructor(
-    @Optional() private readonly hyperliquidService?: HyperliquidService,
-  ) {
+  constructor(private readonly hyperliquidService?: HyperliquidService) {
     super();
-    this.logger.log(`HyperliquidPlatformService constructor called`, {
-      hyperliquidServiceAvailable: !!this.hyperliquidService,
-      hyperliquidServiceType: this.hyperliquidService
-        ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (this.hyperliquidService as any).constructor?.name
-        : 'undefined',
-    });
-  }
-
-  async prepare(): Promise<void> {
-    throw new Error('Hyperliquid does not support transaction preparation');
   }
 
   async enterPosition(
@@ -39,26 +28,6 @@ export class HyperliquidPlatformService extends BasePlatformService {
       token,
       amountIn: amountIn.toString(),
     });
-
-    if (!this.hyperliquidService) {
-      this.logger.error(
-        `Hyperliquid service not available during executeTrade`,
-        {
-          hyperliquidServiceAvailable: !!this.hyperliquidService,
-          serviceType: this.hyperliquidService
-            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              (this.hyperliquidService as any).constructor?.name
-            : 'undefined',
-          serviceInstance: this.hyperliquidService,
-        },
-      );
-      return {
-        orderId: '',
-        status: 'failed',
-        message:
-          'Hyperliquid service not available - missing configuration or dependencies',
-      };
-    }
 
     try {
       if (options.platform !== Platform.HYPERLIQUID) {
@@ -97,7 +66,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
       return {
         orderId: result.orderId,
-        status: 'success',
+        status: PositionExecutionStatus.SUCCESS,
         message: `Hyperliquid ${direction} order placed for ${symbol}`,
       };
     } catch (error) {
@@ -105,10 +74,23 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
       return {
         orderId: '',
-        status: 'failed',
+        status: PositionExecutionStatus.FAILED,
         message: error instanceof Error ? error.message : 'Unknown error',
       };
     }
+  }
+
+  exitPosition(
+    tradePosition: TradePositionDocument,
+  ): Promise<PositionExecutionResult> {
+    const { token } = tradePosition;
+
+    const result = await this.hyperliquidService.placePerpOrder({
+      symbol: token,
+      direction: 'SHORT',
+      quoteAmount: tradePosition.positionSize,
+      reduceOnly: true,
+    });
   }
 
   private determineDirection(): 'LONG' | 'SHORT' {
