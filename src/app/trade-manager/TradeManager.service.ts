@@ -16,7 +16,6 @@ import { IndexerAdapter } from '../../infrastructure';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { PlatformManagerService } from '../platform-manager/PlatformManagerService';
-import { TimeService } from '../../infrastructure/services/TimeService';
 import { PerpService } from '../perps/Perp.service';
 import { SettingsService } from '../settings/Settings.service';
 
@@ -91,7 +90,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
       }
 
       try {
-        await this.enterPosition(opportunity);
+        await this.enterPosition(opportunity); // TODO: check if try catch rethrows the error in platform service
         remainingSlots--;
       } catch (error) {
         this.logger.error(
@@ -111,7 +110,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
     let nrOfOpenPositions = tradePositions.length;
 
     for (const tradePosition of tradePositions) {
-      const { platform, token } = tradePosition;
+      const { platform, token, exitFlag } = tradePosition;
       // TODO: check what is happening when no price is available
       const priceResponse = await this.indexerAdapter.getLastPrice(token);
 
@@ -119,10 +118,14 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
       const shouldClosePosition =
         settings.closeAllPositions ||
+        exitFlag ||
         (await this.shouldClosePosition(tradePosition, price));
 
       if (shouldClosePosition) {
         try {
+          this.logger.log(
+            `Closing position for ${token} on ${platform}, flags; closeAllPositions:  ${settings.closeAllPositions}, exitFlag: ${exitFlag}`,
+          );
           await this.platformManagerService
             .getPlatformService(platform)
             .exitPosition(tradePosition);
@@ -134,6 +137,77 @@ export class TradeManagerService implements OnApplicationBootstrap {
     }
 
     return nrOfOpenPositions;
+  }
+
+  /**
+   * Determines whether a position should be closed based on various conditions
+   * Checks traditional conditions first (cheaper to evaluate), then AI if needed
+   * @param tradePosition - The trade position to evaluate
+   * @param currentPrice - Current price (if available)
+   * @returns Promise<boolean> - Whether the position should be closed
+   */
+  private async shouldClosePosition(
+    tradePosition: TradePositionDocument,
+    currentPrice: number,
+  ): Promise<boolean> {
+    const { token } = tradePosition;
+
+    if (tradePosition.exitFlag) {
+      this.logger.log(
+        `Closing position for ${tradePosition.token}: exitFlag is set`,
+      );
+      return true;
+    }
+
+    const stopLossPrice = tradePosition.stopLossPrice ?? -1;
+    const takeProfitPrice = tradePosition.takeProfitPrice ?? Number.MAX_VALUE;
+
+    if (
+      currentPrice &&
+      (currentPrice < stopLossPrice || currentPrice > takeProfitPrice)
+    ) {
+      this.logger.log(
+        `Closing position for ${token}: stop loss/take profit triggered (current: ${currentPrice}, stop loss: ${stopLossPrice}, take profit: ${takeProfitPrice})`,
+      );
+      return true;
+    }
+
+    try {
+      const enabledPlatforms =
+        this.platformManagerService.getEnabledPlatforms();
+      if (!enabledPlatforms.includes(tradePosition.platform)) {
+        this.logger.debug(
+          `Skipping AI evaluation for ${token}: platform ${tradePosition.platform} not enabled`,
+        );
+        return false;
+      }
+
+      const exitDecisions =
+        await this.platformManagerService.evaluateExitDecision(tradePosition);
+
+      if (exitDecisions.length > 0 && exitDecisions[0].decision.shouldExit) {
+        const decision = exitDecisions[0].decision;
+        if (decision.reason === 'Error during evaluation') {
+          this.logger.warn(
+            `Ignoring AI exit recommendation for ${tradePosition.token}: based on evaluation error`,
+          );
+          return false;
+        }
+
+        this.logger.log(
+          `AI recommends exiting position for ${tradePosition.tokenMint} on ${tradePosition.platform}: ${decision.reason} (confidence: ${decision.confidence}, urgency: ${decision.urgency})`,
+        );
+        return true;
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to evaluate AI exit decision for position ${tradePosition.tokenMint}:`,
+        error,
+      );
+      // Continue without AI recommendation if it fails
+    }
+
+    return false;
   }
 
   private async enterPosition(opportunity: TradingOpportunity): Promise<void> {
@@ -239,96 +313,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
         entryPrice: 0,
       };
     }
-  }
-
-  /**
-   * Determines whether a position should be closed based on various conditions
-   * Checks traditional conditions first (cheaper to evaluate), then AI if needed
-   * @param tradePosition - The trade position to evaluate
-   * @param currentPrice - Current price (if available)
-   * @returns Promise<boolean> - Whether the position should be closed
-   */
-  private async shouldClosePosition(
-    tradePosition: TradePositionDocument,
-    currentPrice: number,
-  ): Promise<boolean> {
-    if (settings.closeAllPositions) {
-      this.logger.log(
-        `Closing position for ${tradePosition.token}: closeAllPositions setting enabled`,
-      );
-      return true;
-    }
-
-    if (tradePosition.exitFlag) {
-      this.logger.log(
-        `Closing position for ${tradePosition.token}: exitFlag is set`,
-      );
-      return true;
-    }
-
-    const stopLossPrice = tradePosition.stopLossPrice ?? -1;
-    const takeProfitPrice = tradePosition.takeProfitPrice ?? Number.MAX_VALUE;
-    const currentPrice = price ?? tradePosition.currentPrice ?? 0;
-
-    const timePositionOpened =
-      tradePosition.timeOpened ?? tradePosition.createdAt!;
-
-    if (TimeService.isBeforeNow(timePositionOpened, 24 * 60)) {
-      this.logger.log(
-        `Closing position for ${tradePosition.tokenMint}: position too old (${timePositionOpened})`,
-      );
-      return true;
-    }
-
-    if (
-      currentPrice &&
-      (currentPrice < stopLossPrice || currentPrice > takeProfitPrice)
-    ) {
-      this.logger.log(
-        `Closing position for ${tradePosition.tokenMint}: stop loss/take profit triggered (current: ${currentPrice}, stop loss: ${stopLossPrice}, take profit: ${takeProfitPrice})`,
-      );
-      return true;
-    }
-
-    try {
-      const enabledPlatforms =
-        this.platformManagerService.getEnabledPlatforms();
-      if (!enabledPlatforms.includes(tradePosition.platform)) {
-        this.logger.debug(
-          `Skipping AI evaluation for ${tradePosition.tokenMint}: platform ${tradePosition.platform} not enabled`,
-        );
-        return false;
-      }
-
-      const exitDecisions =
-        await this.platformManagerService.evaluateExitDecisions(
-          [tradePosition],
-          [tradePosition.platform],
-        );
-
-      if (exitDecisions.length > 0 && exitDecisions[0].decision.shouldExit) {
-        const decision = exitDecisions[0].decision;
-        if (decision.reason === 'Error during evaluation') {
-          this.logger.warn(
-            `Ignoring AI exit recommendation for ${tradePosition.token}: based on evaluation error`,
-          );
-          return false;
-        }
-
-        this.logger.log(
-          `AI recommends exiting position for ${tradePosition.tokenMint} on ${tradePosition.platform}: ${decision.reason} (confidence: ${decision.confidence}, urgency: ${decision.urgency})`,
-        );
-        return true;
-      }
-    } catch (error) {
-      this.logger.warn(
-        `Failed to evaluate AI exit decision for position ${tradePosition.tokenMint}:`,
-        error,
-      );
-      // Continue without AI recommendation if it fails
-    }
-
-    return false;
   }
 
   /**

@@ -146,67 +146,15 @@ export class PlatformManagerService extends PlatformManagerPort {
     return opportunities;
   }
 
-  async evaluateExitDecisions(
-    openPositions: TradePositionDocument[],
-    platforms?: Platform[],
-  ): Promise<{ position: TradePositionDocument; decision: ExitDecision }[]> {
-    const targetPlatforms = platforms || this.getEnabledPlatforms();
-    const exitDecisions: {
-      position: TradePositionDocument;
-      decision: ExitDecision;
-    }[] = [];
+  async evaluateExitDecision(
+    position: TradePositionDocument,
+  ): Promise<ExitDecision> {
+    const { platform } = position;
 
-    for (const position of openPositions) {
-      try {
-        if (!targetPlatforms.includes(position.platform)) {
-          continue;
-        }
+    const tradingStrategy = this.getTradingStrategyService(platform);
+    const config = this.getPlatformConfiguration(platform);
 
-        const tradingStrategy = this.getTradingStrategyService(
-          position.platform,
-        );
-        const config = this.getPlatformConfiguration(position.platform);
-
-        const exitDecision = await tradingStrategy.shouldExitPosition(
-          position,
-          config.tradingParams,
-        );
-
-        if (exitDecision.shouldExit) {
-          exitDecisions.push({
-            position,
-            decision: exitDecision,
-          });
-        }
-      } catch (error) {
-        this.logger.error(
-          `Error evaluating exit for position ${position.token}:`,
-          error,
-        );
-
-        exitDecisions.push({
-          position,
-          decision: {
-            shouldExit: true,
-            reason: 'Error during evaluation',
-            confidence: 0.5,
-            urgency: 'medium',
-          },
-        });
-      }
-    }
-
-    // Sort by urgency (high > medium > low) and then by confidence
-    return exitDecisions.sort((a, b) => {
-      const urgencyOrder = { high: 3, medium: 2, low: 1 };
-      const aUrgency = urgencyOrder[a.decision.urgency];
-      const bUrgency = urgencyOrder[b.decision.urgency];
-
-      if (aUrgency !== bUrgency) {
-        return bUrgency - aUrgency;
-      }
-      return b.decision.confidence - a.decision.confidence;
-    });
+    return tradingStrategy.shouldExitPosition(position, config.tradingParams);
   }
 
   getTokenDiscoveryService(platform: Platform): PlatformTokenDiscoveryPort {

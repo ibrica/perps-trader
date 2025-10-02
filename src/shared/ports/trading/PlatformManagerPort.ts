@@ -38,10 +38,10 @@ export abstract class PlatformManagerPort {
     platforms?: Platform[],
   ): Promise<TradingOpportunity[]>;
 
-  abstract evaluateExitDecisions(
-    openPositions: TradePositionDocument[],
+  abstract evaluateExitDecision(
+    position: TradePositionDocument,
     platforms?: Platform[],
-  ): Promise<{ position: TradePositionDocument; decision: ExitDecision }[]>;
+  ): Promise<ExitDecision>;
 
   abstract getTokenDiscoveryService(
     platform: Platform,
