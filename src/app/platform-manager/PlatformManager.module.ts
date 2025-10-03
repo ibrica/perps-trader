@@ -3,6 +3,7 @@ import { PlatformManagerService } from './PlatformManagerService';
 import { HyperliquidTokenDiscoveryService } from '../hyperliquid/HyperliquidTokenDiscovery.service';
 import { HyperliquidTradingStrategyService } from '../hyperliquid/HyperliquidTradingStrategy.service';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
+import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/HyperliquidWebSocket.service';
 import { HyperliquidModule } from '../hyperliquid/Hyperliquid.module';
 import { TradePositionModule } from '../trade-position/TradePosition.module';
 import { PerpModule } from '../perps/Perp.module';
@@ -28,12 +29,14 @@ import { HyperliquidPlatformService } from '../hyperliquid/HyperliquidPlatform.s
         hyperliquidTokenDiscovery: HyperliquidTokenDiscoveryService,
         hyperliquidTradingStrategy: HyperliquidTradingStrategyService,
         hyperliquidPlatformService: HyperliquidPlatformService,
+        hyperliquidWebSocketService: HyperliquidWebSocketService,
       ): boolean => {
-        // Register only Hyperliquid platform
+        // Register Hyperliquid platform with WebSocket support
         platformManager.registerPlatform(
           hyperliquidTokenDiscovery,
           hyperliquidTradingStrategy,
           hyperliquidPlatformService,
+          hyperliquidWebSocketService,
         );
 
         return true;
@@ -43,6 +46,7 @@ import { HyperliquidPlatformService } from '../hyperliquid/HyperliquidPlatform.s
         HyperliquidTokenDiscoveryService,
         HyperliquidTradingStrategyService,
         HyperliquidPlatformService,
+        HyperliquidWebSocketService,
       ],
     },
   ],

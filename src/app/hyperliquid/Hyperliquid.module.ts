@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
+import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/HyperliquidWebSocket.service';
 import { HyperliquidTradingStrategyService } from './HyperliquidTradingStrategy.service';
 import { HyperliquidTokenDiscoveryService } from './HyperliquidTokenDiscovery.service';
 import { HyperliquidSignatureAdapter } from '../../infrastructure/hyperliquid/HyperliquidSignatureAdapter';
@@ -82,6 +83,7 @@ import { CryptoJsService } from '../../infrastructure';
 
     // Main service
     HyperliquidService,
+    HyperliquidWebSocketService,
 
     // Platform services
     HyperliquidTradingStrategyService,
@@ -89,6 +91,7 @@ import { CryptoJsService } from '../../infrastructure';
   ],
   exports: [
     HyperliquidService,
+    HyperliquidWebSocketService,
     HyperliquidTradingStrategyService,
     HyperliquidTokenDiscoveryService,
     HyperliquidSignatureAdapter,

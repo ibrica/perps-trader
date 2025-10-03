@@ -17,6 +17,10 @@ import {
 } from '../../shared/ports/trading/PlatformTradingStrategyPort';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { TradePositionService } from '../trade-position/TradePosition.service';
+import {
+  PlatformWebSocketService,
+  OrderFillCallback,
+} from '../../infrastructure/websocket/PlatformWebSocket';
 
 @Injectable()
 export class PlatformManagerService extends PlatformManagerPort {
@@ -32,6 +36,7 @@ export class PlatformManagerService extends PlatformManagerPort {
   >();
   private platformServices = new Map<Platform, BasePlatformService>();
   private platformConfigurations = new Map<Platform, PlatformConfiguration>();
+  private webSocketServices = new Map<Platform, PlatformWebSocketService>();
 
   constructor(private readonly tradePositionService: TradePositionService) {
     super();
@@ -62,6 +67,7 @@ export class PlatformManagerService extends PlatformManagerPort {
     tokenDiscovery: PlatformTokenDiscoveryPort,
     tradingStrategy: PlatformTradingStrategyPort,
     platformService: BasePlatformService,
+    webSocketService?: PlatformWebSocketService,
   ): void {
     const platform = tokenDiscovery.platform;
 
@@ -76,6 +82,11 @@ export class PlatformManagerService extends PlatformManagerPort {
     this.tradingStrategyServices.set(platform, tradingStrategy);
 
     this.platformServices.set(platform, platformService);
+
+    if (webSocketService) {
+      this.webSocketServices.set(platform, webSocketService);
+      this.logger.log(`Registered WebSocket service for platform: ${platform}`);
+    }
 
     this.logger.log(`Registered platform: ${platform}`);
   }
@@ -205,5 +216,38 @@ export class PlatformManagerService extends PlatformManagerPort {
       `Updated configuration for platform ${platform}:`,
       updatedConfig,
     );
+  }
+
+  /**
+   * Register a callback for order fills across all platforms
+   */
+  registerOrderFillCallback(callback: OrderFillCallback): void {
+    for (const [platform, wsService] of this.webSocketServices.entries()) {
+      wsService.onOrderFill(callback);
+      this.logger.log(
+        `Registered order fill callback for platform: ${platform}`,
+      );
+    }
+  }
+
+  /**
+   * Get WebSocket service for a specific platform
+   */
+  getWebSocketService(
+    platform: Platform,
+  ): PlatformWebSocketService | undefined {
+    return this.webSocketServices.get(platform);
+  }
+
+  /**
+   * Check if any platform has an active WebSocket connection
+   */
+  hasActiveWebSockets(): boolean {
+    for (const wsService of this.webSocketServices.values()) {
+      if (wsService.isConnected()) {
+        return true;
+      }
+    }
+    return false;
   }
 }
