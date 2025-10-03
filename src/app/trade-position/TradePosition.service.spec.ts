@@ -46,7 +46,7 @@ describe('TradePositionService', () => {
   describe('createTradePosition', () => {
     const mockCreateOptions: CreateTradePositionOptions = {
       platform: Platform.HYPERLIQUID,
-      status: TradePositionStatus.PLAN,
+      status: TradePositionStatus.CREATED,
       token: 'tokenAddress',
       currency: 'currencyAddress',
       amountIn: 1000000n,
@@ -54,12 +54,12 @@ describe('TradePositionService', () => {
       timeOpened: new Date('2024-03-20T10:00:00Z'),
     };
 
-    it('should create a trade position with PLAN status', async () => {
+    it('should create a trade position with CREATED status', async () => {
       const result = await service.createTradePosition(mockCreateOptions);
 
       expect(result).toBeDefined();
       expect(result.platform).toBe(mockCreateOptions.platform);
-      expect(result.status).toBe(TradePositionStatus.PLAN);
+      expect(result.status).toBe(TradePositionStatus.CREATED);
       expect(result.token).toBe(mockCreateOptions.token);
       expect(result.currency).toBe(mockCreateOptions.currency);
       expect(result.amountIn).toBe(mockCreateOptions.amountIn);
@@ -74,7 +74,7 @@ describe('TradePositionService', () => {
     beforeEach(async () => {
       const createOptions: CreateTradePositionOptions = {
         platform: Platform.HYPERLIQUID,
-        status: TradePositionStatus.PLAN,
+        status: TradePositionStatus.CREATED,
         token: 'tokenAddress',
         currency: 'currencyAddress',
         amountIn: 1000000n,
