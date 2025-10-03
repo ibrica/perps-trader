@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import {
   BasePlatformService,
   PositionDirection,
-  PositionExecutionResult,
+  TradeOrderResult,
   PositionExecutionStatus,
 } from '../../shared';
 import { EnterPositionOptions, Platform, TradeType } from '../../shared';
@@ -19,7 +19,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
   async enterPosition(
     options: EnterPositionOptions,
-  ): Promise<PositionExecutionResult> {
+  ): Promise<TradeOrderResult> {
     const { platform, tradeType, currency, token, amountIn } = options;
 
     this.logger.log(`Executing Hyperliquid trade`, {
@@ -83,7 +83,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
   async exitPosition(
     tradePosition: TradePositionDocument,
-  ): Promise<PositionExecutionResult> {
+  ): Promise<TradeOrderResult> {
     try {
       const { token, platform, positionDirection } = tradePosition;
 

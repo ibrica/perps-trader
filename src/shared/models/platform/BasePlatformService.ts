@@ -2,7 +2,7 @@ import { TradePositionDocument } from '../../../app/trade-position/TradePosition
 import { EnterPositionOptions } from './EnterPositionOptions';
 import { PositionExecutionStatus } from '../trade-position';
 
-export interface PositionExecutionResult {
+export interface TradeOrderResult {
   orderId: string;
   status: PositionExecutionStatus;
   message?: string;
@@ -11,9 +11,9 @@ export interface PositionExecutionResult {
 export abstract class BasePlatformService {
   abstract enterPosition(
     options: EnterPositionOptions,
-  ): Promise<PositionExecutionResult>;
+  ): Promise<TradeOrderResult>;
 
   abstract exitPosition(
     tradePosition: TradePositionDocument,
-  ): Promise<PositionExecutionResult>;
+  ): Promise<TradeOrderResult>;
 }

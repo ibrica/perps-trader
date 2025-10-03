@@ -6,11 +6,13 @@ import { PlatformManagerModule } from '../platform-manager/PlatformManager.modul
 import { PerpModule } from '../perps/Perp.module';
 import { SettingsModule } from '../settings/Settings.module';
 import { IndexerModule } from '../indexer/Indexer.module';
+import { TradeOrderModule } from '../trade-order/TradeOrder.module';
 
 @Global()
 @Module({
   imports: [
     TradePositionModule,
+    TradeOrderModule,
     PredictorModule,
     PlatformManagerModule,
     PerpModule,

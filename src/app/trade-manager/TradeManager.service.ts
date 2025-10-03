@@ -11,6 +11,7 @@ import {
   CreateTradePositionOptions,
   MAX_TOTAL_POSITIONS,
   PositionExecutionStatus,
+  TradeOrderStatus,
 } from '../../shared';
 import { IndexerAdapter } from '../../infrastructure';
 import { TradePositionService } from '../trade-position/TradePosition.service';
@@ -18,6 +19,7 @@ import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { PlatformManagerService } from '../platform-manager/PlatformManagerService';
 import { PerpService } from '../perps/Perp.service';
 import { SettingsService } from '../settings/Settings.service';
+import { TradeOrderService } from '../trade-order/TradeOrder.service';
 
 @Injectable()
 export class TradeManagerService implements OnApplicationBootstrap {
@@ -25,6 +27,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
   constructor(
     private tradePositionService: TradePositionService,
+    private tradeOrderService: TradeOrderService,
     private indexerAdapter: IndexerAdapter,
     private platformManagerService: PlatformManagerService,
     private perpService: PerpService,
@@ -240,7 +243,16 @@ export class TradeManagerService implements OnApplicationBootstrap {
       tradingDecision,
     );
 
-    await this.tradePositionService.createTradePosition(tradePositionData);
+    const tradePosition =
+      await this.tradePositionService.createTradePosition(tradePositionData);
+
+    await this.tradeOrderService.createTradeOrder({
+      status: TradeOrderStatus.CREATED,
+      position: String(tradePosition._id),
+      type: tradeType,
+      orderId: result.orderId,
+      size: Number(tradingDecision.recommendedAmount),
+    });
 
     if (tradeType === TradeType.PERPETUAL) {
       try {
