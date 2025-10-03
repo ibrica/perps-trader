@@ -1,26 +1,5 @@
 import { Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-
-export interface OrderFill {
-  orderId: string;
-  coin: string;
-  side: string;
-  size: string;
-  price: string;
-  fee: string;
-  timestamp: number;
-  closedPnl?: string;
-}
-
-export interface OrderUpdate {
-  orderId: string;
-  coin: string;
-  side: string;
-  limitPrice: string;
-  size: string;
-  timestamp: number;
-  originalSize: string;
-  clientOrderId?: string;
-}
+import { OrderFill, OrderUpdate } from './types';
 
 export type OrderFillCallback = (fill: OrderFill) => void | Promise<void>;
 export type OrderUpdateCallback = (order: OrderUpdate) => void | Promise<void>;

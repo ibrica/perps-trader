@@ -2,51 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import WebSocket from 'ws';
 import { HyperliquidSignatureAdapter } from './HyperliquidSignatureAdapter';
-import {
-  PlatformWebSocketService,
-  OrderFill,
-  OrderUpdate,
-} from '../websocket/PlatformWebSocket';
-
-export interface WsFill {
-  coin: string;
-  px: string;
-  sz: string;
-  side: string;
-  time: number;
-  oid: number;
-  fee: string;
-  closedPnl?: string;
-  isSnapshot?: boolean;
-}
-
-export interface WsUserFillsMessage {
-  channel: 'userFills';
-  data: {
-    isSnapshot: boolean;
-    user: string;
-    fills: WsFill[];
-  };
-}
-
-export interface WsOrder {
-  coin: string;
-  side: string;
-  limitPx: string;
-  sz: string;
-  oid: number;
-  timestamp: number;
-  origSz: string;
-  cloid?: string;
-}
-
-export interface WsOrderUpdatesMessage {
-  channel: 'orderUpdates';
-  data: {
-    user: string;
-    orders: WsOrder[];
-  };
-}
+import { PlatformWebSocketService, OrderFill, OrderUpdate } from '../websocket';
+import { WsUserFillsMessage, WsOrderUpdatesMessage } from '../../shared';
 
 @Injectable()
 export class HyperliquidWebSocketService extends PlatformWebSocketService {
