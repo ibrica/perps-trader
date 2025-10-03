@@ -7,7 +7,6 @@ import {
   type AllMids,
   type L2Book,
   type Order,
-  type Tif,
   type FundingHistory,
 } from 'hyperliquid';
 import {
@@ -22,6 +21,7 @@ import {
   HLPosition,
   PositionDirection,
   TradeOrderResult,
+  TradeOrderStatus,
 } from '../../shared';
 
 @Injectable()
@@ -205,6 +205,7 @@ export class HyperliquidService {
         );
       }
 
+      const tif = params.tif || 'Gtc';
       const order: Order = {
         coin: mappedSymbol,
         is_buy: params.direction === PositionDirection.LONG,
@@ -212,7 +213,7 @@ export class HyperliquidService {
         limit_px: (params.price || markPrice).toString(),
         order_type: {
           limit: {
-            tif: (params.tif as Tif) || 'Gtc',
+            tif: tif,
           },
         },
         reduce_only: params.reduceOnly || false,
@@ -241,7 +242,13 @@ export class HyperliquidService {
         price: params.price || markPrice,
       });
 
-      return orderId.toString();
+      return {
+        orderId: String(orderId),
+        status: TradeOrderStatus.CREATED,
+        size: preciseSize,
+        price: markPrice, // TODO: check in the future, price and fee
+        type: String(tif),
+      };
     } catch (error) {
       this.logger.error('Failed to place perp order', error);
       throw error;

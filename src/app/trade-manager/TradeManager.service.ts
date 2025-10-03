@@ -10,7 +10,6 @@ import {
   TradingDecision,
   CreateTradePositionOptions,
   MAX_TOTAL_POSITIONS,
-  PositionExecutionStatus,
   TradeOrderStatus,
 } from '../../shared';
 import { IndexerAdapter } from '../../infrastructure';
@@ -94,10 +93,10 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
       try {
         await this.enterPosition(opportunity);
-        remainingSlots--;
+        remainingSlots--; // TODO: check if the order is executed
       } catch (error) {
         this.logger.error(
-          `Failed to execute trading opportunity for ${opportunity.token} on ${opportunity.platform}:`,
+          `Failed to submit trade order for ${opportunity.token} on ${opportunity.platform}:`,
           error,
         );
       }
@@ -129,10 +128,8 @@ export class TradeManagerService implements OnApplicationBootstrap {
           this.logger.log(
             `Closing position for ${token} on ${platform}, flags; closeAllPositions:  ${settings.closeAllPositions}, exitFlag: ${exitFlag}`,
           );
-          await this.platformManagerService
-            .getPlatformService(platform)
-            .exitPosition(tradePosition);
-          nrOfOpenPositions--;
+          await this.exitPosition(tradePosition);
+          nrOfOpenPositions--; // TODO: check if the order is executed
         } catch (error) {
           this.logger.error(`Failed to close position: ${error}`);
         }
@@ -228,8 +225,10 @@ export class TradeManagerService implements OnApplicationBootstrap {
       tradeType,
     });
 
+    const { status, orderId, type, size, price } = result;
+
     // TODO: pending state handling
-    if (result.status !== PositionExecutionStatus.SUCCESS) {
+    if (status !== TradeOrderStatus.CREATED) {
       this.logger.error(
         `Failed to execute trading opportunity for ${token} on ${platform}:`,
         result,
@@ -247,11 +246,12 @@ export class TradeManagerService implements OnApplicationBootstrap {
       await this.tradePositionService.createTradePosition(tradePositionData);
 
     await this.tradeOrderService.createTradeOrder({
-      status: TradeOrderStatus.CREATED,
+      status,
       position: String(tradePosition._id),
-      type: tradeType,
-      orderId: result.orderId,
-      size: Number(tradingDecision.recommendedAmount),
+      type,
+      orderId,
+      size,
+      price,
     });
 
     if (tradeType === TradeType.PERPETUAL) {
@@ -279,14 +279,25 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     const result = await platformService.exitPosition(position);
 
+    const { status, orderId, type, size, price } = result;
+
     // TODO: pending state handling
-    if (result.status !== PositionExecutionStatus.SUCCESS) {
+    if (status !== TradeOrderStatus.CREATED) {
       this.logger.error(
-        `Failed to execute closing position for ${token} on ${platform}:`,
+        `Failed to execute closing position orderfor ${token} on ${platform}:`,
         result,
       );
-      return;
+      throw new Error('Failed to close position');
     }
+
+    await this.tradeOrderService.createTradeOrder({
+      status,
+      position: String(position._id),
+      type,
+      orderId,
+      size,
+      price,
+    });
 
     this.logger.log(`Successfully closed position: ${token} on ${platform}`);
   }
