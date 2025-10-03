@@ -1,0 +1,7 @@
+export enum TradeOrderStatus {
+  CREATED = 'CREATED',
+  PENDING = 'PENDING',
+  COMPLETED = 'COMPLETED',
+  FAILED = 'FAILED',
+  CANCELLED = 'CANCELLED',
+}

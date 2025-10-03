@@ -14,3 +14,4 @@ export * from './PositionType';
 export * from './hyperliquid';
 export * from './Currency';
 export * from './trade';
+export * from './TradeOrderStatus';
