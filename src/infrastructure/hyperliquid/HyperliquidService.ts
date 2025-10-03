@@ -21,6 +21,7 @@ import {
   HLOrderResponse,
   HLPosition,
   PositionDirection,
+  TradeOrderResult,
 } from '../../shared';
 
 @Injectable()
@@ -131,7 +132,9 @@ export class HyperliquidService {
   /**
    * Place a perpetual order
    */
-  async placePerpOrder(params: PlacePerpOrderParams): Promise<string> {
+  async placePerpOrder(
+    params: PlacePerpOrderParams,
+  ): Promise<TradeOrderResult> {
     try {
       const mappedSymbol = this.mapSymbolToHL(params.symbol);
       const market = await this.getMarket(mappedSymbol);
