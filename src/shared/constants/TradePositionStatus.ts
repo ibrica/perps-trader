@@ -1,5 +1,5 @@
 export enum TradePositionStatus {
-  PLAN = 'PLAN',
+  CREATED = 'CREATED',
   OPEN = 'OPEN',
   CLOSED = 'CLOSED',
 }

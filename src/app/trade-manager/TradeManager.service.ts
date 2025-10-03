@@ -257,6 +257,28 @@ export class TradeManagerService implements OnApplicationBootstrap {
     }
   }
 
+  private async exitPosition(position: TradePositionDocument): Promise<void> {
+    const { platform, token } = position;
+
+    this.logger.log(`Closing position: ${token} on ${platform}`);
+
+    const platformService =
+      this.platformManagerService.getPlatformService(platform);
+
+    const result = await platformService.exitPosition(position);
+
+    // TODO: pending state handling
+    if (result.status !== PositionExecutionStatus.SUCCESS) {
+      this.logger.error(
+        `Failed to execute closing position for ${token} on ${platform}:`,
+        result,
+      );
+      return;
+    }
+
+    this.logger.log(`Successfully closed position: ${token} on ${platform}`);
+  }
+
   private getTradeTypeForPlatform(platform: Platform): TradeType {
     switch (platform) {
       case Platform.HYPERLIQUID:

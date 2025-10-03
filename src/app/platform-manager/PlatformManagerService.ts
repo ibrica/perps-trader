@@ -45,7 +45,7 @@ export class PlatformManagerService extends PlatformManagerPort {
         enabled: true,
         tradingParams: {
           maxOpenPositions: 3,
-          defaultAmountIn: 100000000n, // 100 USDC
+          defaultAmountIn: 100_000_000n, // 100 USDC
           stopLossPercent: 15,
           takeProfitPercent: 25,
         },
