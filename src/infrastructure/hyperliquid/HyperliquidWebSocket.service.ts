@@ -20,13 +20,7 @@ export class HyperliquidWebSocketService extends PlatformWebSocketService {
     private readonly signatureAdapter: HyperliquidSignatureAdapter,
   ) {
     super();
-    const isTestnet = this.configService.get<boolean>(
-      'hyperliquid.testnet',
-      false,
-    );
-    this.wsUrl = isTestnet
-      ? 'wss://api.hyperliquid-testnet.xyz/ws'
-      : 'wss://api.hyperliquid.xyz/ws';
+    this.wsUrl = this.configService.get<string>('hyperliquid.wsUrl');
   }
 
   async connect(): Promise<void> {

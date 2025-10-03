@@ -12,14 +12,13 @@ import {
   MAX_TOTAL_POSITIONS,
   TradeOrderStatus,
 } from '../../shared';
-import { IndexerAdapter } from '../../infrastructure';
+import { IndexerAdapter, OrderFill } from '../../infrastructure';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { PlatformManagerService } from '../platform-manager/PlatformManagerService';
 import { PerpService } from '../perps/Perp.service';
 import { SettingsService } from '../settings/Settings.service';
 import { TradeOrderService } from '../trade-order/TradeOrder.service';
-import { OrderFill } from '../../infrastructure/websocket/PlatformWebSocket';
 
 @Injectable()
 export class TradeManagerService implements OnApplicationBootstrap {

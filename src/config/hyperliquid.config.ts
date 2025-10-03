@@ -9,6 +9,7 @@ export const hyperliquidConfig = registerAs('hyperliquid', () => ({
 
   // API endpoints
   apiUrl: process.env.HL_API_URL || 'https://api.hyperliquid-testnet.xyz',
+  wsUrl: process.env.HL_WS_URL || 'wss://api.hyperliquid-testnet.xyz/ws',
   infoUrl:
     process.env.HL_INFO_URL ||
     process.env.HL_API_URL ||
