@@ -64,7 +64,11 @@ describe('PlatformManagerService', () => {
   describe('registerPlatform', () => {
     it('should register platform when token discovery and trading strategy have same platform', () => {
       expect(() => {
-        service.registerPlatform(mockTokenDiscovery, mockTradingStrategy, mockPlatformService);
+        service.registerPlatform(
+          mockTokenDiscovery,
+          mockTradingStrategy,
+          mockPlatformService,
+        );
       }).not.toThrow();
 
       expect(service.getAvailablePlatforms()).toContain(Platform.HYPERLIQUID);
@@ -98,7 +102,11 @@ describe('PlatformManagerService', () => {
     const mockActiveTokens: string[] = ['token1', 'token2'];
 
     beforeEach(() => {
-      service.registerPlatform(mockTokenDiscovery, mockTradingStrategy, mockPlatformService);
+      service.registerPlatform(
+        mockTokenDiscovery,
+        mockTradingStrategy,
+        mockPlatformService,
+      );
       mockTokenDiscovery.getTokensToTrade.mockResolvedValue(mockActiveTokens);
     });
 
@@ -229,7 +237,11 @@ describe('PlatformManagerService', () => {
     } as any;
 
     beforeEach(() => {
-      service.registerPlatform(mockTokenDiscovery, mockTradingStrategy, mockPlatformService);
+      service.registerPlatform(
+        mockTokenDiscovery,
+        mockTradingStrategy,
+        mockPlatformService,
+      );
     });
 
     it('should evaluate exit decision for open position', async () => {
@@ -240,9 +252,7 @@ describe('PlatformManagerService', () => {
         urgency: 'high',
       });
 
-      const exitDecision = await service.evaluateExitDecision(
-        mockOpenPosition,
-      );
+      const exitDecision = await service.evaluateExitDecision(mockOpenPosition);
 
       expect(exitDecision.shouldExit).toBe(true);
       expect(exitDecision.reason).toBe('Stop loss triggered');
@@ -256,9 +266,7 @@ describe('PlatformManagerService', () => {
         urgency: 'low',
       });
 
-      const exitDecision = await service.evaluateExitDecision(
-        mockOpenPosition,
-      );
+      const exitDecision = await service.evaluateExitDecision(mockOpenPosition);
 
       expect(exitDecision.shouldExit).toBe(false);
     });
@@ -271,9 +279,7 @@ describe('PlatformManagerService', () => {
         urgency: 'high',
       });
 
-      const exitDecision = await service.evaluateExitDecision(
-        mockOpenPosition,
-      );
+      const exitDecision = await service.evaluateExitDecision(mockOpenPosition);
 
       expect(exitDecision.shouldExit).toBe(true);
       expect(exitDecision.urgency).toBe('high');
@@ -316,7 +322,11 @@ describe('PlatformManagerService', () => {
 
   describe('getTokenDiscoveryService and getTradingStrategyService', () => {
     beforeEach(() => {
-      service.registerPlatform(mockTokenDiscovery, mockTradingStrategy, mockPlatformService);
+      service.registerPlatform(
+        mockTokenDiscovery,
+        mockTradingStrategy,
+        mockPlatformService,
+      );
     });
 
     it('should return registered services', () => {
