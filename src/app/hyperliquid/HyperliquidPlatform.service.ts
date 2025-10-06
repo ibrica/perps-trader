@@ -3,7 +3,7 @@ import {
   BasePlatformService,
   PositionDirection,
   TradeOrderResult,
-  PositionExecutionStatus,
+  TradeOrderStatus,
 } from '../../shared';
 import { EnterPositionOptions, Platform, TradeType } from '../../shared';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
@@ -111,7 +111,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
       return {
         orderId: '',
-        status: PositionExecutionStatus.FAILED,
+        status: TradeOrderStatus.FAILED,
         message: error instanceof Error ? error.message : 'Unknown error',
       };
     }
@@ -183,7 +183,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
       return {
         orderId: '',
-        status: PositionExecutionStatus.FAILED,
+        status: TradeOrderStatus.FAILED,
         message: error instanceof Error ? error.message : 'Unknown error',
       };
     }
