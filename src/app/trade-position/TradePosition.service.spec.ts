@@ -9,6 +9,7 @@ import {
   MongoDbTestingService,
   createTestingModuleWithProviders,
   forceGC,
+  Currency,
 } from '../../shared';
 import { Types } from 'mongoose';
 import { TradePositionDocument } from './TradePosition.schema';
@@ -47,8 +48,8 @@ describe('TradePositionService', () => {
     const mockCreateOptions: CreateTradePositionOptions = {
       platform: Platform.HYPERLIQUID,
       status: TradePositionStatus.CREATED,
-      token: 'tokenAddress',
-      currency: 'currencyAddress',
+      token: 'BTC',
+      currency: Currency.USDC,
       amountIn: 1000000n,
       entryPrice: 0.005,
       timeOpened: new Date('2024-03-20T10:00:00Z'),
@@ -75,8 +76,8 @@ describe('TradePositionService', () => {
       const createOptions: CreateTradePositionOptions = {
         platform: Platform.HYPERLIQUID,
         status: TradePositionStatus.CREATED,
-        token: 'tokenAddress',
-        currency: 'currencyAddress',
+        token: 'BTC',
+        currency: Currency.USDC,
         amountIn: 1000000n,
         timeOpened: new Date('2024-03-20T10:00:00Z'),
       };
@@ -131,24 +132,24 @@ describe('TradePositionService', () => {
         {
           platform: Platform.HYPERLIQUID,
           status: TradePositionStatus.OPEN,
-          token: 'tokenAddress1',
-          currency: 'currencyAddress1',
+          token: 'BTC',
+          currency: Currency.USDC,
           amountIn: 1000000n,
           timeOpened: new Date('2024-03-20T10:00:00Z'),
         },
         {
           platform: Platform.HYPERLIQUID,
           status: TradePositionStatus.OPEN,
-          token: 'tokenAddress2',
-          currency: 'currencyAddress2',
+          token: 'ETH',
+          currency: Currency.USDC,
           amountIn: 2000000n,
           timeOpened: new Date('2024-03-20T11:00:00Z'),
         },
         {
           platform: Platform.HYPERLIQUID,
           status: TradePositionStatus.CLOSED,
-          token: 'tokenAddress3',
-          currency: 'currencyAddress3',
+          token: 'SOL',
+          currency: Currency.USDC,
           amountIn: 3000000n,
           timeOpened: new Date('2024-03-20T12:00:00Z'),
         },
@@ -182,6 +183,210 @@ describe('TradePositionService', () => {
 
       expect(result).toEqual([]);
       expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('position status transitions', () => {
+    let createdPosition: TradePositionDocument;
+
+    beforeEach(async () => {
+      const createOptions: CreateTradePositionOptions = {
+        platform: Platform.HYPERLIQUID,
+        status: TradePositionStatus.CREATED,
+        token: 'BTC',
+        currency: 'USDC',
+        amountIn: 1000000n,
+      };
+
+      createdPosition = await service.createTradePosition(createOptions);
+    });
+
+    it('should transition from CREATED to OPEN when order is filled', async () => {
+      const updateOptions: UpdateTradePositionOptions = {
+        status: TradePositionStatus.OPEN,
+        timeOpened: new Date(),
+        entryPrice: 50000,
+        currentPrice: 50000,
+      };
+
+      const result = await service.updateTradePosition(
+        String(createdPosition._id),
+        updateOptions,
+      );
+
+      expect(result).toBeDefined();
+      expect(result?.status).toBe(TradePositionStatus.OPEN);
+      expect(result?.timeOpened).toBeDefined();
+      expect(result?.entryPrice).toBe(50000);
+      expect(result?.currentPrice).toBe(50000);
+    });
+
+    it('should transition from OPEN to CLOSED when reduce order is filled', async () => {
+      // First open the position
+      await service.updateTradePosition(String(createdPosition._id), {
+        status: TradePositionStatus.OPEN,
+        timeOpened: new Date(),
+        entryPrice: 50000,
+        currentPrice: 50000,
+      });
+
+      // Then close it
+      const closeTime = new Date();
+      const updateOptions: UpdateTradePositionOptions = {
+        status: TradePositionStatus.CLOSED,
+        timeClosed: closeTime,
+        currentPrice: 52000,
+        realizedPnl: 200,
+      };
+
+      const result = await service.updateTradePosition(
+        String(createdPosition._id),
+        updateOptions,
+      );
+
+      expect(result).toBeDefined();
+      expect(result?.status).toBe(TradePositionStatus.CLOSED);
+      expect(result?.timeClosed).toEqual(closeTime);
+      expect(result?.currentPrice).toBe(52000);
+      expect(result?.realizedPnl).toBe(200);
+    });
+
+    it('should update position with positive PnL', async () => {
+      await service.updateTradePosition(String(createdPosition._id), {
+        status: TradePositionStatus.OPEN,
+        entryPrice: 50000,
+      });
+
+      const result = await service.updateTradePosition(
+        String(createdPosition._id),
+        {
+          status: TradePositionStatus.CLOSED,
+          currentPrice: 55000,
+          realizedPnl: 500, // Profit
+        },
+      );
+
+      expect(result?.realizedPnl).toBe(500);
+      expect(result?.currentPrice).toBeGreaterThan(result?.entryPrice || 0);
+    });
+
+    it('should update position with negative PnL', async () => {
+      await service.updateTradePosition(String(createdPosition._id), {
+        status: TradePositionStatus.OPEN,
+        entryPrice: 50000,
+      });
+
+      const result = await service.updateTradePosition(
+        String(createdPosition._id),
+        {
+          status: TradePositionStatus.CLOSED,
+          currentPrice: 48000,
+          realizedPnl: -200, // Loss
+        },
+      );
+
+      expect(result?.realizedPnl).toBe(-200);
+      expect(result?.currentPrice).toBeLessThan(result?.entryPrice || 0);
+    });
+
+    it('should maintain position data integrity during status transitions', async () => {
+      const entryPrice = 50000;
+      const entryTime = new Date();
+
+      // Open position
+      await service.updateTradePosition(String(createdPosition._id), {
+        status: TradePositionStatus.OPEN,
+        timeOpened: entryTime,
+        entryPrice,
+        currentPrice: entryPrice,
+      });
+
+      // Close position
+      const closeTime = new Date();
+      const result = await service.updateTradePosition(
+        String(createdPosition._id),
+        {
+          status: TradePositionStatus.CLOSED,
+          timeClosed: closeTime,
+          currentPrice: 52000,
+          realizedPnl: 200,
+        },
+      );
+
+      // Verify all data is maintained
+      expect(result?.status).toBe(TradePositionStatus.CLOSED);
+      expect(result?.entryPrice).toBe(entryPrice);
+      expect(result?.timeOpened).toEqual(entryTime);
+      expect(result?.timeClosed).toEqual(closeTime);
+      expect(result?.currentPrice).toBe(52000);
+      expect(result?.realizedPnl).toBe(200);
+    });
+  });
+
+  describe('getTradePositionByToken', () => {
+    beforeEach(async () => {
+      const positions = [
+        {
+          platform: Platform.HYPERLIQUID,
+          status: TradePositionStatus.OPEN,
+          token: 'BTC',
+          currency: 'USDC',
+          amountIn: 1000000n,
+        },
+        {
+          platform: Platform.HYPERLIQUID,
+          status: TradePositionStatus.CLOSED,
+          token: 'BTC',
+          currency: 'USDC',
+          amountIn: 2000000n,
+        },
+        {
+          platform: Platform.HYPERLIQUID,
+          status: TradePositionStatus.OPEN,
+          token: 'ETH',
+          currency: 'USDC',
+          amountIn: 500000n,
+        },
+      ];
+
+      for (const position of positions) {
+        await service.createTradePosition(position);
+      }
+    });
+
+    it('should get position by token without status filter', async () => {
+      const result = await service.getTradePositionByToken('BTC');
+
+      expect(result).toBeDefined();
+      expect(result?.token).toBe('BTC');
+    });
+
+    it('should get open position by token with status filter', async () => {
+      const result = await service.getTradePositionByToken(
+        'BTC',
+        TradePositionStatus.OPEN,
+      );
+
+      expect(result).toBeDefined();
+      expect(result?.token).toBe('BTC');
+      expect(result?.status).toBe(TradePositionStatus.OPEN);
+    });
+
+    it('should get closed position by token with status filter', async () => {
+      const result = await service.getTradePositionByToken(
+        'BTC',
+        TradePositionStatus.CLOSED,
+      );
+
+      expect(result).toBeDefined();
+      expect(result?.token).toBe('BTC');
+      expect(result?.status).toBe(TradePositionStatus.CLOSED);
+    });
+
+    it('should return null for non-existent token', async () => {
+      const result = await service.getTradePositionByToken('DOGE');
+
+      expect(result).toBeNull();
     });
   });
 });

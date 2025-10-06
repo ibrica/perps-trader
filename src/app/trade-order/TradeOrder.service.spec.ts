@@ -8,13 +8,20 @@ import {
   MongoDbTestingService,
   createTestingModuleWithProviders,
   forceGC,
+  Platform,
+  TradePositionStatus,
+  Currency,
+  PositionType,
 } from '../../shared';
 import { Types } from 'mongoose';
 import { TradeOrderDocument } from './TradeOrder.schema';
 import { TradeOrderModule } from './TradeOrder.module';
+import { OrderFill, OrderUpdate } from '../../infrastructure/websocket';
+import { TradePositionService } from '../trade-position/TradePosition.service';
 
 describe('TradeOrderService', () => {
   let service: TradeOrderService;
+  let positionService: TradePositionService;
   let mongoDbTestingService: MongoDbTestingService;
   let module: TestingModule;
 
@@ -24,6 +31,7 @@ describe('TradeOrderService', () => {
     }).compile();
 
     service = module.get(TradeOrderService);
+    positionService = module.get(TradePositionService);
     mongoDbTestingService = await module.resolve(MongoDbTestingService);
   });
 
@@ -262,6 +270,218 @@ describe('TradeOrderService', () => {
         expect(result.fee).toBe(25);
         expect(result.size).toBe(200);
       }
+    });
+  });
+
+  describe('handleOrderFill', () => {
+    let createdOrder: TradeOrderDocument;
+    let positionId: string;
+
+    beforeEach(async () => {
+      // Create a test position
+      const position = await positionService.createTradePosition({
+        platform: Platform.HYPERLIQUID,
+        status: TradePositionStatus.CREATED,
+        positionType: PositionType.PERPETUAL,
+        token: 'BTC',
+        currency: Currency.USDC,
+        amountIn: 1000000n,
+      });
+      positionId = String(position._id);
+
+      // Create a test order
+      const orderOptions: CreateTradeOrderOptions = {
+        status: TradeOrderStatus.CREATED,
+        position: positionId,
+        type: 'MARKET',
+        orderId: 'fill-order-123',
+      };
+      createdOrder = await service.createTradeOrder(orderOptions);
+    });
+
+    it('should handle entry order fill and update order', async () => {
+      const orderFill: OrderFill = {
+        orderId: 'fill-order-123',
+        coin: 'BTC',
+        side: 'B',
+        size: '0.1',
+        price: '50000',
+        fee: '5',
+        timestamp: Date.now(),
+        // No closedPnl means entry order
+      };
+
+      await service.handleOrderFill(orderFill);
+
+      const updatedOrder = await service.getByOrderId('fill-order-123');
+      expect(updatedOrder).toBeDefined();
+      expect(updatedOrder?.coin).toBe('BTC');
+      expect(updatedOrder?.side).toBe('B');
+      expect(updatedOrder?.size).toBe(0.1);
+      expect(updatedOrder?.price).toBe(50000);
+      expect(updatedOrder?.fee).toBe(5);
+      expect(updatedOrder?.timestampFill).toBe(orderFill.timestamp);
+    });
+
+    it('should handle entry order fill and set position to OPEN', async () => {
+      const orderFill: OrderFill = {
+        orderId: 'fill-order-123',
+        coin: 'BTC',
+        side: 'B',
+        size: '0.1',
+        price: '50000',
+        fee: '5',
+        timestamp: Date.now(),
+        // No closedPnl means entry order
+      };
+
+      await service.handleOrderFill(orderFill);
+
+      const position = await positionService.updateTradePosition(positionId, {});
+      expect(position?.status).toBe(TradePositionStatus.OPEN);
+      expect(position?.entryPrice).toBe(50000);
+      expect(position?.currentPrice).toBe(50000);
+      expect(position?.timeOpened).toBeDefined();
+    });
+
+    it('should handle reduce order fill with closedPnl and set position to CLOSED', async () => {
+      const orderFill: OrderFill = {
+        orderId: 'fill-order-123',
+        coin: 'BTC',
+        side: 'S',
+        size: '0.1',
+        price: '52000',
+        fee: '5.2',
+        timestamp: Date.now(),
+        closedPnl: '200', // Has closedPnl means reduce/exit order
+      };
+
+      await service.handleOrderFill(orderFill);
+
+      const position = await positionService.updateTradePosition(positionId, {});
+      expect(position?.status).toBe(TradePositionStatus.CLOSED);
+      expect(position?.realizedPnl).toBe(200);
+      expect(position?.currentPrice).toBe(52000);
+      expect(position?.timeClosed).toBeDefined();
+    });
+
+    it('should handle order fill with zero closedPnl as entry order', async () => {
+      const orderFill: OrderFill = {
+        orderId: 'fill-order-123',
+        coin: 'BTC',
+        side: 'B',
+        size: '0.1',
+        price: '50000',
+        fee: '5',
+        timestamp: Date.now(),
+        closedPnl: '0', // Zero closedPnl should be treated as entry
+      };
+
+      await service.handleOrderFill(orderFill);
+
+      const position = await positionService.updateTradePosition(positionId, {});
+      expect(position?.status).toBe(TradePositionStatus.OPEN);
+      expect(position?.entryPrice).toBe(50000);
+    });
+
+    it('should handle fill for non-existent order gracefully', async () => {
+      const orderFill: OrderFill = {
+        orderId: 'non-existent-order',
+        coin: 'BTC',
+        side: 'B',
+        size: '0.1',
+        price: '50000',
+        fee: '5',
+        timestamp: Date.now(),
+      };
+
+      // Should not throw
+      await expect(service.handleOrderFill(orderFill)).resolves.not.toThrow();
+    });
+  });
+
+  describe('handleOrderUpdate', () => {
+    let createdOrder: TradeOrderDocument;
+    let positionId: string;
+
+    beforeEach(async () => {
+      // Create a test position
+      const position = await positionService.createTradePosition({
+        platform: Platform.HYPERLIQUID,
+        status: TradePositionStatus.CREATED,
+        positionType: PositionType.PERPETUAL,
+        token: 'ETH',
+        currency: Currency.USDC,
+        amountIn: 500000n,
+      });
+      positionId = String(position._id);
+
+      // Create a test order
+      const orderOptions: CreateTradeOrderOptions = {
+        status: TradeOrderStatus.CREATED,
+        position: positionId,
+        type: 'LIMIT',
+        orderId: 'update-order-456',
+      };
+      createdOrder = await service.createTradeOrder(orderOptions);
+    });
+
+    it('should handle order update and update order fields', async () => {
+      const orderUpdate: OrderUpdate = {
+        orderId: 'update-order-456',
+        coin: 'ETH',
+        side: 'B',
+        limitPrice: '3000',
+        size: '1.5',
+        timestamp: Date.now(),
+        originalSize: '2.0',
+        clientOrderId: 'client-123',
+      };
+
+      await service.handleOrderUpdate(orderUpdate);
+
+      const updatedOrder = await service.getByOrderId('update-order-456');
+      expect(updatedOrder).toBeDefined();
+      expect(updatedOrder?.coin).toBe('ETH');
+      expect(updatedOrder?.side).toBe('B');
+      expect(updatedOrder?.limitPrice).toBe(3000);
+      expect(updatedOrder?.size).toBe(1.5);
+      expect(updatedOrder?.timestampUpdate).toBe(orderUpdate.timestamp);
+      expect(updatedOrder?.originalSize).toBe(2.0);
+      expect(updatedOrder?.clientOrderId).toBe('client-123');
+    });
+
+    it('should handle order update with partial fill', async () => {
+      const orderUpdate: OrderUpdate = {
+        orderId: 'update-order-456',
+        coin: 'ETH',
+        side: 'B',
+        limitPrice: '3000',
+        size: '0.5', // Partially filled
+        timestamp: Date.now(),
+        originalSize: '2.0',
+      };
+
+      await service.handleOrderUpdate(orderUpdate);
+
+      const updatedOrder = await service.getByOrderId('update-order-456');
+      expect(updatedOrder?.size).toBe(0.5);
+      expect(updatedOrder?.originalSize).toBe(2.0);
+    });
+
+    it('should handle update for non-existent order gracefully', async () => {
+      const orderUpdate: OrderUpdate = {
+        orderId: 'non-existent-order',
+        coin: 'ETH',
+        side: 'B',
+        limitPrice: '3000',
+        size: '1.5',
+        timestamp: Date.now(),
+        originalSize: '2.0',
+      };
+
+      // Should not throw
+      await expect(service.handleOrderUpdate(orderUpdate)).resolves.not.toThrow();
     });
   });
 });
