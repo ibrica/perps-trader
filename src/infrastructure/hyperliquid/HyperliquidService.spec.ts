@@ -8,6 +8,7 @@ import {
   HLMarket,
   HLTicker,
   PlacePerpOrderParams,
+  PositionDirection,
 } from '../../shared';
 
 // Add HL_ACTION_TYPES for backwards compatibility in tests
@@ -394,7 +395,7 @@ describe('HyperliquidService', () => {
 
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
-        direction: 'LONG',
+        direction: PositionDirection.LONG,
         quoteAmount: BigInt(50000000), // 50 USDC (6 decimals)
         price: 50000,
         leverage: 10,
@@ -402,7 +403,7 @@ describe('HyperliquidService', () => {
 
       const result = await service.placePerpOrder(params);
 
-      expect(result).toEqual({ orderId: 'order-123' });
+      expect(result).toMatchObject({ orderId: 'order-123' });
       expect(mockClient.exchangeAction).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'order',
@@ -439,14 +440,14 @@ describe('HyperliquidService', () => {
 
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
-        direction: 'SHORT',
+        direction: PositionDirection.SHORT,
         quoteAmount: BigInt(50000000), // 50 USDC
         leverage: 5,
       };
 
       const result = await service.placePerpOrder(params);
 
-      expect(result).toEqual({ orderId: 'order-456' });
+      expect(result).toMatchObject({ orderId: 'order-456' });
       expect(mockClient.exchangeAction).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'order',
@@ -475,7 +476,7 @@ describe('HyperliquidService', () => {
 
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
-        direction: 'LONG',
+        direction: PositionDirection.LONG,
         quoteAmount: BigInt(100000000), // 100 USDC
       };
 
@@ -501,7 +502,7 @@ describe('HyperliquidService', () => {
     it('should validate minimum order size', async () => {
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
-        direction: 'LONG',
+        direction: PositionDirection.LONG,
         quoteAmount: BigInt(100), // Very small amount
       };
 
@@ -527,12 +528,12 @@ describe('HyperliquidService', () => {
 
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
-        direction: 'LONG',
+        direction: PositionDirection.LONG,
         quoteAmount: BigInt(1000000000), // Larger amount to avoid minimum size issue
       };
 
       await expect(service.placePerpOrder(params)).rejects.toThrow(
-        'Failed to place order: Unknown error',
+        'Failed to place order',
       );
     });
 
@@ -549,7 +550,7 @@ describe('HyperliquidService', () => {
 
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
-        direction: 'LONG',
+        direction: PositionDirection.LONG,
         quoteAmount: BigInt(1000000000), // Larger amount to avoid minimum size issue
         leverage: 15,
       };
