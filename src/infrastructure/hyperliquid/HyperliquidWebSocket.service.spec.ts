@@ -3,7 +3,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { HyperliquidWebSocketService } from './HyperliquidWebSocket.service';
 import { HyperliquidSignatureAdapter } from './HyperliquidSignatureAdapter';
-import { OrderFill, OrderUpdate } from '../websocket';
 
 // Mock WebSocket
 const mockWebSocketInstance = {
