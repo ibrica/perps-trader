@@ -274,7 +274,6 @@ describe('TradeOrderService', () => {
   });
 
   describe('handleOrderFill', () => {
-    let createdOrder: TradeOrderDocument;
     let positionId: string;
 
     beforeEach(async () => {
@@ -296,7 +295,7 @@ describe('TradeOrderService', () => {
         type: 'MARKET',
         orderId: 'fill-order-123',
       };
-      createdOrder = await service.createTradeOrder(orderOptions);
+      await service.createTradeOrder(orderOptions);
     });
 
     it('should handle entry order fill and update order', async () => {
@@ -337,7 +336,10 @@ describe('TradeOrderService', () => {
 
       await service.handleOrderFill(orderFill);
 
-      const position = await positionService.updateTradePosition(positionId, {});
+      const position = await positionService.updateTradePosition(
+        positionId,
+        {},
+      );
       expect(position?.status).toBe(TradePositionStatus.OPEN);
       expect(position?.entryPrice).toBe(50000);
       expect(position?.currentPrice).toBe(50000);
@@ -358,7 +360,10 @@ describe('TradeOrderService', () => {
 
       await service.handleOrderFill(orderFill);
 
-      const position = await positionService.updateTradePosition(positionId, {});
+      const position = await positionService.updateTradePosition(
+        positionId,
+        {},
+      );
       expect(position?.status).toBe(TradePositionStatus.CLOSED);
       expect(position?.realizedPnl).toBe(200);
       expect(position?.currentPrice).toBe(52000);
@@ -379,7 +384,10 @@ describe('TradeOrderService', () => {
 
       await service.handleOrderFill(orderFill);
 
-      const position = await positionService.updateTradePosition(positionId, {});
+      const position = await positionService.updateTradePosition(
+        positionId,
+        {},
+      );
       expect(position?.status).toBe(TradePositionStatus.OPEN);
       expect(position?.entryPrice).toBe(50000);
     });
@@ -401,7 +409,6 @@ describe('TradeOrderService', () => {
   });
 
   describe('handleOrderUpdate', () => {
-    let createdOrder: TradeOrderDocument;
     let positionId: string;
 
     beforeEach(async () => {
@@ -423,7 +430,7 @@ describe('TradeOrderService', () => {
         type: 'LIMIT',
         orderId: 'update-order-456',
       };
-      createdOrder = await service.createTradeOrder(orderOptions);
+      await service.createTradeOrder(orderOptions);
     });
 
     it('should handle order update and update order fields', async () => {
@@ -481,7 +488,9 @@ describe('TradeOrderService', () => {
       };
 
       // Should not throw
-      await expect(service.handleOrderUpdate(orderUpdate)).resolves.not.toThrow();
+      await expect(
+        service.handleOrderUpdate(orderUpdate),
+      ).resolves.not.toThrow();
     });
   });
 });

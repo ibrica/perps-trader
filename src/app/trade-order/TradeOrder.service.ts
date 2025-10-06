@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { TradeOrderDocument } from './TradeOrder.schema';
-import { CreateTradeOrderOptions, UpdateTradeOrderOptions, TradePositionStatus } from '../../shared';
+import {
+  CreateTradeOrderOptions,
+  UpdateTradeOrderOptions,
+  TradePositionStatus,
+} from '../../shared';
 import { TradeOrderRepository } from './TradeOrder.repository';
 import { OrderFill, OrderUpdate } from '../../infrastructure/websocket';
 import { TradePositionService } from '../trade-position/TradePosition.service';
@@ -90,15 +94,18 @@ export class TradeOrderService {
     fill: OrderFill,
   ): Promise<void> {
     try {
-      const positionId = typeof order.position === 'string'
-        ? order.position
-        : String(order.position._id);
+      const positionId =
+        typeof order.position === 'string'
+          ? order.position
+          : String(order.position._id);
 
       const closedPnl = fill.closedPnl ? parseFloat(fill.closedPnl) : 0;
 
       // If there's closedPnl, this is a reduce/exit order
       if (closedPnl !== 0) {
-        this.logger.log(`Order ${fill.orderId} is a reduce order (closedPnl: ${closedPnl}), closing position ${positionId}`);
+        this.logger.log(
+          `Order ${fill.orderId} is a reduce order (closedPnl: ${closedPnl}), closing position ${positionId}`,
+        );
 
         await this.tradePositionService.updateTradePosition(positionId, {
           status: TradePositionStatus.CLOSED,
@@ -108,7 +115,9 @@ export class TradeOrderService {
         });
       } else {
         // No closedPnl means this is an entry order
-        this.logger.log(`Order ${fill.orderId} is an entry order, opening position ${positionId}`);
+        this.logger.log(
+          `Order ${fill.orderId} is an entry order, opening position ${positionId}`,
+        );
 
         await this.tradePositionService.updateTradePosition(positionId, {
           status: TradePositionStatus.OPEN,
