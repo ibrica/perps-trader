@@ -17,15 +17,11 @@ jest.mock('ws', () => {
   MockWebSocket.OPEN = 1;
   MockWebSocket.CLOSED = 3;
   MockWebSocket.CONNECTING = 0;
-  return {
-    __esModule: true,
-    default: MockWebSocket,
-    WebSocket: MockWebSocket,
-  };
+  return MockWebSocket;
 });
 
 // Get the mocked WebSocket constructor
-import WebSocket from 'ws';
+import * as WebSocket from 'ws';
 const MockWebSocket = WebSocket as any;
 
 // WebSocket state constants
@@ -608,7 +604,11 @@ describe('HyperliquidWebSocketService', () => {
 
       const messageHandler = mockWebSocketInstance.on.mock.calls.find(
         (call) => call[0] === 'message',
-      )?.[1] as Function;
+      )?.[1];
+
+      if (!messageHandler) {
+        throw new Error('Message handler not found');
+      }
 
       const message = {
         channel: 'userFills',
@@ -642,6 +642,34 @@ describe('HyperliquidWebSocketService', () => {
       messageHandler(Buffer.from(JSON.stringify(message)));
 
       expect(callback).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('subscription response handling', () => {
+    it('should handle subscription response messages', async () => {
+      await service.connect();
+
+      const messageHandler = mockWebSocketInstance.on.mock.calls.find(
+        (call) => call[0] === 'message',
+      )?.[1];
+
+      if (!messageHandler) {
+        throw new Error('Message handler not found');
+      }
+
+      const message = {
+        channel: 'subscriptionResponse',
+        data: {
+          method: 'subscribe',
+          subscription: {
+            type: 'userFills',
+            user: mockUserAddress,
+          },
+        },
+      };
+
+      // Should not throw error
+      messageHandler(Buffer.from(JSON.stringify(message)));
     });
   });
 });
