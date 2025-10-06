@@ -246,7 +246,9 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     // Determine side based on position direction for entry order
     const side =
-      tradePositionData.positionDirection === PositionDirection.LONG ? 'B' : 'S';
+      tradePositionData.positionDirection === PositionDirection.LONG
+        ? 'B'
+        : 'S';
 
     await this.tradeOrderService.createTradeOrder({
       status,
@@ -295,8 +297,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
     }
 
     // Determine side based on position direction for exit order (opposite of entry)
-    const side =
-      positionDirection === PositionDirection.LONG ? 'S' : 'B';
+    const side = positionDirection === PositionDirection.LONG ? 'S' : 'B';
 
     await this.tradeOrderService.createTradeOrder({
       status,
