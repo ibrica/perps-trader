@@ -116,12 +116,15 @@ export class HyperliquidWebSocketService extends PlatformWebSocketService {
     this.logger.log(`Subscribed to order updates for ${this.userAddress}`);
   }
 
-  private handleMessage(message: any): void {
-    if (!message.channel || !message.data) {
+  private handleMessage(
+    message: WsUserFillsMessage | WsOrderUpdatesMessage,
+  ): void {
+    const { channel, data } = message;
+    if (!channel || !data) {
       return;
     }
 
-    switch (message.channel) {
+    switch (channel) {
       case 'userFills':
         this.handleUserFills(message as WsUserFillsMessage);
         break;
@@ -129,7 +132,7 @@ export class HyperliquidWebSocketService extends PlatformWebSocketService {
         this.handleOrderUpdates(message as WsOrderUpdatesMessage);
         break;
       default:
-        this.logger.debug(`Unhandled message channel: ${message.channel}`);
+        this.logger.debug(`Unhandled message channel: ${channel}`);
     }
   }
 

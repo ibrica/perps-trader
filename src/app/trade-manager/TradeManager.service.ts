@@ -262,7 +262,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     const { status, orderId, type, size, price } = result;
 
-    // TODO: pending state handling
     if (status !== TradeOrderStatus.CREATED) {
       this.logger.error(
         `Failed to execute trading opportunity for ${token} on ${platform}:`,
@@ -316,7 +315,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     const { status, orderId, type, size, price } = result;
 
-    // TODO: pending state handling
     if (status !== TradeOrderStatus.CREATED) {
       this.logger.error(
         `Failed to execute closing position orderfor ${token} on ${platform}:`,

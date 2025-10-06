@@ -42,7 +42,9 @@ export class HyperliquidPlatformService extends BasePlatformService {
       this.tradeOrderService.handleOrderUpdate(update);
     });
 
-    this.logger.log('WebSocket handlers registered for order fills and updates');
+    this.logger.log(
+      'WebSocket handlers registered for order fills and updates',
+    );
   }
 
   async enterPosition(
@@ -78,7 +80,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       // amountIn represents the quote amount (USDC) we want to use
       const direction = this.determineDirection();
 
-      const orderId = await this.hyperliquidService.placePerpOrder({
+      const tradeOrderResult = await this.hyperliquidService.placePerpOrder({
         symbol,
         direction,
         quoteAmount: options.amountIn,
@@ -86,11 +88,13 @@ export class HyperliquidPlatformService extends BasePlatformService {
         tif: 'Ioc', // Immediate or Cancel for market-like execution
       });
 
+      const { orderId, status, size, price, fee, type } = tradeOrderResult;
+
       this.logger.log(`Hyperliquid order placed successfully`, {
         orderId,
         symbol,
         direction,
-        quoteAmount: options.amountIn.toString(),
+        quoteAmount: size,
       });
 
       return {
