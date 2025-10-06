@@ -174,7 +174,7 @@ describe('PredictorAdapter', () => {
       expect(result?.predicted_curve_position_change).toBe(
         '-8.5% curve position (over 5m)',
       );
-      expect(result?.reasoning?.market_conditions.sentiment).toBe('bearish');
+      expect(result?.reasoning?.market_conditions.sentiment).toBe('BEARISH');
     });
 
     it('should validate response structure matches PredictionResponse interface', async () => {
