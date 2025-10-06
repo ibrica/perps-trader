@@ -9,13 +9,11 @@ import { PerpService } from '../perps/Perp.service';
 import {
   Platform,
   TradePositionStatus,
-  BlockchainSymbol,
   TradeType,
   PositionType,
   PositionDirection,
   ItemExistsException,
   TradeNotification,
-  SOL_MINT,
   HL_DEFAULT_CURRENCY_FROM,
 } from '../../shared';
 

@@ -244,11 +244,17 @@ export class TradeManagerService implements OnApplicationBootstrap {
     const tradePosition =
       await this.tradePositionService.createTradePosition(tradePositionData);
 
+    // Determine side based on position direction for entry order
+    const side =
+      tradePositionData.positionDirection === PositionDirection.LONG ? 'B' : 'S';
+
     await this.tradeOrderService.createTradeOrder({
       status,
       position: String(tradePosition._id),
       type,
       orderId,
+      coin: token,
+      side,
       size,
       price,
     });
@@ -269,7 +275,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
   }
 
   private async exitPosition(position: TradePositionDocument): Promise<void> {
-    const { platform, token } = position;
+    const { platform, token, positionDirection } = position;
 
     this.logger.log(`Closing position: ${token} on ${platform}`);
 
@@ -288,11 +294,17 @@ export class TradeManagerService implements OnApplicationBootstrap {
       throw new Error('Failed to close position');
     }
 
+    // Determine side based on position direction for exit order (opposite of entry)
+    const side =
+      positionDirection === PositionDirection.LONG ? 'S' : 'B';
+
     await this.tradeOrderService.createTradeOrder({
       status,
       position: String(position._id),
       type,
       orderId,
+      coin: token,
+      side,
       size,
       price,
     });
@@ -321,13 +333,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
       amountIn: tradingDecision.recommendedAmount,
       amountOut: 0n,
       platform,
-      status: TradePositionStatus.OPEN,
+      status: TradePositionStatus.CREATED, // Position starts as CREATED, WebSocket will set to OPEN when filled
     };
 
     if (platform === Platform.HYPERLIQUID) {
       // Use metadata from trading decision for Hyperliquid positions
-      const defaultPrice = 0.0001; // Default entry price
-
       return {
         ...baseData,
         positionType: PositionType.PERPETUAL,
@@ -335,7 +345,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
           tradingDecision.metadata?.direction || PositionDirection.LONG,
         leverage: tradingDecision.metadata?.leverage || 3,
         positionSize: tradingDecision.recommendedAmount || 100000000n, // Default 100 USDC
-        entryPrice: defaultPrice,
+        // Entry price will be set by WebSocket handler when order fills
         token,
       };
     } else {
@@ -344,7 +354,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         ...baseData,
         token,
         positionType: PositionType.SPOT,
-        entryPrice: 0,
+        // Entry price will be set by WebSocket handler when order fills
       };
     }
   }

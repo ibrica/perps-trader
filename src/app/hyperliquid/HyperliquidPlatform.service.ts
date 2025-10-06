@@ -94,12 +94,16 @@ export class HyperliquidPlatformService extends BasePlatformService {
         orderId,
         symbol,
         direction,
-        quoteAmount: size,
+        size,
       });
 
       return {
         orderId,
-        status: PositionExecutionStatus.SUCCESS,
+        status,
+        size,
+        price,
+        fee,
+        type,
         message: '',
       };
     } catch (error) {
@@ -150,7 +154,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         },
       );
 
-      const orderId = await this.hyperliquidService.placePerpOrder({
+      const tradeOrderResult = await this.hyperliquidService.placePerpOrder({
         symbol: token,
         direction: closeDirection,
         quoteAmount,
@@ -158,13 +162,20 @@ export class HyperliquidPlatformService extends BasePlatformService {
         tif: 'Ioc', // Immediate or Cancel for market execution
       });
 
+      const { orderId, status, size, price, fee, type } = tradeOrderResult;
+
       this.logger.log(
         `Successfully placed closing order for ${token} position`,
+        { orderId, size, price },
       );
 
       return {
         orderId,
-        status: PositionExecutionStatus.SUCCESS,
+        status,
+        size,
+        price,
+        fee,
+        type,
         message: '',
       };
     } catch (error) {
