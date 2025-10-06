@@ -3,6 +3,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { TradeOrder, TradeOrderSchema } from './TradeOrder.schema';
 import { TradeOrderService } from './TradeOrder.service';
 import { TradeOrderRepository } from './TradeOrder.repository';
+import { TradePositionModule } from '../trade-position/TradePosition.module';
 
 @Global()
 @Module({
@@ -10,6 +11,7 @@ import { TradeOrderRepository } from './TradeOrder.repository';
     MongooseModule.forFeature([
       { name: TradeOrder.name, schema: TradeOrderSchema },
     ]),
+    TradePositionModule,
   ],
   providers: [TradeOrderService, TradeOrderRepository],
   exports: [TradeOrderService],
