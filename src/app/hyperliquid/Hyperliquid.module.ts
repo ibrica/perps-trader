@@ -13,6 +13,7 @@ import { hyperliquidConfig } from '../../config/hyperliquid.config';
 import { PerpModule } from '../perps';
 import { PredictorModule } from '../predictor/Predictor.module';
 import { CryptoJsService } from '../../infrastructure';
+import { HyperliquidPlatformService } from './HyperliquidPlatform.service';
 
 @Module({
   imports: [
@@ -88,6 +89,7 @@ import { CryptoJsService } from '../../infrastructure';
     // Platform services
     HyperliquidTradingStrategyService,
     HyperliquidTokenDiscoveryService,
+    HyperliquidPlatformService,
   ],
   exports: [
     HyperliquidService,
@@ -96,6 +98,7 @@ import { CryptoJsService } from '../../infrastructure';
     HyperliquidTokenDiscoveryService,
     HyperliquidSignatureAdapter,
     HyperliquidClient,
+    HyperliquidPlatformService,
   ],
 })
 export class HyperliquidModule {}

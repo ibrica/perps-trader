@@ -74,5 +74,4 @@ export class TradeOrder {
 
 export const TradeOrderSchema = SchemaFactory.createForClass(TradeOrder);
 
-TradeOrderSchema.index({ position: 1 });
 TradeOrderSchema.index({ orderId: 1 });
