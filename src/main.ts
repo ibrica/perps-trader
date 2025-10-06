@@ -35,19 +35,25 @@ async function bootstrap() {
         logger.log(`Predictor configured at ${predictorUrl}:${predictorPort}`);
       }
     } catch (error) {
-      logger.warn('Predictor connectivity test failed (optional service)', error);
+      logger.warn(
+        'Predictor connectivity test failed (optional service)',
+        error,
+      );
     }
 
     await app.listen(port, host);
 
-    logger.log(`🚀 Perps Trader application is running on: http://${host}:${port}`);
+    logger.log(
+      `🚀 Perps Trader application is running on: http://${host}:${port}`,
+    );
     logger.log(`📊 Health check available at: http://${host}:${port}/health`);
 
     // Log Hyperliquid configuration
     const hlEnabled = configService.get<boolean>('hyperliquid.enabled', false);
     const hlEnv = configService.get<string>('hyperliquid.env', 'testnet');
-    logger.log(`🔗 Hyperliquid: ${hlEnabled ? 'ENABLED' : 'DISABLED'} (${hlEnv})`);
-
+    logger.log(
+      `🔗 Hyperliquid: ${hlEnabled ? 'ENABLED' : 'DISABLED'} (${hlEnv})`,
+    );
   } catch (error) {
     logger.error('Failed to start application', error);
     process.exit(1);
