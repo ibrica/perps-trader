@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import WebSocket from 'ws';
+import * as WebSocket from 'ws';
 import { HyperliquidSignatureAdapter } from './HyperliquidSignatureAdapter';
 import { PlatformWebSocketService, OrderFill, OrderUpdate } from '../websocket';
 import { WsUserFillsMessage, WsOrderUpdatesMessage } from '../../shared';
