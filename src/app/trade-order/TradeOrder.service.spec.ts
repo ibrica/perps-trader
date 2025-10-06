@@ -314,6 +314,7 @@ describe('TradeOrderService', () => {
 
       const updatedOrder = await service.getByOrderId('fill-order-123');
       expect(updatedOrder).toBeDefined();
+      expect(updatedOrder?.status).toBe(TradeOrderStatus.EXECUTED);
       expect(updatedOrder?.coin).toBe('BTC');
       expect(updatedOrder?.side).toBe('B');
       expect(updatedOrder?.size).toBe(0.1);

@@ -4,6 +4,7 @@ import {
   CreateTradeOrderOptions,
   UpdateTradeOrderOptions,
   TradePositionStatus,
+  TradeOrderStatus,
 } from '../../shared';
 import { TradeOrderRepository } from './TradeOrder.repository';
 import { OrderFill, OrderUpdate } from '../../infrastructure/websocket';
@@ -57,6 +58,7 @@ export class TradeOrderService {
   async handleOrderFill(fill: OrderFill): Promise<void> {
     try {
       const updateData: UpdateTradeOrderOptions = {
+        status: TradeOrderStatus.EXECUTED,
         coin: fill.coin,
         side: fill.side,
         size: parseFloat(fill.size),

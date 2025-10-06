@@ -12,7 +12,7 @@ import {
   MAX_TOTAL_POSITIONS,
   TradeOrderStatus,
 } from '../../shared';
-import { IndexerAdapter, OrderFill } from '../../infrastructure';
+import { IndexerAdapter } from '../../infrastructure';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { PlatformManagerService } from '../platform-manager/PlatformManagerService';
@@ -36,45 +36,10 @@ export class TradeManagerService implements OnApplicationBootstrap {
   async onApplicationBootstrap(): Promise<void> {
     this.logger.log('Starting trade manager on application bootstrap');
     try {
-      // Register WebSocket callback for order fills across all platforms
-      this.platformManagerService.registerOrderFillCallback(
-        this.handleOrderFill.bind(this),
-      );
-
       await this.startTrading();
       this.logger.log('Successfully started trade manager');
     } catch (error) {
       this.logger.error('Failed to start trade manager', error);
-    }
-  }
-
-  private async handleOrderFill(fill: OrderFill): Promise<void> {
-    try {
-      this.logger.log(
-        `Processing order fill: oid=${fill.orderId}, coin=${fill.coin}, side=${fill.side}, size=${fill.size}, price=${fill.price}`,
-      );
-
-      const orderId = fill.orderId;
-      const tradeOrder = await this.tradeOrderService.getByOrderId(orderId);
-
-      if (!tradeOrder) {
-        this.logger.warn(`TradeOrder not found for orderId: ${orderId}`);
-        return;
-      }
-
-      // Update the TradeOrder status to EXECUTED
-      await this.tradeOrderService.updateByOrderId(orderId, {
-        status: TradeOrderStatus.EXECUTED,
-        fee: parseFloat(fill.fee),
-        price: parseFloat(fill.price),
-        size: parseFloat(fill.size),
-      });
-
-      this.logger.log(
-        `Updated TradeOrder ${String(tradeOrder._id)} to EXECUTED for orderId: ${orderId}`,
-      );
-    } catch (error) {
-      this.logger.error('Error handling order fill', error);
     }
   }
 
