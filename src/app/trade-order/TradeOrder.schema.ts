@@ -33,6 +33,12 @@ export class TradeOrder {
   @Prop({ type: String })
   orderId?: string;
 
+  @Prop({ type: String })
+  coin?: string;
+
+  @Prop({ type: String })
+  side?: string;
+
   @Prop({ type: Number })
   size?: number;
 
@@ -41,6 +47,25 @@ export class TradeOrder {
 
   @Prop({ type: Number })
   fee?: number;
+
+  @Prop({ type: Number })
+  timestampUpdate?: number;
+
+  @Prop({ type: Number })
+  timestampFill?: number;
+
+  @Prop({ type: Number })
+  closedPnl?: number;
+
+  // OrderUpdate specific fields
+  @Prop({ type: Number })
+  limitPrice?: number;
+
+  @Prop({ type: Number })
+  originalSize?: number;
+
+  @Prop({ type: String })
+  clientOrderId?: string;
 
   createdAt?: Date;
 
