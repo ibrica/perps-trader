@@ -1,10 +1,13 @@
 import mongoose from 'mongoose';
 import BigNumber from 'bignumber.js';
 import { castMongoDBBigNumber, castMongoDBBigInt } from './decimal128ToBigInt';
-import * as mongooseLongModule from 'mongoose-long';
 
-mongooseLongModule.default(mongoose);
+// Use require for CommonJS module with proper interop
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const mongooseLongModule = require('mongoose-long');
+mongooseLongModule(mongoose);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const Long = (mongoose.Schema.Types as any).Long;
 export const { Decimal128 } = mongoose.Schema.Types;
 

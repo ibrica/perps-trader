@@ -6,7 +6,7 @@ import { AppModule } from './app.module';
 // Import Datadog tracing (must be before any other imports)
 import './tracer';
 
-async function bootstrap() {
+async function bootstrap(): Promise<void> {
   const logger = new Logger('Bootstrap');
 
   try {
