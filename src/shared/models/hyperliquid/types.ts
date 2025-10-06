@@ -89,3 +89,14 @@ export interface WsOrderUpdatesMessage {
     orders: WsOrder[];
   };
 }
+
+export interface WsSubscriptionResponse {
+  channel: 'subscriptionResponse';
+  data: {
+    method: string;
+    subscription: {
+      type: string;
+      user?: string;
+    };
+  };
+}

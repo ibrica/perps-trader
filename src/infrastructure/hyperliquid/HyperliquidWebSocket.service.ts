@@ -3,7 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import * as WebSocket from 'ws';
 import { HyperliquidSignatureAdapter } from './HyperliquidSignatureAdapter';
 import { PlatformWebSocketService, OrderFill, OrderUpdate } from '../websocket';
-import { WsUserFillsMessage, WsOrderUpdatesMessage } from '../../shared';
+import {
+  WsUserFillsMessage,
+  WsOrderUpdatesMessage,
+  WsSubscriptionResponse,
+} from '../../shared';
 
 @Injectable()
 export class HyperliquidWebSocketService extends PlatformWebSocketService {
@@ -117,7 +121,10 @@ export class HyperliquidWebSocketService extends PlatformWebSocketService {
   }
 
   private handleMessage(
-    message: WsUserFillsMessage | WsOrderUpdatesMessage,
+    message:
+      | WsUserFillsMessage
+      | WsOrderUpdatesMessage
+      | WsSubscriptionResponse,
   ): void {
     const { channel, data } = message;
     if (!channel || !data) {
@@ -130,6 +137,9 @@ export class HyperliquidWebSocketService extends PlatformWebSocketService {
         break;
       case 'orderUpdates':
         this.handleOrderUpdates(message as WsOrderUpdatesMessage);
+        break;
+      case 'subscriptionResponse':
+        this.handleSubscriptionResponse(message as WsSubscriptionResponse);
         break;
       default:
         this.logger.debug(`Unhandled message channel: ${channel}`);
@@ -189,6 +199,13 @@ export class HyperliquidWebSocketService extends PlatformWebSocketService {
       // Notify callbacks using base class method
       this.notifyOrderUpdateCallbacks(orderUpdate);
     }
+  }
+
+  private handleSubscriptionResponse(message: WsSubscriptionResponse): void {
+    const { method, subscription } = message.data;
+    this.logger.debug(
+      `Subscription ${method}: ${subscription.type}${subscription.user ? ` for ${subscription.user}` : ''}`,
+    );
   }
 
   private scheduleReconnect(): void {
