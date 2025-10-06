@@ -5,7 +5,15 @@ export interface UpdateTradeOrderOptions {
   position?: string;
   type?: string;
   orderId?: string;
+  coin?: string;
+  side?: string;
   size?: number;
   price?: number;
   fee?: number;
+  timestampUpdate?: number;
+  timestampFill?: number;
+  closedPnl?: number;
+  limitPrice?: number;
+  originalSize?: number;
+  clientOrderId?: string;
 }
