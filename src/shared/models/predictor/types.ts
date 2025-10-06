@@ -19,15 +19,15 @@ export enum Recommendation {
 }
 
 export enum MarketSentiment {
-  BULLISH = 'bullish',
-  BEARISH = 'bearish',
-  NEUTRAL = 'neutral',
+  BULLISH = 'BULLISH',
+  BEARISH = 'BEARISH',
+  NEUTRAL = 'NEUTRAL',
 }
 
 export enum TokenCategory {
-  MEME_TOKENS = 'meme_tokens',
-  MAIN_COINS = 'main_coins',
-  ALT_COINS = 'alt_coins',
+  MEME_TOKENS = 'MEME_TOKENS',
+  MAIN_COINS = 'MAIN_COINS',
+  ALT_COINS = 'ALT_COINS',
 }
 
 // Request types
