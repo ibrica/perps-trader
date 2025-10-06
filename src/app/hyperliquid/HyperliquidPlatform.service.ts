@@ -7,14 +7,42 @@ import {
 } from '../../shared';
 import { EnterPositionOptions, Platform, TradeType } from '../../shared';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
+import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/HyperliquidWebSocket.service';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
+import { TradeOrderService } from '../trade-order/TradeOrder.service';
 
 @Injectable()
 export class HyperliquidPlatformService extends BasePlatformService {
   private readonly logger = new Logger(HyperliquidPlatformService.name);
 
-  constructor(private readonly hyperliquidService?: HyperliquidService) {
+  constructor(
+    private readonly hyperliquidService?: HyperliquidService,
+    private readonly hyperliquidWebSocket?: HyperliquidWebSocketService,
+    private readonly tradeOrderService?: TradeOrderService,
+  ) {
     super();
+    this.registerWebSocketHandlers();
+  }
+
+  /**
+   * Register WebSocket handlers for order fills and updates
+   */
+  private registerWebSocketHandlers(): void {
+    if (!this.hyperliquidWebSocket || !this.tradeOrderService) {
+      return;
+    }
+
+    // Register handler for order fills
+    this.hyperliquidWebSocket.onOrderFill((fill) => {
+      this.tradeOrderService.handleOrderFill(fill);
+    });
+
+    // Register handler for order updates
+    this.hyperliquidWebSocket.onOrderUpdate((update) => {
+      this.tradeOrderService.handleOrderUpdate(update);
+    });
+
+    this.logger.log('WebSocket handlers registered for order fills and updates');
   }
 
   async enterPosition(
