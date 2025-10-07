@@ -250,4 +250,36 @@ export class PlatformManagerService extends PlatformManagerPort {
     }
     return false;
   }
+
+  /**
+   * Create stop-loss and take-profit orders for a platform
+   * Delegates to platform-specific implementation
+   */
+  async createStopLossAndTakeProfitOrders(
+    platform: Platform,
+    token: string,
+    direction: any,
+    size: number,
+    positionId: string,
+    stopLossPrice?: number,
+    takeProfitPrice?: number,
+  ): Promise<void> {
+    const platformService = this.getPlatformService(platform);
+
+    // Check if the platform service supports SL/TP orders
+    if (typeof (platformService as any).createStopLossAndTakeProfitOrders === 'function') {
+      await (platformService as any).createStopLossAndTakeProfitOrders(
+        token,
+        direction,
+        size,
+        positionId,
+        stopLossPrice,
+        takeProfitPrice,
+      );
+    } else {
+      this.logger.warn(
+        `Platform ${platform} does not support SL/TP order creation`,
+      );
+    }
+  }
 }

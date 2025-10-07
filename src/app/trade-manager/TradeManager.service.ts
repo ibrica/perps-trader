@@ -303,21 +303,18 @@ export class TradeManagerService implements OnApplicationBootstrap {
       (result.metadata.stopLossPrice || result.metadata.takeProfitPrice)
     ) {
       try {
-        // Cast to HyperliquidPlatformService to access createStopLossAndTakeProfitOrders
-        const hyperliquidService = platformService as any;
-        if (hyperliquidService.createStopLossAndTakeProfitOrders) {
-          await hyperliquidService.createStopLossAndTakeProfitOrders(
-            token,
-            result.metadata.direction,
-            size,
-            String(tradePosition._id),
-            result.metadata.stopLossPrice,
-            result.metadata.takeProfitPrice,
-          );
-          this.logger.log(
-            `Created SL/TP orders for ${token} position ${tradePosition._id}`,
-          );
-        }
+        await this.platformManagerService.createStopLossAndTakeProfitOrders(
+          platform,
+          token,
+          result.metadata.direction,
+          size,
+          String(tradePosition._id),
+          result.metadata.stopLossPrice,
+          result.metadata.takeProfitPrice,
+        );
+        this.logger.log(
+          `Created SL/TP orders for ${token} position ${tradePosition._id}`,
+        );
       } catch (error) {
         this.logger.error(`Failed to create SL/TP orders for ${token}:`, error);
         // Don't fail the main trade if SL/TP orders fail - they're a safety net

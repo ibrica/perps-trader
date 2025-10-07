@@ -42,6 +42,7 @@ export type HLOrderbook = L2Book & {
 export interface PlacePerpOrderParams {
   symbol: string;
   direction: PositionDirection;
+  // quoteAmount is the amount in quote currency (USDC), not minimal units!
   quoteAmount: number;
   price?: number;
   tif?: Tif;
