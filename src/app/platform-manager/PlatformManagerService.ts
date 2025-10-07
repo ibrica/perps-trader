@@ -266,24 +266,13 @@ export class PlatformManagerService extends PlatformManagerPort {
     takeProfitPrice?: number,
   ): Promise<void> {
     const platformService = this.getPlatformService(platform);
-
-    // Check if the platform service supports SL/TP orders
-    if (
-      typeof (platformService as any).createStopLossAndTakeProfitOrders ===
-      'function'
-    ) {
-      await (platformService as any).createStopLossAndTakeProfitOrders(
-        token,
-        direction,
-        size,
-        positionId,
-        stopLossPrice,
-        takeProfitPrice,
-      );
-    } else {
-      this.logger.warn(
-        `Platform ${platform} does not support SL/TP order creation`,
-      );
-    }
+    await platformService.createStopLossAndTakeProfitOrders(
+      token,
+      direction,
+      size,
+      positionId,
+      stopLossPrice,
+      takeProfitPrice,
+    );
   }
 }
