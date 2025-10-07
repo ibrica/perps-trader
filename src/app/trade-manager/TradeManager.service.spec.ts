@@ -83,6 +83,7 @@ describe('TradeManagerService', () => {
             getEnabledPlatforms: jest.fn(),
             getPlatformConfiguration: jest.fn(),
             getPlatformService: jest.fn(),
+            createStopLossAndTakeProfitOrders: jest.fn(),
           },
         },
         {
@@ -348,10 +349,11 @@ describe('TradeManagerService', () => {
         }),
       );
 
-      // Verify createStopLossAndTakeProfitOrders is called
+      // Verify createStopLossAndTakeProfitOrders is called through platformManager
       expect(
-        mockPlatformService.createStopLossAndTakeProfitOrders,
+        platformManagerService.createStopLossAndTakeProfitOrders,
       ).toHaveBeenCalledWith(
+        Platform.HYPERLIQUID,
         'BTC',
         PositionDirection.LONG,
         0.002,
@@ -428,10 +430,11 @@ describe('TradeManagerService', () => {
       expect(enterPositionCall.stopLossPrice).toBeCloseTo(55000, 1); // 50000 * (1 + 0.10) - price goes up = loss for short
       expect(enterPositionCall.takeProfitPrice).toBeCloseTo(40000, 1); // 50000 * (1 - 0.20) - price goes down = profit for short
 
-      // Verify createStopLossAndTakeProfitOrders is called with correct params
+      // Verify createStopLossAndTakeProfitOrders is called through platformManager with correct params
       expect(
-        mockPlatformService.createStopLossAndTakeProfitOrders,
+        platformManagerService.createStopLossAndTakeProfitOrders,
       ).toHaveBeenCalledWith(
+        Platform.HYPERLIQUID,
         'BTC',
         PositionDirection.SHORT,
         0.002,
@@ -461,9 +464,6 @@ describe('TradeManagerService', () => {
             takeProfitPrice: 60000,
           },
         }),
-        createStopLossAndTakeProfitOrders: jest
-          .fn()
-          .mockRejectedValue(new Error('Failed to create SL/TP orders')),
       };
 
       platformManagerService.getPlatformService.mockReturnValue(
@@ -480,6 +480,11 @@ describe('TradeManagerService', () => {
         },
         defaultCurrencyFrom: Currency.USDC,
       });
+
+      // Mock platformManagerService to throw error on SL/TP creation
+      platformManagerService.createStopLossAndTakeProfitOrders.mockRejectedValue(
+        new Error('Failed to create SL/TP orders'),
+      );
 
       tradePositionService.createTradePosition.mockResolvedValue({
         _id: 'position-error-test',
