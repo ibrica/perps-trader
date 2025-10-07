@@ -24,6 +24,4 @@ import { IndexerAdapter } from '../../infrastructure';
   ],
   exports: [IndexerAdapter],
 })
-export class IndexerModule {
-  constructor(private readonly indexerAdapter: IndexerAdapter) {}
-}
+export class IndexerModule {}
