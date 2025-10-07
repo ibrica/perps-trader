@@ -119,7 +119,7 @@ export class TradeOrderService {
           : String(order.position._id);
 
       const position =
-        await this.tradePositionService.getTradePosition(positionId);
+        await this.tradePositionService.getTradePositionById(positionId);
       if (!position) {
         this.logger.error(`Position ${positionId} not found`);
         return;
