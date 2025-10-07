@@ -25,7 +25,7 @@ export const hyperliquidConfig = registerAs('hyperliquid', () => ({
   maxOpenPositions: parseInt(process.env.HL_MAX_OPEN_POSITIONS || '1'),
   stopLossPercent: parseFloat(process.env.HL_STOP_LOSS_PERCENT || '10'),
   takeProfitPercent: parseFloat(process.env.HL_TAKE_PROFIT_PERCENT || '20'),
-  defaultAmountIn: BigInt(process.env.HL_DEFAULT_AMOUNT_IN || '10000000'), // 10 USDC
+  defaultAmountIn: parseFloat(process.env.HL_DEFAULT_AMOUNT_IN || '10'), // 10 USDC
 
   // HTTP client configuration
   timeoutMs: parseInt(process.env.HL_TIMEOUT_MS || '30000'),

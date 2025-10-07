@@ -396,7 +396,7 @@ describe('HyperliquidService', () => {
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
         direction: PositionDirection.LONG,
-        quoteAmount: BigInt(50000000), // 50 USDC (6 decimals)
+        quoteAmount: 50, // 50 USDC
         price: 50000,
         leverage: 10,
       };
@@ -441,7 +441,7 @@ describe('HyperliquidService', () => {
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
         direction: PositionDirection.SHORT,
-        quoteAmount: BigInt(50000000), // 50 USDC
+        quoteAmount: 50, // 50 USDC
         leverage: 5,
       };
 
@@ -477,7 +477,7 @@ describe('HyperliquidService', () => {
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
         direction: PositionDirection.LONG,
-        quoteAmount: BigInt(100000000), // 100 USDC
+        quoteAmount: 100, // 100 USDC
       };
 
       await service.placePerpOrder(params);
@@ -503,7 +503,7 @@ describe('HyperliquidService', () => {
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
         direction: PositionDirection.LONG,
-        quoteAmount: BigInt(100), // Very small amount
+        quoteAmount: 0.0001, // Very small amount
       };
 
       await expect(service.placePerpOrder(params)).rejects.toThrow(
@@ -529,7 +529,7 @@ describe('HyperliquidService', () => {
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
         direction: PositionDirection.LONG,
-        quoteAmount: BigInt(1000000000), // Larger amount to avoid minimum size issue
+        quoteAmount: 1000, // Larger amount to avoid minimum size issue
       };
 
       await expect(service.placePerpOrder(params)).rejects.toThrow(
@@ -551,7 +551,7 @@ describe('HyperliquidService', () => {
       const params: PlacePerpOrderParams = {
         symbol: 'BTC',
         direction: PositionDirection.LONG,
-        quoteAmount: BigInt(1000000000), // Larger amount to avoid minimum size issue
+        quoteAmount: 1000, // Larger amount to avoid minimum size issue
         leverage: 15,
       };
 

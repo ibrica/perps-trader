@@ -135,7 +135,7 @@ describe('HyperliquidTradingStrategyService', () => {
       (key: string, defaultValue?: any) => {
         const mockValues = {
           'hyperliquid.trading.enabled': true,
-          'hyperliquid.defaultAmountIn': '100000000',
+          'hyperliquid.defaultAmountIn': 100,
           'hyperliquid.maxOpenPositions': 5,
           'hyperliquid.stopLossPercent': 0.05,
           'hyperliquid.takeProfitPercent': 0.1,

@@ -120,14 +120,14 @@ describe('PlatformManagerService', () => {
           shouldTrade: true,
           reason: 'Good opportunity',
           confidence: 0.8,
-          recommendedAmount: 100000000n,
+          recommendedAmount: 100,
           metadata: { direction: PositionDirection.LONG },
         })
         .mockResolvedValueOnce({
           shouldTrade: true,
           reason: 'Another good opportunity',
           confidence: 0.7,
-          recommendedAmount: 50000000n,
+          recommendedAmount: 50,
           metadata: { direction: PositionDirection.LONG },
         });
 
@@ -163,7 +163,7 @@ describe('PlatformManagerService', () => {
         shouldTrade: true,
         reason: 'Good opportunity',
         confidence: 0.7,
-        recommendedAmount: 50000000n,
+        recommendedAmount: 50,
         metadata: { direction: PositionDirection.LONG },
       });
 
@@ -203,7 +203,7 @@ describe('PlatformManagerService', () => {
         shouldTrade: false,
         reason: 'Low confidence',
         confidence: 0.3,
-        recommendedAmount: 0n,
+        recommendedAmount: 0,
         metadata: { direction: PositionDirection.LONG },
       });
 
@@ -233,7 +233,7 @@ describe('PlatformManagerService', () => {
       status: TradePositionStatus.OPEN,
       positionType: PositionType.PERPETUAL,
       positionDirection: PositionDirection.LONG,
-      entryPrice: 100n,
+      entryPrice: 100,
     } as any;
 
     beforeEach(() => {
@@ -308,7 +308,7 @@ describe('PlatformManagerService', () => {
         enabled: false,
         tradingParams: {
           maxOpenPositions: 10,
-          defaultAmountIn: 200000000n,
+          defaultAmountIn: 200,
           stopLossPercent: 20,
           takeProfitPercent: 30,
         },

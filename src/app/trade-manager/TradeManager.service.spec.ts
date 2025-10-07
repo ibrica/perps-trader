@@ -29,7 +29,7 @@ describe('TradeManagerService', () => {
       shouldTrade: true,
       reason: 'Good opportunity',
       confidence: 0.8,
-      recommendedAmount: 100000000n,
+      recommendedAmount: 100,
       metadata: {
         direction: PositionDirection.LONG,
         leverage: 5,
@@ -46,7 +46,7 @@ describe('TradeManagerService', () => {
     positionType: PositionType.PERPETUAL,
     positionDirection: PositionDirection.LONG,
     entryPrice: 50000,
-    amountIn: BigInt(100000000),
+    amountIn: 100,
     currency: Currency.USDC,
     leverage: 5,
   };
@@ -122,7 +122,7 @@ describe('TradeManagerService', () => {
         enabled: true,
         tradingParams: {
           maxOpenPositions: 3,
-          defaultAmountIn: 100000000n,
+          defaultAmountIn: 100,
           stopLossPercent: 15,
           takeProfitPercent: 25,
         },
@@ -136,7 +136,7 @@ describe('TradeManagerService', () => {
       ).createTradePositionData.bind(service);
 
       const tradingDecision = {
-        recommendedAmount: 50000000n,
+        recommendedAmount: 50,
         metadata: {
           direction: PositionDirection.LONG,
           leverage: 5,
@@ -162,7 +162,7 @@ describe('TradeManagerService', () => {
       ).createTradePositionData.bind(service);
 
       const tradingDecision = {
-        recommendedAmount: 50000000n,
+        recommendedAmount: 50,
         metadata: {
           direction: PositionDirection.SHORT,
         },
@@ -200,7 +200,7 @@ describe('TradeManagerService', () => {
         enabled: true,
         tradingParams: {
           maxOpenPositions: 3,
-          defaultAmountIn: 100000000n,
+          defaultAmountIn: 100,
           stopLossPercent: 15,
           takeProfitPercent: 25,
         },
@@ -269,7 +269,7 @@ describe('TradeManagerService', () => {
         enabled: true,
         tradingParams: {
           maxOpenPositions: 3,
-          defaultAmountIn: 100000000n,
+          defaultAmountIn: 100,
           stopLossPercent: 15,
           takeProfitPercent: 25,
         },
