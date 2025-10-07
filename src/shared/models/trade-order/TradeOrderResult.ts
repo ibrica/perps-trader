@@ -1,4 +1,4 @@
-import { TradeOrderStatus } from '../../constants';
+import { PositionDirection, TradeOrderStatus } from '../../constants';
 
 export interface TradeOrderResult {
   orderId?: string;
@@ -15,7 +15,7 @@ export interface TradeOrderResult {
   isMarket?: boolean;
   // Metadata for passing additional context
   metadata?: {
-    direction?: string;
+    direction?: PositionDirection;
     stopLossPrice?: number;
     takeProfitPrice?: number;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
