@@ -1,16 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { deserializeLong, TradeOrderStatus } from '../../shared';
+import { TradeOrderStatus } from '../../shared';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 
 export type TradeOrderDocument = TradeOrder & Document;
 
 @Schema({
   timestamps: true,
-  toObject: {
-    transform: (_, ret) =>
-      deserializeLong(ret, ['amountIn', 'amountOut', 'positionSize']),
-  },
 })
 export class TradeOrder {
   static readonly modelName = 'TradePosition';
