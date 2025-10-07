@@ -63,6 +63,19 @@ export class TradeOrder {
   @Prop({ type: String })
   clientOrderId?: string;
 
+  // Trigger order specific fields (for SL/TP orders)
+  @Prop({ type: Boolean })
+  isTrigger?: boolean;
+
+  @Prop({ type: Number })
+  triggerPrice?: number;
+
+  @Prop({ type: String })
+  triggerType?: 'tp' | 'sl'; // take-profit or stop-loss
+
+  @Prop({ type: Boolean })
+  isMarket?: boolean; // Whether trigger order uses market execution
+
   createdAt?: Date;
 
   updatedAt?: Date;

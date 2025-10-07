@@ -15,4 +15,8 @@ export interface EnterPositionOptions {
   amountIn: number;
 
   expectedAmountOut?: number;
+
+  stopLossPrice?: number;
+
+  takeProfitPrice?: number;
 }

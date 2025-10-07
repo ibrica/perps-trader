@@ -214,6 +214,38 @@ export class TradeManagerService implements OnApplicationBootstrap {
     const platformService =
       this.platformManagerService.getPlatformService(platform);
 
+    // Get platform configuration for trading parameters
+    const platformConfig =
+      this.platformManagerService.getPlatformConfiguration(platform);
+
+    // Calculate SL/TP prices for perps
+    let stopLossPrice: number | undefined;
+    let takeProfitPrice: number | undefined;
+
+    if (
+      tradeType === TradeType.PERPETUAL &&
+      tradingDecision.metadata?.direction
+    ) {
+      const currentPrice = await this.getCurrentPrice(platform, token);
+      const direction = tradingDecision.metadata.direction as PositionDirection;
+      const stopLossPercent =
+        platformConfig.tradingParams.stopLossPercent || 10;
+      const takeProfitPercent =
+        platformConfig.tradingParams.takeProfitPercent || 20;
+
+      if (direction === PositionDirection.LONG) {
+        stopLossPrice = currentPrice * (1 - stopLossPercent / 100);
+        takeProfitPrice = currentPrice * (1 + takeProfitPercent / 100);
+      } else {
+        stopLossPrice = currentPrice * (1 + stopLossPercent / 100);
+        takeProfitPrice = currentPrice * (1 - takeProfitPercent / 100);
+      }
+
+      this.logger.log(
+        `Calculated SL/TP prices for ${token}: SL=${stopLossPrice?.toFixed(4)}, TP=${takeProfitPrice?.toFixed(4)}`,
+      );
+    }
+
     // Change this for perps
     const result = await platformService.enterPosition({
       platform,
@@ -223,6 +255,8 @@ export class TradeManagerService implements OnApplicationBootstrap {
       token,
       amountIn: tradingDecision.recommendedAmount, // TODO: think about amounts
       tradeType,
+      stopLossPrice,
+      takeProfitPrice,
     });
 
     const { status, orderId, type, size, price } = result;
@@ -260,6 +294,35 @@ export class TradeManagerService implements OnApplicationBootstrap {
       size,
       price,
     });
+
+    // Create SL/TP trigger orders if we have the required metadata
+    if (
+      tradeType === TradeType.PERPETUAL &&
+      size &&
+      result.metadata &&
+      (result.metadata.stopLossPrice || result.metadata.takeProfitPrice)
+    ) {
+      try {
+        // Cast to HyperliquidPlatformService to access createStopLossAndTakeProfitOrders
+        const hyperliquidService = platformService as any;
+        if (hyperliquidService.createStopLossAndTakeProfitOrders) {
+          await hyperliquidService.createStopLossAndTakeProfitOrders(
+            token,
+            result.metadata.direction,
+            size,
+            String(tradePosition._id),
+            result.metadata.stopLossPrice,
+            result.metadata.takeProfitPrice,
+          );
+          this.logger.log(
+            `Created SL/TP orders for ${token} position ${tradePosition._id}`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(`Failed to create SL/TP orders for ${token}:`, error);
+        // Don't fail the main trade if SL/TP orders fail - they're a safety net
+      }
+    }
 
     if (tradeType === TradeType.PERPETUAL) {
       try {
@@ -319,6 +382,34 @@ export class TradeManagerService implements OnApplicationBootstrap {
         return TradeType.PERPETUAL;
       default:
         return TradeType.PERPETUAL;
+    }
+  }
+
+  private async getCurrentPrice(
+    platform: Platform,
+    token: string,
+  ): Promise<number> {
+    // Get current price from indexer
+    try {
+      const priceData = await this.indexerAdapter.getLastPrice(token);
+      return priceData?.price || 0;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to get price from indexer for ${token}, using fallback`,
+      );
+
+      // Fallback: get price from platform service
+      const platformService =
+        this.platformManagerService.getPlatformService(platform);
+      if (platform === Platform.HYPERLIQUID) {
+        const hyperliquidService = (platformService as any).hyperliquidService;
+        if (hyperliquidService) {
+          const ticker = await hyperliquidService.getTicker(token);
+          return parseFloat(ticker.mark);
+        }
+      }
+
+      throw new Error(`Failed to get current price for ${token}`);
     }
   }
 

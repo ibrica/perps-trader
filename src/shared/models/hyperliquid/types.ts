@@ -48,6 +48,10 @@ export interface PlacePerpOrderParams {
   leverage?: number;
   clientOrderId?: string;
   reduceOnly?: boolean;
+  // Trigger order fields for SL/TP
+  triggerPrice?: number;
+  triggerType?: 'tp' | 'sl';
+  isMarket?: boolean;
 }
 
 export interface WsFill {

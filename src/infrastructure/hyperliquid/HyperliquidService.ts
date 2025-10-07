@@ -209,11 +209,20 @@ export class HyperliquidService {
         is_buy: params.direction === PositionDirection.LONG,
         sz: preciseSize.toString(),
         limit_px: (params.price || markPrice).toString(),
-        order_type: {
-          limit: {
-            tif: tif,
-          },
-        },
+        order_type:
+          params.triggerPrice && params.triggerType
+            ? {
+                trigger: {
+                  triggerPx: params.triggerPrice.toString(),
+                  isMarket: params.isMarket ?? true,
+                  tpsl: params.triggerType,
+                },
+              }
+            : {
+                limit: {
+                  tif: tif,
+                },
+              },
         reduce_only: params.reduceOnly || false,
         ...(params.clientOrderId && { cloid: params.clientOrderId }),
       };
@@ -245,7 +254,13 @@ export class HyperliquidService {
         status: TradeOrderStatus.CREATED,
         size: preciseSize,
         price: markPrice, // TODO: check in the future, price and fee
-        type: String(tif),
+        type: params.triggerType
+          ? `trigger_${params.triggerType}`
+          : String(tif),
+        isTrigger: !!params.triggerPrice,
+        triggerPrice: params.triggerPrice,
+        triggerType: params.triggerType,
+        isMarket: params.isMarket,
       };
     } catch (error) {
       this.logger.error('Failed to place perp order', error);

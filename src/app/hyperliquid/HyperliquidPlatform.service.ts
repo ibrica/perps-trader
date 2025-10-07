@@ -50,7 +50,15 @@ export class HyperliquidPlatformService extends BasePlatformService {
   async enterPosition(
     options: EnterPositionOptions,
   ): Promise<TradeOrderResult> {
-    const { platform, tradeType, currency, token, amountIn } = options;
+    const {
+      platform,
+      tradeType,
+      currency,
+      token,
+      amountIn,
+      stopLossPrice,
+      takeProfitPrice,
+    } = options;
 
     this.logger.log(`Executing Hyperliquid trade`, {
       platform,
@@ -58,6 +66,8 @@ export class HyperliquidPlatformService extends BasePlatformService {
       currency,
       token,
       amountIn,
+      stopLossPrice,
+      takeProfitPrice,
     });
 
     try {
@@ -95,6 +105,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         size,
       });
 
+      // Store entry order result with SL/TP info for later use
       return {
         orderId,
         status,
@@ -103,6 +114,12 @@ export class HyperliquidPlatformService extends BasePlatformService {
         fee,
         type,
         message: '',
+        // Pass SL/TP info so caller can create orders after position is created
+        metadata: {
+          direction,
+          stopLossPrice,
+          takeProfitPrice,
+        },
       };
     } catch (error) {
       this.logger.error('Failed to execute Hyperliquid trade', error);
@@ -112,6 +129,118 @@ export class HyperliquidPlatformService extends BasePlatformService {
         status: TradeOrderStatus.FAILED,
         message: error instanceof Error ? error.message : 'Unknown error',
       };
+    }
+  }
+
+  /**
+   * Create stop-loss and take-profit trigger orders after entering a position
+   * This should be called after the position is created and we have the position ID
+   */
+  async createStopLossAndTakeProfitOrders(
+    token: string,
+    direction: PositionDirection,
+    size: number,
+    positionId: string,
+    stopLossPrice?: number,
+    takeProfitPrice?: number,
+  ): Promise<void> {
+    if (!stopLossPrice && !takeProfitPrice) {
+      return;
+    }
+
+    // Get current ticker to calculate quote amount
+    const ticker = await this.hyperliquidService.getTicker(token);
+    const currentPrice = parseFloat(ticker.mark);
+    const quoteAmount = size * currentPrice;
+
+    // Determine the opposite direction for closing orders
+    const closeDirection =
+      direction === PositionDirection.LONG
+        ? PositionDirection.SHORT
+        : PositionDirection.LONG;
+
+    // Create stop-loss order
+    if (stopLossPrice) {
+      try {
+        const slResult = await this.hyperliquidService.placePerpOrder({
+          symbol: token,
+          direction: closeDirection,
+          quoteAmount,
+          triggerPrice: stopLossPrice,
+          triggerType: 'sl',
+          isMarket: true,
+          reduceOnly: true,
+        });
+
+        this.logger.log(`Stop-loss order created`, {
+          orderId: slResult.orderId,
+          token,
+          triggerPrice: stopLossPrice,
+        });
+
+        // Save SL order to database
+        if (slResult.orderId && this.tradeOrderService) {
+          await this.tradeOrderService.createTradeOrder({
+            orderId: slResult.orderId,
+            status: slResult.status,
+            position: positionId,
+            type: slResult.type || 'trigger_sl',
+            coin: token,
+            side: closeDirection,
+            size: slResult.size,
+            price: slResult.price,
+            isTrigger: true,
+            triggerPrice: stopLossPrice,
+            triggerType: 'sl',
+            isMarket: true,
+          });
+        }
+      } catch (error) {
+        this.logger.error('Failed to create stop-loss order', error);
+        throw error;
+      }
+    }
+
+    // Create take-profit order
+    if (takeProfitPrice) {
+      try {
+        const tpResult = await this.hyperliquidService.placePerpOrder({
+          symbol: token,
+          direction: closeDirection,
+          quoteAmount,
+          triggerPrice: takeProfitPrice,
+          triggerType: 'tp',
+          isMarket: true,
+          reduceOnly: true,
+        });
+
+        this.logger.log(`Take-profit order created`, {
+          orderId: tpResult.orderId,
+          token,
+          triggerPrice: takeProfitPrice,
+        });
+
+        // Save TP order to database
+        if (tpResult.orderId && this.tradeOrderService) {
+          await this.tradeOrderService.createTradeOrder({
+            orderId: tpResult.orderId,
+            status: tpResult.status,
+            position: positionId,
+            type: tpResult.type || 'trigger_tp',
+            coin: token,
+            side: closeDirection,
+            size: tpResult.size,
+            price: tpResult.price,
+            isTrigger: true,
+            triggerPrice: takeProfitPrice,
+            triggerType: 'tp',
+            isMarket: true,
+          });
+        }
+      } catch (error) {
+        this.logger.error('Failed to create take-profit order', error);
+        throw error;
+      }
     }
   }
 
