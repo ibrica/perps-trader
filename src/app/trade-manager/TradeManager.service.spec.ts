@@ -289,6 +289,262 @@ describe('TradeManagerService', () => {
         }),
       );
     });
+
+    it('should calculate and pass SL/TP prices for LONG positions', async () => {
+      const mockIndexerAdapter = service['indexerAdapter'];
+      mockIndexerAdapter.getLastPrice = jest.fn().mockResolvedValue({
+        price: 50000,
+        token_address: 'BTC',
+      });
+
+      const mockPlatformService = {
+        enterPosition: jest.fn().mockResolvedValue({
+          orderId: 'order-789',
+          status: TradeOrderStatus.CREATED,
+          type: 'market',
+          size: 0.002,
+          price: 50000,
+          metadata: {
+            direction: PositionDirection.LONG,
+            stopLossPrice: 45000,
+            takeProfitPrice: 60000,
+          },
+        }),
+        createStopLossAndTakeProfitOrders: jest.fn().mockResolvedValue(undefined),
+      };
+
+      platformManagerService.getPlatformService.mockReturnValue(
+        mockPlatformService as any,
+      );
+      platformManagerService.getPlatformConfiguration.mockReturnValue({
+        platform: Platform.HYPERLIQUID,
+        enabled: true,
+        tradingParams: {
+          maxOpenPositions: 3,
+          defaultAmountIn: 100,
+          stopLossPercent: 10,
+          takeProfitPercent: 20,
+        },
+        defaultCurrencyFrom: Currency.USDC,
+      });
+
+      const mockPosition = {
+        _id: 'position-789',
+        ...mockOpenPosition,
+      };
+      tradePositionService.createTradePosition.mockResolvedValue(mockPosition as any);
+
+      await (service as any).enterPosition(mockTradingOpportunity);
+
+      // Verify SL/TP prices are calculated correctly for LONG
+      expect(mockPlatformService.enterPosition).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stopLossPrice: 45000, // 50000 * (1 - 0.10)
+          takeProfitPrice: 60000, // 50000 * (1 + 0.20)
+        }),
+      );
+
+      // Verify createStopLossAndTakeProfitOrders is called
+      expect(mockPlatformService.createStopLossAndTakeProfitOrders).toHaveBeenCalledWith(
+        'BTC',
+        PositionDirection.LONG,
+        0.002,
+        String(mockPosition._id),
+        45000,
+        60000,
+      );
+    });
+
+    it('should calculate and pass SL/TP prices for SHORT positions', async () => {
+      const shortOpportunity = {
+        ...mockTradingOpportunity,
+        tradingDecision: {
+          ...mockTradingOpportunity.tradingDecision,
+          metadata: {
+            direction: PositionDirection.SHORT,
+            leverage: 5,
+          },
+        },
+      };
+
+      const mockIndexerAdapter = service['indexerAdapter'];
+      mockIndexerAdapter.getLastPrice = jest.fn().mockResolvedValue({
+        price: 50000,
+        token_address: 'BTC',
+      });
+
+      const mockPlatformService = {
+        enterPosition: jest.fn().mockResolvedValue({
+          orderId: 'order-short-123',
+          status: TradeOrderStatus.CREATED,
+          type: 'market',
+          size: 0.002,
+          price: 50000,
+          metadata: {
+            direction: PositionDirection.SHORT,
+            stopLossPrice: 55000,
+            takeProfitPrice: 40000,
+          },
+        }),
+        createStopLossAndTakeProfitOrders: jest.fn().mockResolvedValue(undefined),
+      };
+
+      platformManagerService.getPlatformService.mockReturnValue(
+        mockPlatformService as any,
+      );
+      platformManagerService.getPlatformConfiguration.mockReturnValue({
+        platform: Platform.HYPERLIQUID,
+        enabled: true,
+        tradingParams: {
+          maxOpenPositions: 3,
+          defaultAmountIn: 100,
+          stopLossPercent: 10,
+          takeProfitPercent: 20,
+        },
+        defaultCurrencyFrom: Currency.USDC,
+      });
+
+      const mockShortPosition = {
+        _id: 'position-short-123',
+        positionDirection: PositionDirection.SHORT,
+      };
+      tradePositionService.createTradePosition.mockResolvedValue(mockShortPosition as any);
+
+      await (service as any).enterPosition(shortOpportunity);
+
+      // Verify SL/TP prices are calculated correctly for SHORT (inverted)
+      const enterPositionCall = mockPlatformService.enterPosition.mock.calls[0][0];
+      expect(enterPositionCall.stopLossPrice).toBeCloseTo(55000, 1); // 50000 * (1 + 0.10) - price goes up = loss for short
+      expect(enterPositionCall.takeProfitPrice).toBeCloseTo(40000, 1); // 50000 * (1 - 0.20) - price goes down = profit for short
+
+      // Verify createStopLossAndTakeProfitOrders is called with correct params
+      expect(mockPlatformService.createStopLossAndTakeProfitOrders).toHaveBeenCalledWith(
+        'BTC',
+        PositionDirection.SHORT,
+        0.002,
+        String(mockShortPosition._id),
+        55000,
+        40000,
+      );
+    });
+
+    it('should handle errors in SL/TP order creation gracefully', async () => {
+      const mockIndexerAdapter = service['indexerAdapter'];
+      mockIndexerAdapter.getLastPrice = jest.fn().mockResolvedValue({
+        price: 50000,
+        token_address: 'BTC',
+      });
+
+      const mockPlatformService = {
+        enterPosition: jest.fn().mockResolvedValue({
+          orderId: 'order-error-test',
+          status: TradeOrderStatus.CREATED,
+          type: 'market',
+          size: 0.002,
+          price: 50000,
+          metadata: {
+            direction: PositionDirection.LONG,
+            stopLossPrice: 45000,
+            takeProfitPrice: 60000,
+          },
+        }),
+        createStopLossAndTakeProfitOrders: jest.fn().mockRejectedValue(
+          new Error('Failed to create SL/TP orders'),
+        ),
+      };
+
+      platformManagerService.getPlatformService.mockReturnValue(
+        mockPlatformService as any,
+      );
+      platformManagerService.getPlatformConfiguration.mockReturnValue({
+        platform: Platform.HYPERLIQUID,
+        enabled: true,
+        tradingParams: {
+          maxOpenPositions: 3,
+          defaultAmountIn: 100,
+          stopLossPercent: 10,
+          takeProfitPercent: 20,
+        },
+        defaultCurrencyFrom: Currency.USDC,
+      });
+
+      tradePositionService.createTradePosition.mockResolvedValue({
+        _id: 'position-error-test',
+        ...mockOpenPosition,
+      } as any);
+
+      // Should not throw, just log error
+      await expect(
+        (service as any).enterPosition(mockTradingOpportunity),
+      ).resolves.not.toThrow();
+
+      // Main order should still be created
+      expect(tradeOrderService.createTradeOrder).toHaveBeenCalled();
+    });
+  });
+
+  describe('getCurrentPrice', () => {
+    it('should get price from indexer', async () => {
+      const mockIndexerAdapter = service['indexerAdapter'];
+      mockIndexerAdapter.getLastPrice = jest.fn().mockResolvedValue({
+        price: 50000,
+        token_address: 'BTC',
+      });
+
+      const price = await (service as any).getCurrentPrice(
+        Platform.HYPERLIQUID,
+        'BTC',
+      );
+
+      expect(price).toBe(50000);
+      expect(mockIndexerAdapter.getLastPrice).toHaveBeenCalledWith('BTC');
+    });
+
+    it('should fallback to platform service when indexer fails', async () => {
+      const mockIndexerAdapter = service['indexerAdapter'];
+      mockIndexerAdapter.getLastPrice = jest.fn().mockRejectedValue(
+        new Error('Indexer unavailable'),
+      );
+
+      const mockPlatformService = {
+        hyperliquidService: {
+          getTicker: jest.fn().mockResolvedValue({
+            mark: '55000',
+          }),
+        },
+      };
+
+      platformManagerService.getPlatformService.mockReturnValue(
+        mockPlatformService as any,
+      );
+
+      const price = await (service as any).getCurrentPrice(
+        Platform.HYPERLIQUID,
+        'BTC',
+      );
+
+      expect(price).toBe(55000);
+      expect(mockPlatformService.hyperliquidService.getTicker).toHaveBeenCalledWith('BTC');
+    });
+
+    it('should throw error when both indexer and platform fail', async () => {
+      const mockIndexerAdapter = service['indexerAdapter'];
+      mockIndexerAdapter.getLastPrice = jest.fn().mockRejectedValue(
+        new Error('Indexer unavailable'),
+      );
+
+      const mockPlatformService = {
+        hyperliquidService: undefined,
+      };
+
+      platformManagerService.getPlatformService.mockReturnValue(
+        mockPlatformService as any,
+      );
+
+      await expect(
+        (service as any).getCurrentPrice(Platform.HYPERLIQUID, 'BTC'),
+      ).rejects.toThrow('Failed to get current price for BTC');
+    });
   });
 
   describe('exitPosition', () => {

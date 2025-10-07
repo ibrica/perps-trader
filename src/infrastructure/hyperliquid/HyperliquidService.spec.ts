@@ -9,6 +9,7 @@ import {
   HLTicker,
   PlacePerpOrderParams,
   PositionDirection,
+  TradeOrderStatus,
 } from '../../shared';
 
 // Add HL_ACTION_TYPES for backwards compatibility in tests
@@ -558,6 +559,165 @@ describe('HyperliquidService', () => {
       await service.placePerpOrder(params);
 
       expect((service as any).updateLeverage).toHaveBeenCalledWith('BTC', 15);
+    });
+
+    it('should place a stop-loss trigger order successfully', async () => {
+      const mockOrderResponse = {
+        response: {
+          data: {
+            statuses: [
+              {
+                resting: {
+                  oid: 'sl-order-123',
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      mockClient.exchangeAction.mockResolvedValue(mockOrderResponse);
+
+      const params: PlacePerpOrderParams = {
+        symbol: 'BTC',
+        direction: PositionDirection.SHORT, // Opposite direction for closing
+        quoteAmount: 50,
+        triggerPrice: 45000, // Stop-loss at 45k
+        triggerType: 'sl',
+        isMarket: true,
+        reduceOnly: true,
+      };
+
+      const result = await service.placePerpOrder(params);
+
+      expect(result).toMatchObject({
+        orderId: 'sl-order-123',
+        status: TradeOrderStatus.CREATED,
+        isTrigger: true,
+        triggerPrice: 45000,
+        triggerType: 'sl',
+        isMarket: true,
+        type: 'trigger_sl',
+      });
+
+      expect(mockClient.exchangeAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'order',
+          order: expect.objectContaining({
+            coin: 'BTC',
+            is_buy: false,
+            order_type: {
+              trigger: {
+                triggerPx: '45000',
+                isMarket: true,
+                tpsl: 'sl',
+              },
+            },
+            reduce_only: true,
+          }),
+        }),
+      );
+    });
+
+    it('should place a take-profit trigger order successfully', async () => {
+      const mockOrderResponse = {
+        response: {
+          data: {
+            statuses: [
+              {
+                resting: {
+                  oid: 'tp-order-456',
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      mockClient.exchangeAction.mockResolvedValue(mockOrderResponse);
+
+      const params: PlacePerpOrderParams = {
+        symbol: 'BTC',
+        direction: PositionDirection.SHORT, // Opposite direction for closing
+        quoteAmount: 100,
+        triggerPrice: 48000, // Take-profit at 48k
+        triggerType: 'tp',
+        isMarket: true,
+        reduceOnly: true,
+      };
+
+      const result = await service.placePerpOrder(params);
+
+      expect(result).toMatchObject({
+        orderId: 'tp-order-456',
+        status: TradeOrderStatus.CREATED,
+        isTrigger: true,
+        triggerPrice: 48000,
+        triggerType: 'tp',
+        isMarket: true,
+        type: 'trigger_tp',
+      });
+
+      expect(mockClient.exchangeAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'order',
+          order: expect.objectContaining({
+            coin: 'BTC',
+            is_buy: false,
+            order_type: {
+              trigger: {
+                triggerPx: '48000',
+                isMarket: true,
+                tpsl: 'tp',
+              },
+            },
+            reduce_only: true,
+          }),
+        }),
+      );
+    });
+
+    it('should default to limit order when no trigger params provided', async () => {
+      const mockOrderResponse = {
+        response: {
+          data: {
+            statuses: [
+              {
+                filled: {
+                  oid: 'regular-order-789',
+                },
+              },
+            ],
+          },
+        },
+      };
+
+      mockClient.exchangeAction.mockResolvedValue(mockOrderResponse);
+
+      const params: PlacePerpOrderParams = {
+        symbol: 'SOL',
+        direction: PositionDirection.LONG,
+        quoteAmount: 50,
+      };
+
+      const result = await service.placePerpOrder(params);
+
+      expect(result.isTrigger).toBeFalsy();
+      expect(result.triggerPrice).toBeUndefined();
+      expect(result.triggerType).toBeUndefined();
+
+      expect(mockClient.exchangeAction).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'order',
+          order: expect.objectContaining({
+            order_type: {
+              limit: {
+                tif: 'Gtc', // Default tif when not specified
+              },
+            },
+          }),
+        }),
+      );
     });
   });
 
