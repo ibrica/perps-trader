@@ -432,7 +432,8 @@ describe('TradeManagerService', () => {
       expect(enterPositionCall.takeProfitPrice).toBeCloseTo(40000, 1); // 50000 * (1 - 0.20) - price goes down = profit for short
 
       // Verify position is created with SL/TP prices stored
-      const createPositionCall = tradePositionService.createTradePosition.mock.calls[0][0];
+      const createPositionCall =
+        tradePositionService.createTradePosition.mock.calls[0][0];
       expect(createPositionCall.stopLossPrice).toBeCloseTo(55000, 1);
       expect(createPositionCall.takeProfitPrice).toBeCloseTo(40000, 1);
 

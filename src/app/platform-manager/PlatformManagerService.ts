@@ -4,6 +4,7 @@ import {
   TradePositionStatus,
   HL_DEFAULT_CURRENCY_FROM,
   BasePlatformService,
+  PositionDirection,
 } from '../../shared';
 import {
   PlatformManagerPort,
@@ -258,7 +259,7 @@ export class PlatformManagerService extends PlatformManagerPort {
   async createStopLossAndTakeProfitOrders(
     platform: Platform,
     token: string,
-    direction: any,
+    direction: PositionDirection,
     size: number,
     positionId: string,
     stopLossPrice?: number,
