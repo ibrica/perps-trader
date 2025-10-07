@@ -221,7 +221,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         this.platformManagerService.getPlatformConfiguration(platform)
           .defaultCurrencyFrom,
       token,
-      amountIn: tradingDecision.recommendedAmount,
+      amountIn: tradingDecision.recommendedAmount, // TODO: think about amounts
       tradeType,
     });
 

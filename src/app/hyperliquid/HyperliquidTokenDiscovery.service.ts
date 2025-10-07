@@ -1,10 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Platform } from '../../shared';
+import { Platform, MarketStats } from '../../shared';
 import { PlatformTokenDiscoveryPort } from '../../shared/ports/trading/PlatformTokenDiscoveryPort';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { PerpService } from '../perps/Perp.service';
-import { MarketStats } from './types';
 
 @Injectable()
 export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort {

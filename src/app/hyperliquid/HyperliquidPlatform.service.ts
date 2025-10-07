@@ -73,15 +73,13 @@ export class HyperliquidPlatformService extends BasePlatformService {
         );
       }
 
-      const symbol = token;
-
       // Determine direction based on the trade
       // For perps, we're either going long or short on the base asset
       // amountIn represents the quote amount (USDC) we want to use
       const direction = this.determineDirection();
 
       const tradeOrderResult = await this.hyperliquidService.placePerpOrder({
-        symbol,
+        symbol: token,
         direction,
         quoteAmount: options.amountIn,
         // Use market order by default (no price specified)
@@ -92,7 +90,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
       this.logger.log(`Hyperliquid order placed successfully`, {
         orderId,
-        symbol,
+        token,
         direction,
         size,
       });
