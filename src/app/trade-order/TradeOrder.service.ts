@@ -69,7 +69,7 @@ export class TradeOrderService {
       const updateData: UpdateTradeOrderOptions = {
         status:
           newRemainingSize === 0
-            ? TradeOrderStatus.EXECUTED
+            ? TradeOrderStatus.FILLED
             : TradeOrderStatus.PARTIALLY_FILLED,
         coin: fill.coin,
         side: fill.side,

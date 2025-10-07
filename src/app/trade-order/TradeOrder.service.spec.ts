@@ -111,7 +111,7 @@ describe('TradeOrderService', () => {
 
     it('should update a trade order', async () => {
       const mockUpdateOptions: UpdateTradeOrderOptions = {
-        status: TradeOrderStatus.EXECUTED,
+        status: TradeOrderStatus.FILLED,
         price: 51000,
         fee: 10,
       };
@@ -123,7 +123,7 @@ describe('TradeOrderService', () => {
 
       expect(result).toBeDefined();
       if (result) {
-        expect(result.status).toBe(TradeOrderStatus.EXECUTED);
+        expect(result.status).toBe(TradeOrderStatus.FILLED);
         expect(result.price).toBe(mockUpdateOptions.price);
         expect(result.fee).toBe(mockUpdateOptions.fee);
         expect(result.orderId).toBe(createdOrder.orderId);
@@ -134,7 +134,7 @@ describe('TradeOrderService', () => {
     it('should return null if trade order not found', async () => {
       const nonExistentId = new Types.ObjectId().toString();
       const mockUpdateOptions: UpdateTradeOrderOptions = {
-        status: TradeOrderStatus.EXECUTED,
+        status: TradeOrderStatus.FILLED,
       };
 
       const result = await service.updateTradeOrder(
@@ -164,7 +164,7 @@ describe('TradeOrderService', () => {
           size: 200,
         },
         {
-          status: TradeOrderStatus.EXECUTED,
+          status: TradeOrderStatus.FILLED,
           position: new Types.ObjectId().toString(),
           type: 'MARKET',
           orderId: 'order003',
@@ -220,7 +220,7 @@ describe('TradeOrderService', () => {
 
     it('should update trade order by orderId', async () => {
       const mockUpdateOptions: UpdateTradeOrderOptions = {
-        status: TradeOrderStatus.EXECUTED,
+        status: TradeOrderStatus.FILLED,
         price: 51000,
         fee: 15,
       };
@@ -233,7 +233,7 @@ describe('TradeOrderService', () => {
       expect(result).toBeDefined();
       if (result) {
         expect(result.orderId).toBe('order100');
-        expect(result.status).toBe(TradeOrderStatus.EXECUTED);
+        expect(result.status).toBe(TradeOrderStatus.FILLED);
         expect(result.price).toBe(51000);
         expect(result.fee).toBe(15);
         expect(result.size).toBe(100);
@@ -242,7 +242,7 @@ describe('TradeOrderService', () => {
 
     it('should return null if orderId not found', async () => {
       const mockUpdateOptions: UpdateTradeOrderOptions = {
-        status: TradeOrderStatus.EXECUTED,
+        status: TradeOrderStatus.FILLED,
       };
 
       const result = await service.updateByOrderId(
@@ -314,7 +314,7 @@ describe('TradeOrderService', () => {
 
       const updatedOrder = await service.getByOrderId('fill-order-123');
       expect(updatedOrder).toBeDefined();
-      expect(updatedOrder?.status).toBe(TradeOrderStatus.EXECUTED);
+      expect(updatedOrder?.status).toBe(TradeOrderStatus.FILLED);
       expect(updatedOrder?.coin).toBe('BTC');
       expect(updatedOrder?.side).toBe('B');
       expect(updatedOrder?.size).toBe(0.1);
