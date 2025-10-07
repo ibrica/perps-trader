@@ -135,6 +135,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
   /**
    * Create stop-loss and take-profit trigger orders after entering a position
    * This should be called after the position is created and we have the position ID
+   * Uses actual filled size from exchange to ensure SL/TP matches real position
    */
   async createStopLossAndTakeProfitOrders(
     token: string,
@@ -148,10 +149,35 @@ export class HyperliquidPlatformService extends BasePlatformService {
       return;
     }
 
+    // Query actual position size from exchange to handle partial fills
+    let actualSize = size;
+    try {
+      const exchangePosition = await this.hyperliquidService.getPosition(token);
+      if (exchangePosition && exchangePosition.szi) {
+        actualSize = Math.abs(parseFloat(exchangePosition.szi));
+        this.logger.log(
+          `Using actual position size from exchange: ${actualSize} (requested: ${size})`,
+        );
+      } else {
+        this.logger.warn(
+          `No exchange position found for ${token}, using requested size: ${size}`,
+        );
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to fetch exchange position for ${token}, using requested size: ${size}`,
+        error,
+      );
+    }
+
     // Get current ticker to calculate quote amount
     const ticker = await this.hyperliquidService.getTicker(token);
     const currentPrice = parseFloat(ticker.mark);
-    const quoteAmount = size * currentPrice;
+    const quoteAmount = actualSize * currentPrice;
+
+    this.logger.log(
+      `Creating SL/TP orders for ${token}: size=${actualSize}, quoteAmount=${quoteAmount}`,
+    );
 
     // Determine the opposite direction for closing orders
     const closeDirection =
@@ -261,18 +287,44 @@ export class HyperliquidPlatformService extends BasePlatformService {
           ? PositionDirection.SHORT
           : PositionDirection.LONG;
 
+      // Use remaining size from position (accounts for partial fills)
+      // Fall back to totalFilledSize if remainingSize not set
+      let positionSizeToClose =
+        tradePosition.remainingSize ||
+        tradePosition.totalFilledSize ||
+        Math.abs(tradePosition.positionSize || 0);
+
+      // Query exchange for actual position size to be extra safe
+      try {
+        const exchangePosition =
+          await this.hyperliquidService.getPosition(token);
+        if (exchangePosition && exchangePosition.szi) {
+          const exchangeSize = Math.abs(parseFloat(exchangePosition.szi));
+          if (exchangeSize > 0) {
+            this.logger.log(
+              `Using actual position size from exchange: ${exchangeSize} (DB: ${positionSizeToClose})`,
+            );
+            positionSizeToClose = exchangeSize;
+          }
+        }
+      } catch (error) {
+        this.logger.warn(
+          `Failed to fetch exchange position for ${token}, using DB size: ${positionSizeToClose}`,
+          error,
+        );
+      }
+
       // For closing, we need to use the current market price and size
       // The position size should be in base asset terms, but we need quote amount for the order
       const ticker = await this.hyperliquidService.getTicker(token);
       const currentPrice = parseFloat(ticker.mark);
-      const positionSizeAbs = Math.abs(tradePosition.positionSize || 0);
-      const quoteAmount = positionSizeAbs * currentPrice;
+      const quoteAmount = positionSizeToClose * currentPrice;
 
       this.logger.log(
         `Closing ${tradePosition.positionDirection} position for ${token}`,
         {
           closeDirection,
-          positionSize: positionSizeAbs,
+          positionSize: positionSizeToClose,
           currentPrice,
           quoteAmount,
           platform,

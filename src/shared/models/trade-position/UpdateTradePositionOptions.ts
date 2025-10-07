@@ -21,6 +21,17 @@ export interface UpdateTradePositionOptions {
   takeProfitPrice?: number;
   stopLossPrice?: number;
   realizedPnl?: number;
+  totalFilledSize?: number;
+  totalRealizedPnl?: number;
+  remainingSize?: number;
+  fills?: Array<{
+    orderId: string;
+    size: number;
+    price: number;
+    closedPnl?: number;
+    timestamp: number;
+    side: string;
+  }>;
   timeOpened?: Date;
   timeClosed?: Date;
   exitFlag?: boolean;

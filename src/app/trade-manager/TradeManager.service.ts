@@ -296,6 +296,8 @@ export class TradeManagerService implements OnApplicationBootstrap {
     });
 
     // Create SL/TP trigger orders if we have the required metadata
+    // Note: The SL/TP creation method queries the actual filled size from the exchange
+    // to handle partial fills correctly, so we can create these immediately
     if (
       tradeType === TradeType.PERPETUAL &&
       size &&
@@ -303,6 +305,9 @@ export class TradeManagerService implements OnApplicationBootstrap {
       (result.metadata.stopLossPrice || result.metadata.takeProfitPrice)
     ) {
       try {
+        // Wait a moment for order to be processed and filled on exchange
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
         await this.platformManagerService.createStopLossAndTakeProfitOrders(
           platform,
           token,

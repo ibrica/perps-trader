@@ -61,12 +61,14 @@ curl http://localhost:7777/health
 ### Environment Variables
 
 #### Core Application
+
 - `APP_PORT=7777` - API server port
 - `APP_HOST=0.0.0.0` - API server host
 - `MONGODB_URI` - MongoDB Atlas connection string
 - `ENVIRONMENT=production` - Application environment
 
 #### Hyperliquid Trading
+
 - `HL_ENABLED=false` - Enable/disable Hyperliquid trading
 - `HL_ENV=testnet` - Hyperliquid environment (testnet/mainnet)
 - `HL_API_URL` - Hyperliquid API endpoint
@@ -77,6 +79,7 @@ curl http://localhost:7777/health
 - `HL_MAX_OPEN_POSITIONS=1` - Maximum concurrent positions
 
 #### External Services (Optional)
+
 - `PREDICTOR_URL=http://trader-ai` - AI predictor service URL
 - `INDEXER_HOST=sol-indexer` - Price indexer service host
 - `DD_API_KEY` - Datadog API key for monitoring
@@ -86,12 +89,14 @@ See `.env.example` for complete configuration options.
 ## Trading Features
 
 ### Automated Trading
+
 - **AI-Driven Decisions**: Integrates with external AI predictions
 - **Risk Management**: Configurable stop-loss and take-profit levels
 - **Position Monitoring**: Real-time position tracking and management
 - **Multi-Asset Support**: Trade multiple perpetual futures
 
 ### Platform Management
+
 - **Hyperliquid Integration**: Native support for Hyperliquid perps
 - **Extensible Architecture**: Easy to add new trading platforms
 - **Strategy Framework**: Pluggable trading strategy system
@@ -183,6 +188,7 @@ The architecture supports adding new trading platforms:
 ## Support
 
 For issues and questions:
+
 - Check the [issues](https://github.com/your-org/perps-trader/issues) page
 - Review configuration in `.env.example`
 - Check logs via `docker-compose logs perps-trader`

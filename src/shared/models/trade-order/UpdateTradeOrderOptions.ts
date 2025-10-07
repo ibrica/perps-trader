@@ -8,6 +8,8 @@ export interface UpdateTradeOrderOptions {
   coin?: string;
   side?: string;
   size?: number;
+  filledSize?: number;
+  remainingSize?: number;
   price?: number;
   fee?: number;
   timestampUpdate?: number;

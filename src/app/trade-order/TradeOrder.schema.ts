@@ -39,6 +39,12 @@ export class TradeOrder {
   size?: number;
 
   @Prop({ type: Number })
+  filledSize?: number; // Actual filled amount (may differ from requested size)
+
+  @Prop({ type: Number })
+  remainingSize?: number; // Remaining to fill (for partial fills)
+
+  @Prop({ type: Number })
   price?: number;
 
   @Prop({ type: Number })

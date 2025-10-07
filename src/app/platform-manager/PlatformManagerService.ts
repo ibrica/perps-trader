@@ -267,7 +267,10 @@ export class PlatformManagerService extends PlatformManagerPort {
     const platformService = this.getPlatformService(platform);
 
     // Check if the platform service supports SL/TP orders
-    if (typeof (platformService as any).createStopLossAndTakeProfitOrders === 'function') {
+    if (
+      typeof (platformService as any).createStopLossAndTakeProfitOrders ===
+      'function'
+    ) {
       await (platformService as any).createStopLossAndTakeProfitOrders(
         token,
         direction,

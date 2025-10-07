@@ -350,6 +350,22 @@ export class HyperliquidService {
   }
 
   /**
+   * Get position for a specific symbol
+   */
+  async getPosition(symbol: string): Promise<HLPosition | null> {
+    try {
+      const mappedSymbol = this.mapSymbolToHL(symbol);
+      const positions = await this.getPositions();
+
+      const position = positions.find((pos) => pos.coin === mappedSymbol);
+      return position || null;
+    } catch (error) {
+      this.logger.error(`Failed to fetch position for ${symbol}`, error);
+      throw error;
+    }
+  }
+
+  /**
    * Get account balance
    */
   async getBalance(): Promise<{ total: number; available: number }> {
