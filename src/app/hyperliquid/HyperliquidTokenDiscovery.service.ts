@@ -13,7 +13,7 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
 
   private marketsCache: string[] = [];
   private lastFetch: number = 0;
-  private readonly cacheTtl = 300000; // 5 minutes
+  private readonly cacheTtl = 900000; // 15 minutes
 
   constructor(
     private configService: ConfigService,
