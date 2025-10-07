@@ -395,7 +395,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
       return priceData?.price || 0;
     } catch (error) {
       this.logger.warn(
-        `Failed to get price from indexer for ${token}, using fallback`,
+        `Failed to get price from indexer for ${token}, using fallback: ${error}`,
       );
 
       // Fallback: get price from platform service

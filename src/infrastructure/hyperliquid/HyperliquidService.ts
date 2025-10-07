@@ -12,7 +12,6 @@ import {
 import {
   HL_SYMBOL_MAP,
   HL_SYMBOL_REVERSE_MAP,
-  HL_BASE_CURRENCY_DECIMALS,
   HLMarket,
   HLTicker,
   HLOrderbook,

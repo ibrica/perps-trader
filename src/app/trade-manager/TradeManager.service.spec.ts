@@ -310,7 +310,9 @@ describe('TradeManagerService', () => {
             takeProfitPrice: 60000,
           },
         }),
-        createStopLossAndTakeProfitOrders: jest.fn().mockResolvedValue(undefined),
+        createStopLossAndTakeProfitOrders: jest
+          .fn()
+          .mockResolvedValue(undefined),
       };
 
       platformManagerService.getPlatformService.mockReturnValue(
@@ -332,7 +334,9 @@ describe('TradeManagerService', () => {
         _id: 'position-789',
         ...mockOpenPosition,
       };
-      tradePositionService.createTradePosition.mockResolvedValue(mockPosition as any);
+      tradePositionService.createTradePosition.mockResolvedValue(
+        mockPosition as any,
+      );
 
       await (service as any).enterPosition(mockTradingOpportunity);
 
@@ -345,7 +349,9 @@ describe('TradeManagerService', () => {
       );
 
       // Verify createStopLossAndTakeProfitOrders is called
-      expect(mockPlatformService.createStopLossAndTakeProfitOrders).toHaveBeenCalledWith(
+      expect(
+        mockPlatformService.createStopLossAndTakeProfitOrders,
+      ).toHaveBeenCalledWith(
         'BTC',
         PositionDirection.LONG,
         0.002,
@@ -386,7 +392,9 @@ describe('TradeManagerService', () => {
             takeProfitPrice: 40000,
           },
         }),
-        createStopLossAndTakeProfitOrders: jest.fn().mockResolvedValue(undefined),
+        createStopLossAndTakeProfitOrders: jest
+          .fn()
+          .mockResolvedValue(undefined),
       };
 
       platformManagerService.getPlatformService.mockReturnValue(
@@ -408,17 +416,22 @@ describe('TradeManagerService', () => {
         _id: 'position-short-123',
         positionDirection: PositionDirection.SHORT,
       };
-      tradePositionService.createTradePosition.mockResolvedValue(mockShortPosition as any);
+      tradePositionService.createTradePosition.mockResolvedValue(
+        mockShortPosition as any,
+      );
 
       await (service as any).enterPosition(shortOpportunity);
 
       // Verify SL/TP prices are calculated correctly for SHORT (inverted)
-      const enterPositionCall = mockPlatformService.enterPosition.mock.calls[0][0];
+      const enterPositionCall =
+        mockPlatformService.enterPosition.mock.calls[0][0];
       expect(enterPositionCall.stopLossPrice).toBeCloseTo(55000, 1); // 50000 * (1 + 0.10) - price goes up = loss for short
       expect(enterPositionCall.takeProfitPrice).toBeCloseTo(40000, 1); // 50000 * (1 - 0.20) - price goes down = profit for short
 
       // Verify createStopLossAndTakeProfitOrders is called with correct params
-      expect(mockPlatformService.createStopLossAndTakeProfitOrders).toHaveBeenCalledWith(
+      expect(
+        mockPlatformService.createStopLossAndTakeProfitOrders,
+      ).toHaveBeenCalledWith(
         'BTC',
         PositionDirection.SHORT,
         0.002,
@@ -448,9 +461,9 @@ describe('TradeManagerService', () => {
             takeProfitPrice: 60000,
           },
         }),
-        createStopLossAndTakeProfitOrders: jest.fn().mockRejectedValue(
-          new Error('Failed to create SL/TP orders'),
-        ),
+        createStopLossAndTakeProfitOrders: jest
+          .fn()
+          .mockRejectedValue(new Error('Failed to create SL/TP orders')),
       };
 
       platformManagerService.getPlatformService.mockReturnValue(
@@ -502,9 +515,9 @@ describe('TradeManagerService', () => {
 
     it('should fallback to platform service when indexer fails', async () => {
       const mockIndexerAdapter = service['indexerAdapter'];
-      mockIndexerAdapter.getLastPrice = jest.fn().mockRejectedValue(
-        new Error('Indexer unavailable'),
-      );
+      mockIndexerAdapter.getLastPrice = jest
+        .fn()
+        .mockRejectedValue(new Error('Indexer unavailable'));
 
       const mockPlatformService = {
         hyperliquidService: {
@@ -524,14 +537,16 @@ describe('TradeManagerService', () => {
       );
 
       expect(price).toBe(55000);
-      expect(mockPlatformService.hyperliquidService.getTicker).toHaveBeenCalledWith('BTC');
+      expect(
+        mockPlatformService.hyperliquidService.getTicker,
+      ).toHaveBeenCalledWith('BTC');
     });
 
     it('should throw error when both indexer and platform fail', async () => {
       const mockIndexerAdapter = service['indexerAdapter'];
-      mockIndexerAdapter.getLastPrice = jest.fn().mockRejectedValue(
-        new Error('Indexer unavailable'),
-      );
+      mockIndexerAdapter.getLastPrice = jest
+        .fn()
+        .mockRejectedValue(new Error('Indexer unavailable'));
 
       const mockPlatformService = {
         hyperliquidService: undefined,
