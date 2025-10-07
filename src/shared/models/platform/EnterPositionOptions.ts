@@ -12,7 +12,7 @@ export interface EnterPositionOptions {
 
   leverage?: number;
 
-  amountIn: bigint;
+  amountIn: number;
 
-  expectedAmountOut?: bigint;
+  expectedAmountOut?: number;
 }

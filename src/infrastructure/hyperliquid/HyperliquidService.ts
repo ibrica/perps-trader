@@ -141,9 +141,7 @@ export class HyperliquidService {
 
       const ticker = await this.getTicker(params.symbol);
       const markPrice = parseFloat(ticker.mark);
-      const quoteAmountNum =
-        Number(params.quoteAmount) / 10 ** HL_BASE_CURRENCY_DECIMALS;
-      const baseSize = quoteAmountNum / markPrice;
+      const baseSize = params.quoteAmount / markPrice;
 
       const roundedSize = this.roundToStep(baseSize, market.minSize || 0.001);
 

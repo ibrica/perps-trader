@@ -284,7 +284,7 @@ describe('TradeOrderService', () => {
         positionType: PositionType.PERPETUAL,
         token: 'BTC',
         currency: Currency.USDC,
-        amountIn: 1000000n,
+        amountIn: 1000,
       });
       positionId = String(position._id);
 
@@ -420,7 +420,7 @@ describe('TradeOrderService', () => {
         positionType: PositionType.PERPETUAL,
         token: 'ETH',
         currency: Currency.USDC,
-        amountIn: 500000n,
+        amountIn: 500,
       });
       positionId = String(position._id);
 

@@ -332,7 +332,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         this.platformManagerService.getPlatformConfiguration(platform)
           .defaultCurrencyFrom,
       amountIn: tradingDecision.recommendedAmount,
-      amountOut: 0n,
+      amountOut: 0,
       platform,
       status: TradePositionStatus.CREATED, // Position starts as CREATED, WebSocket will set to OPEN when filled
     };
@@ -345,7 +345,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         positionDirection:
           tradingDecision.metadata?.direction || PositionDirection.LONG,
         leverage: tradingDecision.metadata?.leverage || 3,
-        positionSize: tradingDecision.recommendedAmount || 100000000n, // Default 100 USDC
+        positionSize: tradingDecision.recommendedAmount || 100, // Default 100 USDC
         // Entry price will be set by WebSocket handler when order fills
         token,
       };
@@ -371,7 +371,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
   private calculateRealizedPnl(
     entryPrice: number | undefined,
     exitPrice: number | undefined,
-    positionSize: bigint | undefined,
+    positionSize: number | undefined,
     positionDirection: PositionDirection | undefined,
   ): number | undefined {
     if (
@@ -383,12 +383,10 @@ export class TradeManagerService implements OnApplicationBootstrap {
       return undefined;
     }
 
-    const positionSizeNumber = Number(positionSize); // TODO: check if this is correct for all platforms especially for perps
-
     if (positionDirection === PositionDirection.LONG) {
-      return (exitPrice - entryPrice) * positionSizeNumber;
+      return (exitPrice - entryPrice) * positionSize;
     } else {
-      return (entryPrice - exitPrice) * positionSizeNumber;
+      return (entryPrice - exitPrice) * positionSize;
     }
   }
 }

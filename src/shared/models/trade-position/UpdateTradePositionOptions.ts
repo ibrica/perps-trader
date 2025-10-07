@@ -11,11 +11,11 @@ export interface UpdateTradePositionOptions {
   positionType?: PositionType;
   token?: string;
   currency?: string;
-  amountIn?: bigint;
-  amountOut?: bigint;
+  amountIn?: number;
+  amountOut?: number;
   positionDirection?: PositionDirection;
   leverage?: number;
-  positionSize?: bigint;
+  positionSize?: number;
   entryPrice?: number;
   currentPrice?: number;
   takeProfitPrice?: number;

@@ -42,7 +42,7 @@ export type HLOrderbook = L2Book & {
 export interface PlacePerpOrderParams {
   symbol: string;
   direction: PositionDirection;
-  quoteAmount: bigint;
+  quoteAmount: number;
   price?: number;
   tif?: Tif;
   leverage?: number;

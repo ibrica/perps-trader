@@ -57,7 +57,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       tradeType,
       currency,
       token,
-      amountIn: amountIn.toString(),
+      amountIn,
     });
 
     try {
@@ -136,10 +136,8 @@ export class HyperliquidPlatformService extends BasePlatformService {
       // The position size should be in base asset terms, but we need quote amount for the order
       const ticker = await this.hyperliquidService.getTicker(token);
       const currentPrice = parseFloat(ticker.mark);
-      const positionSizeAbs = Math.abs(Number(tradePosition.positionSize || 0));
-      const quoteAmount = BigInt(
-        Math.floor(positionSizeAbs * currentPrice * 1000000),
-      ); // Convert to USDC (6 decimals)
+      const positionSizeAbs = Math.abs(tradePosition.positionSize || 0);
+      const quoteAmount = positionSizeAbs * currentPrice;
 
       this.logger.log(
         `Closing ${tradePosition.positionDirection} position for ${token}`,
@@ -147,7 +145,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
           closeDirection,
           positionSize: positionSizeAbs,
           currentPrice,
-          quoteAmount: quoteAmount.toString(),
+          quoteAmount,
           platform,
         },
       );

@@ -26,14 +26,14 @@ describe('HyperliquidTradingStrategyService', () => {
     _id: 'position-123',
     token: 'BTC',
     entryPrice: 50000,
-    positionSize: 100000000n, // 0.1 BTC in smallest units using BigInt literal
+    positionSize: 0.1, // 0.1 BTC
     leverage: 10,
     exitFlag: false,
   };
 
   const mockTradingParams: PlatformTradingParams = {
     maxOpenPositions: 5,
-    defaultAmountIn: 1000000n, // 1 USDC using BigInt literal
+    defaultAmountIn: 1000, // 1000 USDC
     stopLossPercent: 0.05, // 5%
     takeProfitPercent: 0.1, // 10%
   };
@@ -190,7 +190,7 @@ describe('HyperliquidTradingStrategyService', () => {
         shouldTrade: true,
         reason: expect.any(String),
         confidence: 0.85,
-        recommendedAmount: expect.any(BigInt),
+        recommendedAmount: expect.any(Number),
         metadata: expect.objectContaining({
           direction: PositionDirection.LONG,
           aiPrediction: expect.objectContaining({
@@ -369,7 +369,7 @@ describe('HyperliquidTradingStrategyService', () => {
 
       expect(result).toEqual({
         maxOpenPositions: expect.any(Number),
-        defaultAmountIn: expect.any(BigInt),
+        defaultAmountIn: expect.any(Number),
         defaultLeverage: expect.any(Number),
         stopLossPercent: expect.any(Number),
         takeProfitPercent: expect.any(Number),

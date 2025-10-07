@@ -50,7 +50,7 @@ describe('TradePositionService', () => {
       status: TradePositionStatus.CREATED,
       token: 'BTC',
       currency: Currency.USDC,
-      amountIn: 1000000n,
+      amountIn: 1000,
       entryPrice: 0.005,
       timeOpened: new Date('2024-03-20T10:00:00Z'),
     };
@@ -78,7 +78,7 @@ describe('TradePositionService', () => {
         status: TradePositionStatus.CREATED,
         token: 'BTC',
         currency: Currency.USDC,
-        amountIn: 1000000n,
+        amountIn: 1000,
         timeOpened: new Date('2024-03-20T10:00:00Z'),
       };
 
@@ -88,7 +88,7 @@ describe('TradePositionService', () => {
     it('should update a trade position', async () => {
       const mockUpdateOptions: UpdateTradePositionOptions = {
         status: TradePositionStatus.OPEN,
-        amountOut: 900000n,
+        amountOut: 900,
         timeOpened: new Date('2024-03-20T10:00:00Z'),
         timeClosed: new Date('2024-03-20T10:05:00Z'),
         currentPrice: 0.008,
@@ -134,7 +134,7 @@ describe('TradePositionService', () => {
           status: TradePositionStatus.OPEN,
           token: 'BTC',
           currency: Currency.USDC,
-          amountIn: 1000000n,
+          amountIn: 1000,
           timeOpened: new Date('2024-03-20T10:00:00Z'),
         },
         {
@@ -142,7 +142,7 @@ describe('TradePositionService', () => {
           status: TradePositionStatus.OPEN,
           token: 'ETH',
           currency: Currency.USDC,
-          amountIn: 2000000n,
+          amountIn: 2000,
           timeOpened: new Date('2024-03-20T11:00:00Z'),
         },
         {
@@ -150,7 +150,7 @@ describe('TradePositionService', () => {
           status: TradePositionStatus.CLOSED,
           token: 'SOL',
           currency: Currency.USDC,
-          amountIn: 3000000n,
+          amountIn: 3000,
           timeOpened: new Date('2024-03-20T12:00:00Z'),
         },
       ];
@@ -195,7 +195,7 @@ describe('TradePositionService', () => {
         status: TradePositionStatus.CREATED,
         token: 'BTC',
         currency: 'USDC',
-        amountIn: 1000000n,
+        amountIn: 1000,
       };
 
       createdPosition = await service.createTradePosition(createOptions);
@@ -331,21 +331,21 @@ describe('TradePositionService', () => {
           status: TradePositionStatus.OPEN,
           token: 'BTC',
           currency: 'USDC',
-          amountIn: 1000000n,
+          amountIn: 1000,
         },
         {
           platform: Platform.HYPERLIQUID,
           status: TradePositionStatus.CLOSED,
           token: 'BTC',
           currency: 'USDC',
-          amountIn: 2000000n,
+          amountIn: 2000,
         },
         {
           platform: Platform.HYPERLIQUID,
           status: TradePositionStatus.OPEN,
           token: 'ETH',
           currency: 'USDC',
-          amountIn: 500000n,
+          amountIn: 500,
         },
       ];
 
