@@ -34,6 +34,7 @@ describe('PlatformManagerService', () => {
   const mockPlatformService: jest.Mocked<BasePlatformService> = {
     enterPosition: jest.fn(),
     exitPosition: jest.fn(),
+    createStopLossAndTakeProfitOrders: jest.fn(),
   } as any;
 
   beforeEach(async () => {
@@ -349,6 +350,39 @@ describe('PlatformManagerService', () => {
       expect(() => {
         service.getTradingStrategyService(Platform.DRIFT);
       }).toThrow('Trading strategy service not found for platform: DRIFT');
+    });
+  });
+
+  describe('createStopLossAndTakeProfitOrders', () => {
+    beforeEach(() => {
+      service.registerPlatform(
+        mockTokenDiscovery,
+        mockTradingStrategy,
+        mockPlatformService,
+      );
+    });
+
+    it('delegates to the platform service implementation', async () => {
+      await service.createStopLossAndTakeProfitOrders(
+        Platform.HYPERLIQUID,
+        'SOL',
+        PositionDirection.LONG,
+        10,
+        'position-id',
+        90,
+        120,
+      );
+
+      expect(
+        mockPlatformService.createStopLossAndTakeProfitOrders,
+      ).toHaveBeenCalledWith(
+        'SOL',
+        PositionDirection.LONG,
+        10,
+        'position-id',
+        90,
+        120,
+      );
     });
   });
 });
