@@ -8,8 +8,10 @@ import {
 import { EnterPositionOptions, Platform, TradeType } from '../../shared';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/HyperliquidWebSocket.service';
+import { OrderFill } from '../../infrastructure/websocket';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { TradeOrderService } from '../trade-order/TradeOrder.service';
+import { TradePositionService } from '../trade-position/TradePosition.service';
 
 @Injectable()
 export class HyperliquidPlatformService extends BasePlatformService {
@@ -19,6 +21,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
     private readonly hyperliquidService?: HyperliquidService,
     private readonly hyperliquidWebSocket?: HyperliquidWebSocketService,
     private readonly tradeOrderService?: TradeOrderService,
+    private readonly tradePositionService?: TradePositionService,
   ) {
     super();
     this.registerWebSocketHandlers();
@@ -33,8 +36,10 @@ export class HyperliquidPlatformService extends BasePlatformService {
     }
 
     // Register handler for order fills
-    this.hyperliquidWebSocket.onOrderFill((fill) => {
-      this.tradeOrderService.handleOrderFill(fill);
+    this.hyperliquidWebSocket.onOrderFill(async (fill) => {
+      await this.tradeOrderService.handleOrderFill(fill);
+      // After handling the fill, check if we need to create SL/TP orders
+      await this.handlePositionFillForSlTp(fill);
     });
 
     // Register handler for order updates
@@ -45,6 +50,85 @@ export class HyperliquidPlatformService extends BasePlatformService {
     this.logger.log(
       'WebSocket handlers registered for order fills and updates',
     );
+  }
+
+  /**
+   * Handle position fill event and create SL/TP orders if needed
+   * This is called after an entry order is filled
+   */
+  private async handlePositionFillForSlTp(fill: OrderFill): Promise<void> {
+    try {
+      if (!this.tradeOrderService || !this.tradePositionService) {
+        return;
+      }
+
+      // Get the order from database to find position and check if it needs SL/TP
+      const order = await this.tradeOrderService.getByOrderId(fill.orderId);
+      if (!order) {
+        return;
+      }
+
+      // Only process entry orders (not exit/reduce orders)
+      if (fill.closedPnl && parseFloat(fill.closedPnl) !== 0) {
+        return;
+      }
+
+      // Get position to check if it needs SL/TP orders
+      const positionId =
+        typeof order.position === 'string'
+          ? order.position
+          : String(order.position._id);
+
+      const position =
+        await this.tradePositionService.getTradePositionById(positionId);
+      if (!position) {
+        return;
+      }
+
+      // Check if position has SL/TP prices set but no SL/TP orders created yet
+      const hasSlTpPrices = position.stopLossPrice || position.takeProfitPrice;
+      const hasSlTpOrders = await this.hasExistingSlTpOrders(positionId);
+
+      if (hasSlTpPrices && !hasSlTpOrders) {
+        this.logger.log(
+          `Creating SL/TP orders for position ${positionId} after fill confirmation`,
+        );
+
+        await this.createStopLossAndTakeProfitOrders(
+          position.token,
+          position.positionDirection,
+          parseFloat(fill.size),
+          positionId,
+          position.stopLossPrice,
+          position.takeProfitPrice,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        'Failed to handle position fill for SL/TP creation',
+        error,
+      );
+    }
+  }
+
+  /**
+   * Check if position already has SL/TP trigger orders
+   */
+  private async hasExistingSlTpOrders(positionId: string): Promise<boolean> {
+    try {
+      // Query orders for this position that are trigger orders
+      const orders = await this.tradeOrderService.getMany({
+        position: positionId,
+        isTrigger: true,
+      });
+      return orders.length > 0;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to check existing SL/TP orders for position ${positionId}`,
+        error,
+      );
+      return false;
+    }
   }
 
   async enterPosition(

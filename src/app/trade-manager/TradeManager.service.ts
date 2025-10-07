@@ -273,6 +273,8 @@ export class TradeManagerService implements OnApplicationBootstrap {
       platform,
       token,
       tradingDecision,
+      stopLossPrice,
+      takeProfitPrice,
     );
 
     const tradePosition =
@@ -295,36 +297,12 @@ export class TradeManagerService implements OnApplicationBootstrap {
       price,
     });
 
-    // Create SL/TP trigger orders if we have the required metadata
-    // Note: The SL/TP creation method queries the actual filled size from the exchange
-    // to handle partial fills correctly, so we can create these immediately
-    if (
-      tradeType === TradeType.PERPETUAL &&
-      size &&
-      result.metadata &&
-      (result.metadata.stopLossPrice || result.metadata.takeProfitPrice)
-    ) {
-      try {
-        // Wait a moment for order to be processed and filled on exchange
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        await this.platformManagerService.createStopLossAndTakeProfitOrders(
-          platform,
-          token,
-          result.metadata.direction,
-          size,
-          String(tradePosition._id),
-          result.metadata.stopLossPrice,
-          result.metadata.takeProfitPrice,
-        );
-        this.logger.log(
-          `Created SL/TP orders for ${token} position ${tradePosition._id}`,
-        );
-      } catch (error) {
-        this.logger.error(`Failed to create SL/TP orders for ${token}:`, error);
-        // Don't fail the main trade if SL/TP orders fail - they're a safety net
-      }
-    }
+    // SL/TP orders will be created automatically by the WebSocket fill handler
+    // when the entry order is confirmed filled. This eliminates the race condition
+    // where we previously waited 500ms and hoped the order was filled.
+    this.logger.log(
+      `Position ${tradePosition._id} created for ${token}. SL/TP orders will be created upon fill confirmation.`,
+    );
 
     if (tradeType === TradeType.PERPETUAL) {
       try {
@@ -419,6 +397,8 @@ export class TradeManagerService implements OnApplicationBootstrap {
     platform: Platform,
     token: string,
     tradingDecision: TradingDecision,
+    stopLossPrice?: number,
+    takeProfitPrice?: number,
   ): CreateTradePositionOptions {
     const baseData = {
       currency:
@@ -441,6 +421,9 @@ export class TradeManagerService implements OnApplicationBootstrap {
         positionSize: tradingDecision.recommendedAmount || 100, // Default 100 USDC
         // Entry price will be set by WebSocket handler when order fills
         token,
+        // Store SL/TP prices - orders will be created by WebSocket handler after fill
+        stopLossPrice,
+        takeProfitPrice,
       };
     } else {
       //  DEX platforms

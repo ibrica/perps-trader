@@ -19,6 +19,15 @@ export class TradeOrderService {
     private readonly tradePositionService: TradePositionService,
   ) {}
 
+  /**
+   * Get multiple trade orders by filter
+   */
+  async getMany(
+    filter: Record<string, unknown>,
+  ): Promise<TradeOrderDocument[]> {
+    return this.tradeOrderRepository.getMany({ filter });
+  }
+
   async createTradeOrder(
     createTradeOrderOptions: CreateTradeOrderOptions,
   ): Promise<TradeOrderDocument> {

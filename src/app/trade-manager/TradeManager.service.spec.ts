@@ -349,18 +349,19 @@ describe('TradeManagerService', () => {
         }),
       );
 
-      // Verify createStopLossAndTakeProfitOrders is called through platformManager
+      // Verify position is created with SL/TP prices stored
+      expect(tradePositionService.createTradePosition).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stopLossPrice: 45000,
+          takeProfitPrice: 60000,
+        }),
+      );
+
+      // SL/TP orders are no longer created immediately - they're created by WebSocket handler
+      // after the entry order is filled. This eliminates the race condition.
       expect(
         platformManagerService.createStopLossAndTakeProfitOrders,
-      ).toHaveBeenCalledWith(
-        Platform.HYPERLIQUID,
-        'BTC',
-        PositionDirection.LONG,
-        0.002,
-        String(mockPosition._id),
-        45000,
-        60000,
-      );
+      ).not.toHaveBeenCalled();
     });
 
     it('should calculate and pass SL/TP prices for SHORT positions', async () => {
@@ -430,18 +431,16 @@ describe('TradeManagerService', () => {
       expect(enterPositionCall.stopLossPrice).toBeCloseTo(55000, 1); // 50000 * (1 + 0.10) - price goes up = loss for short
       expect(enterPositionCall.takeProfitPrice).toBeCloseTo(40000, 1); // 50000 * (1 - 0.20) - price goes down = profit for short
 
-      // Verify createStopLossAndTakeProfitOrders is called through platformManager with correct params
+      // Verify position is created with SL/TP prices stored
+      const createPositionCall = tradePositionService.createTradePosition.mock.calls[0][0];
+      expect(createPositionCall.stopLossPrice).toBeCloseTo(55000, 1);
+      expect(createPositionCall.takeProfitPrice).toBeCloseTo(40000, 1);
+
+      // SL/TP orders are no longer created immediately - they're created by WebSocket handler
+      // after the entry order is filled. This eliminates the race condition.
       expect(
         platformManagerService.createStopLossAndTakeProfitOrders,
-      ).toHaveBeenCalledWith(
-        Platform.HYPERLIQUID,
-        'BTC',
-        PositionDirection.SHORT,
-        0.002,
-        String(mockShortPosition._id),
-        55000,
-        40000,
-      );
+      ).not.toHaveBeenCalled();
     });
 
     it('should handle errors in SL/TP order creation gracefully', async () => {

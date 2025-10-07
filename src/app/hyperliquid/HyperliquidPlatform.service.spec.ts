@@ -3,6 +3,7 @@ import { HyperliquidPlatformService } from './HyperliquidPlatform.service';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/HyperliquidWebSocket.service';
 import { TradeOrderService } from '../trade-order/TradeOrder.service';
+import { TradePositionService } from '../trade-position/TradePosition.service';
 import {
   Platform,
   TradeType,
@@ -31,6 +32,12 @@ describe('HyperliquidPlatformService', () => {
       createTradeOrder: jest.fn(),
       handleOrderFill: jest.fn(),
       handleOrderUpdate: jest.fn(),
+      getByOrderId: jest.fn(),
+      getMany: jest.fn(),
+    };
+
+    const mockTradePositionService = {
+      getTradePositionById: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -47,6 +54,10 @@ describe('HyperliquidPlatformService', () => {
         {
           provide: TradeOrderService,
           useValue: mockTradeOrderService,
+        },
+        {
+          provide: TradePositionService,
+          useValue: mockTradePositionService,
         },
       ],
     }).compile();
