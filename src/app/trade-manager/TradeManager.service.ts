@@ -113,8 +113,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     for (const tradePosition of tradePositions) {
       const { platform, token, exitFlag } = tradePosition;
-      // TODO: check what is happening when no price is available
       const priceResponse = await this.indexerAdapter.getLastPrice(token);
+      if (!priceResponse) {
+        this.logger.warn(`No price response for ${token}`);
+        continue;
+      }
 
       const { price } = priceResponse;
 
@@ -129,7 +132,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
             `Closing position for ${token} on ${platform}, flags; closeAllPositions:  ${settings.closeAllPositions}, exitFlag: ${exitFlag}`,
           );
           await this.exitPosition(tradePosition);
-          nrOfOpenPositions--; // TODO: check if the order is executed
+          nrOfOpenPositions--; // TODO: for now ok, later check if the order is filled
         } catch (error) {
           this.logger.error(`Failed to close position: ${error}`);
         }
@@ -253,7 +256,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         this.platformManagerService.getPlatformConfiguration(platform)
           .defaultCurrencyFrom,
       token,
-      amountIn: tradingDecision.recommendedAmount, // TODO: think about amounts
+      amountIn: tradingDecision.recommendedAmount,
       tradeType,
       stopLossPrice,
       takeProfitPrice,
@@ -334,7 +337,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     if (status !== TradeOrderStatus.CREATED) {
       this.logger.error(
-        `Failed to execute closing position orderfor ${token} on ${platform}:`,
+        `Failed to execute closing position order for ${token} on ${platform}:`,
         result,
       );
       throw new Error('Failed to close position');
