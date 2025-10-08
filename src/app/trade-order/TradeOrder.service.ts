@@ -9,6 +9,7 @@ import {
 import { TradeOrderRepository } from './TradeOrder.repository';
 import { OrderFill, OrderUpdate } from '../../infrastructure/websocket';
 import { TradePositionService } from '../trade-position/TradePosition.service';
+import { RepositoryQueryOptions } from '../../shared/repository/RepositoryQueryOptions';
 
 @Injectable()
 export class TradeOrderService {
@@ -41,9 +42,13 @@ export class TradeOrderService {
     return this.tradeOrderRepository.updateById(id, updateTradeOrderOptions);
   }
 
-  async getByOrderId(orderId: string): Promise<TradeOrderDocument | null> {
+  async getByOrderId(
+    orderId: string,
+    options?: Partial<RepositoryQueryOptions<TradeOrderDocument>>,
+  ): Promise<TradeOrderDocument | null> {
     return this.tradeOrderRepository.getOne({
       filter: { orderId },
+      ...options,
     });
   }
 
