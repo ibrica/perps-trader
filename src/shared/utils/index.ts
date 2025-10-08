@@ -12,3 +12,4 @@ export * from './isObject';
 export * from './never';
 export * from './formatMs';
 export * from './stringify';
+export * from './precision';

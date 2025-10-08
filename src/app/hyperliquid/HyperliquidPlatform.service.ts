@@ -4,6 +4,7 @@ import {
   PositionDirection,
   TradeOrderResult,
   TradeOrderStatus,
+  calculateQuoteAmount,
 } from '../../shared';
 import { EnterPositionOptions, Platform, TradeType } from '../../shared';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
@@ -252,7 +253,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
     // Get current ticker to calculate quote amount
     const ticker = await this.hyperliquidService.getTicker(token);
     const currentPrice = parseFloat(ticker.mark);
-    const quoteAmount = actualSize * currentPrice;
+    const quoteAmount = calculateQuoteAmount(actualSize, currentPrice);
 
     this.logger.log(
       `Creating SL/TP orders for ${token}: size=${actualSize}, quoteAmount=${quoteAmount}`,
@@ -397,7 +398,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       // The position size should be in base asset terms, but we need quote amount for the order
       const ticker = await this.hyperliquidService.getTicker(token);
       const currentPrice = parseFloat(ticker.mark);
-      const quoteAmount = positionSizeToClose * currentPrice;
+      const quoteAmount = calculateQuoteAmount(positionSizeToClose, currentPrice);
 
       this.logger.log(
         `Closing ${tradePosition.positionDirection} position for ${token}`,
