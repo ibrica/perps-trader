@@ -16,4 +16,8 @@ export {
   ErrorResponse as PredictorErrorResponse, // Alias to avoid conflict
   ApiResponse,
   InferenceApiEndpoints,
+  TrendStatus,
+  TrendInfo,
+  TrendsResponse,
+  isTrendDefined,
 } from './types';
