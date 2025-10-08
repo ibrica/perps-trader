@@ -38,8 +38,21 @@ export class MongoDbTestingService {
   }
 
   async close(): Promise<void> {
-    await this.connection?.db?.dropDatabase();
-    await this.connection.destroy();
+    try {
+      if (this.connection?.db) {
+        await this.connection.db.dropDatabase();
+      }
+    } catch (error) {
+      console.error('Error dropping test database:', error);
+    } finally {
+      try {
+        if (this.connection) {
+          await this.connection.destroy();
+        }
+      } catch (error) {
+        console.error('Error destroying connection:', error);
+      }
+    }
   }
 
   async dropCollection(name: string): Promise<void> {
