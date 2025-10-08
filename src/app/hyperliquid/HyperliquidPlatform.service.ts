@@ -7,6 +7,7 @@ import {
   calculateQuoteAmount,
 } from '../../shared';
 import { EnterPositionOptions, Platform, TradeType } from '../../shared';
+import { retryCallback } from '../../shared/utils/retryCallback';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/HyperliquidWebSocket.service';
 import { OrderFill } from '../../infrastructure/websocket';
@@ -230,23 +231,32 @@ export class HyperliquidPlatformService extends BasePlatformService {
     }
 
     // Query actual position size from exchange to handle partial fills
+    // Use retry logic to handle exchange lag after fill
     let actualSize = size;
-    try {
-      const exchangePosition = await this.hyperliquidService.getPosition(token);
-      if (exchangePosition && exchangePosition.szi) {
-        actualSize = Math.abs(parseFloat(exchangePosition.szi));
-        this.logger.log(
-          `Using actual position size from exchange: ${actualSize} (requested: ${size})`,
-        );
-      } else {
-        this.logger.warn(
-          `No exchange position found for ${token}, using requested size: ${size}`,
-        );
-      }
-    } catch (error) {
+    const { result: exchangePosition, error: retryError } = await retryCallback(
+      async () => {
+        const position = await this.hyperliquidService.getPosition(token);
+        if (!position || !position.szi) {
+          throw new Error(`No position found for ${token}`);
+        }
+        return position;
+      },
+      {
+        maxCount: 5,
+        delayMs: 6000,
+        logger: this.logger,
+      },
+    );
+
+    if (exchangePosition && exchangePosition.szi) {
+      actualSize = Math.abs(parseFloat(exchangePosition.szi));
+      this.logger.log(
+        `Using actual position size from exchange: ${actualSize} (requested: ${size})`,
+      );
+    } else {
       this.logger.warn(
-        `Failed to fetch exchange position for ${token}, using requested size: ${size}`,
-        error,
+        `No exchange position found for ${token} after retries, using requested size: ${size}`,
+        retryError,
       );
     }
 
