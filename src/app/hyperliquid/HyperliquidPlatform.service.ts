@@ -277,6 +277,24 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
     // Create stop-loss order
     if (stopLossPrice) {
+      // Validate SL trigger price
+      if (
+        direction === PositionDirection.LONG &&
+        stopLossPrice >= currentPrice
+      ) {
+        throw new Error(
+          `Invalid SL price ${stopLossPrice} for LONG (current: ${currentPrice})`,
+        );
+      }
+      if (
+        direction === PositionDirection.SHORT &&
+        stopLossPrice <= currentPrice
+      ) {
+        throw new Error(
+          `Invalid SL price ${stopLossPrice} for SHORT (current: ${currentPrice})`,
+        );
+      }
+
       try {
         const slResult = await this.hyperliquidService.placePerpOrder({
           symbol: token,
@@ -319,6 +337,24 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
     // Create take-profit order
     if (takeProfitPrice) {
+      // Validate TP trigger price
+      if (
+        direction === PositionDirection.LONG &&
+        takeProfitPrice <= currentPrice
+      ) {
+        throw new Error(
+          `Invalid TP price ${takeProfitPrice} for LONG (current: ${currentPrice})`,
+        );
+      }
+      if (
+        direction === PositionDirection.SHORT &&
+        takeProfitPrice >= currentPrice
+      ) {
+        throw new Error(
+          `Invalid TP price ${takeProfitPrice} for SHORT (current: ${currentPrice})`,
+        );
+      }
+
       try {
         const tpResult = await this.hyperliquidService.placePerpOrder({
           symbol: token,
@@ -408,7 +444,10 @@ export class HyperliquidPlatformService extends BasePlatformService {
       // The position size should be in base asset terms, but we need quote amount for the order
       const ticker = await this.hyperliquidService.getTicker(token);
       const currentPrice = parseFloat(ticker.mark);
-      const quoteAmount = calculateQuoteAmount(positionSizeToClose, currentPrice);
+      const quoteAmount = calculateQuoteAmount(
+        positionSizeToClose,
+        currentPrice,
+      );
 
       this.logger.log(
         `Closing ${tradePosition.positionDirection} position for ${token}`,

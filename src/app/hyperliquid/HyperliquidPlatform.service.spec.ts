@@ -16,6 +16,7 @@ describe('HyperliquidPlatformService', () => {
   let service: HyperliquidPlatformService;
   let hyperliquidService: jest.Mocked<HyperliquidService>;
   let tradeOrderService: jest.Mocked<TradeOrderService>;
+  let module: TestingModule;
 
   beforeEach(async () => {
     const mockHyperliquidService = {
@@ -40,7 +41,7 @@ describe('HyperliquidPlatformService', () => {
       getTradePositionById: jest.fn(),
     };
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         HyperliquidPlatformService,
         {
@@ -67,6 +68,12 @@ describe('HyperliquidPlatformService', () => {
     );
     hyperliquidService = module.get(HyperliquidService);
     tradeOrderService = module.get(TradeOrderService);
+  });
+
+  afterEach(async () => {
+    if (module) {
+      await module.close();
+    }
   });
 
   describe('enterPosition', () => {
@@ -146,6 +153,7 @@ describe('HyperliquidPlatformService', () => {
 
   describe('createStopLossAndTakeProfitOrders', () => {
     beforeEach(() => {
+      jest.clearAllMocks();
       hyperliquidService.getTicker.mockResolvedValue({
         coin: 'BTC',
         bid: '50000',
@@ -483,6 +491,236 @@ describe('HyperliquidPlatformService', () => {
           quoteAmount: 0,
         }),
       );
+    });
+
+    describe('trigger price validation', () => {
+      it('should reject invalid SL price for LONG position (SL >= current price)', async () => {
+        hyperliquidService.getTicker.mockResolvedValue({
+          coin: 'BTC',
+          bid: '50000',
+          ask: '50000',
+          last: '50000',
+          mark: '50000',
+          volume24h: '1000000',
+          openInterest: '500000',
+          fundingRate: '0.0001',
+        });
+
+        await expect(
+          service.createStopLossAndTakeProfitOrders(
+            'BTC',
+            PositionDirection.LONG,
+            0.002,
+            'position-id-123',
+            50000, // SL equal to current price
+            undefined,
+          ),
+        ).rejects.toThrow('Invalid SL price 50000 for LONG (current: 50000)');
+
+        await expect(
+          service.createStopLossAndTakeProfitOrders(
+            'BTC',
+            PositionDirection.LONG,
+            0.002,
+            'position-id-123',
+            55000, // SL above current price
+            undefined,
+          ),
+        ).rejects.toThrow('Invalid SL price 55000 for LONG (current: 50000)');
+      });
+
+      it('should reject invalid SL price for SHORT position (SL <= current price)', async () => {
+        hyperliquidService.getTicker.mockResolvedValue({
+          coin: 'ETH',
+          bid: '3000',
+          ask: '3000',
+          last: '3000',
+          mark: '3000',
+          volume24h: '500000',
+          openInterest: '200000',
+          fundingRate: '0.0001',
+        });
+
+        await expect(
+          service.createStopLossAndTakeProfitOrders(
+            'ETH',
+            PositionDirection.SHORT,
+            0.001,
+            'position-id-456',
+            3000, // SL equal to current price
+            undefined,
+          ),
+        ).rejects.toThrow('Invalid SL price 3000 for SHORT (current: 3000)');
+
+        await expect(
+          service.createStopLossAndTakeProfitOrders(
+            'ETH',
+            PositionDirection.SHORT,
+            0.001,
+            'position-id-456',
+            2500, // SL below current price
+            undefined,
+          ),
+        ).rejects.toThrow('Invalid SL price 2500 for SHORT (current: 3000)');
+      });
+
+      it('should reject invalid TP price for LONG position (TP <= current price)', async () => {
+        hyperliquidService.getTicker.mockResolvedValue({
+          coin: 'BTC',
+          bid: '50000',
+          ask: '50000',
+          last: '50000',
+          mark: '50000',
+          volume24h: '1000000',
+          openInterest: '500000',
+          fundingRate: '0.0001',
+        });
+
+        await expect(
+          service.createStopLossAndTakeProfitOrders(
+            'BTC',
+            PositionDirection.LONG,
+            0.002,
+            'position-id-789',
+            undefined,
+            50000, // TP equal to current price
+          ),
+        ).rejects.toThrow('Invalid TP price 50000 for LONG (current: 50000)');
+
+        await expect(
+          service.createStopLossAndTakeProfitOrders(
+            'BTC',
+            PositionDirection.LONG,
+            0.002,
+            'position-id-789',
+            undefined,
+            45000, // TP below current price
+          ),
+        ).rejects.toThrow('Invalid TP price 45000 for LONG (current: 50000)');
+      });
+
+      it('should reject invalid TP price for SHORT position (TP >= current price)', async () => {
+        hyperliquidService.getTicker.mockResolvedValue({
+          coin: 'ETH',
+          bid: '3000',
+          ask: '3000',
+          last: '3000',
+          mark: '3000',
+          volume24h: '500000',
+          openInterest: '200000',
+          fundingRate: '0.0001',
+        });
+
+        await expect(
+          service.createStopLossAndTakeProfitOrders(
+            'ETH',
+            PositionDirection.SHORT,
+            0.001,
+            'position-id-999',
+            undefined,
+            3000, // TP equal to current price
+          ),
+        ).rejects.toThrow('Invalid TP price 3000 for SHORT (current: 3000)');
+
+        await expect(
+          service.createStopLossAndTakeProfitOrders(
+            'ETH',
+            PositionDirection.SHORT,
+            0.001,
+            'position-id-999',
+            undefined,
+            3500, // TP above current price
+          ),
+        ).rejects.toThrow('Invalid TP price 3500 for SHORT (current: 3000)');
+      });
+
+      it('should accept valid SL and TP prices for LONG position', async () => {
+        hyperliquidService.getTicker.mockResolvedValue({
+          coin: 'BTC',
+          bid: '50000',
+          ask: '50000',
+          last: '50000',
+          mark: '50000',
+          volume24h: '1000000',
+          openInterest: '500000',
+          fundingRate: '0.0001',
+        });
+
+        const mockSlResult = {
+          orderId: 'sl-valid-long',
+          status: TradeOrderStatus.CREATED,
+          size: 0.002,
+          price: 50000,
+          type: 'trigger_sl',
+        };
+
+        const mockTpResult = {
+          orderId: 'tp-valid-long',
+          status: TradeOrderStatus.CREATED,
+          size: 0.002,
+          price: 50000,
+          type: 'trigger_tp',
+        };
+
+        hyperliquidService.placePerpOrder
+          .mockResolvedValueOnce(mockSlResult)
+          .mockResolvedValueOnce(mockTpResult);
+
+        await service.createStopLossAndTakeProfitOrders(
+          'BTC',
+          PositionDirection.LONG,
+          0.002,
+          'position-id-valid',
+          45000, // Valid SL: below current price
+          60000, // Valid TP: above current price
+        );
+
+        expect(hyperliquidService.placePerpOrder).toHaveBeenCalledTimes(2);
+      });
+
+      it('should accept valid SL and TP prices for SHORT position', async () => {
+        hyperliquidService.getTicker.mockResolvedValue({
+          coin: 'ETH',
+          bid: '3000',
+          ask: '3000',
+          last: '3000',
+          mark: '3000',
+          volume24h: '500000',
+          openInterest: '200000',
+          fundingRate: '0.0001',
+        });
+
+        const mockSlResult = {
+          orderId: 'sl-valid-short',
+          status: TradeOrderStatus.CREATED,
+          size: 0.001,
+          price: 3000,
+          type: 'trigger_sl',
+        };
+
+        const mockTpResult = {
+          orderId: 'tp-valid-short',
+          status: TradeOrderStatus.CREATED,
+          size: 0.001,
+          price: 3000,
+          type: 'trigger_tp',
+        };
+
+        hyperliquidService.placePerpOrder
+          .mockResolvedValueOnce(mockSlResult)
+          .mockResolvedValueOnce(mockTpResult);
+
+        await service.createStopLossAndTakeProfitOrders(
+          'ETH',
+          PositionDirection.SHORT,
+          0.001,
+          'position-id-valid-short',
+          3200, // Valid SL: above current price
+          2800, // Valid TP: below current price
+        );
+
+        expect(hyperliquidService.placePerpOrder).toHaveBeenCalledTimes(2);
+      });
     });
   });
 
