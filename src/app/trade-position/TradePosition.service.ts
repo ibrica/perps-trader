@@ -61,6 +61,12 @@ export class TradePositionService {
     });
   }
 
+  async getTradePositionById(
+    id: string,
+  ): Promise<TradePositionDocument | null> {
+    return this.tradePositionRepository.getById(id);
+  }
+
   async getTradePositionByToken(
     token: string,
     status?: TradePositionStatus,

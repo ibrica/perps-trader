@@ -1,16 +1,12 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document, Types } from 'mongoose';
-import { deserializeLong, TradeOrderStatus } from '../../shared';
+import { TradeOrderStatus } from '../../shared';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 
 export type TradeOrderDocument = TradeOrder & Document;
 
 @Schema({
   timestamps: true,
-  toObject: {
-    transform: (_, ret) =>
-      deserializeLong(ret, ['amountIn', 'amountOut', 'positionSize']),
-  },
 })
 export class TradeOrder {
   static readonly modelName = 'TradePosition';
@@ -43,6 +39,12 @@ export class TradeOrder {
   size?: number;
 
   @Prop({ type: Number })
+  filledSize?: number; // Actual filled amount (may differ from requested size)
+
+  @Prop({ type: Number })
+  remainingSize?: number; // Remaining to fill (for partial fills)
+
+  @Prop({ type: Number })
   price?: number;
 
   @Prop({ type: Number })
@@ -66,6 +68,19 @@ export class TradeOrder {
 
   @Prop({ type: String })
   clientOrderId?: string;
+
+  // Trigger order specific fields (for SL/TP orders)
+  @Prop({ type: Boolean })
+  isTrigger?: boolean;
+
+  @Prop({ type: Number })
+  triggerPrice?: number;
+
+  @Prop({ type: String })
+  triggerType?: 'tp' | 'sl'; // take-profit or stop-loss
+
+  @Prop({ type: Boolean })
+  isMarket?: boolean; // Whether trigger order uses market execution
 
   createdAt?: Date;
 

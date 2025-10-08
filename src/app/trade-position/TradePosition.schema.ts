@@ -1,8 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { Document } from 'mongoose';
 import {
-  deserializeLong,
-  Decimal128,
   Platform,
   TradePositionStatus,
   PositionDirection,
@@ -14,10 +12,6 @@ export type TradePositionDocument = TradePosition & Document;
 
 @Schema({
   timestamps: true,
-  toObject: {
-    transform: (_, ret) =>
-      deserializeLong(ret, ['amountIn', 'amountOut', 'positionSize']),
-  },
 })
 export class TradePosition {
   static readonly modelName = 'TradePosition';
@@ -37,11 +31,11 @@ export class TradePosition {
   @Prop({ type: String, enum: Currency, required: true })
   currency: Currency;
 
-  @Prop({ type: Decimal128, required: true })
-  amountIn: bigint;
+  @Prop({ type: Number, required: true })
+  amountIn: number;
 
-  @Prop({ type: Decimal128 })
-  amountOut?: bigint;
+  @Prop({ type: Number })
+  amountOut?: number;
 
   // Perpetual trading fields (Drift)
   @Prop({ type: String, enum: PositionDirection })
@@ -50,8 +44,8 @@ export class TradePosition {
   @Prop({ type: Number })
   leverage?: number;
 
-  @Prop({ type: Decimal128 })
-  positionSize?: bigint;
+  @Prop({ type: Number })
+  positionSize?: number;
 
   @Prop({ type: Number })
   entryPrice?: number;
@@ -67,6 +61,38 @@ export class TradePosition {
 
   @Prop({ type: Number })
   realizedPnl?: number;
+
+  // Partial fill tracking
+  @Prop({ type: Number, default: 0 })
+  totalFilledSize?: number; // Accumulated filled size from entry orders
+
+  @Prop({ type: Number, default: 0 })
+  totalRealizedPnl?: number; // Accumulated realized PnL from all exit fills
+
+  @Prop({ type: Number })
+  remainingSize?: number; // Remaining position size (for partial exits)
+
+  @Prop({
+    type: [
+      {
+        orderId: String,
+        size: Number,
+        price: Number,
+        closedPnl: Number,
+        timestamp: Number,
+        side: String, // 'B' for buy, 'S' for sell
+      },
+    ],
+    default: [],
+  })
+  fills?: Array<{
+    orderId: string;
+    size: number;
+    price: number;
+    closedPnl?: number;
+    timestamp: number;
+    side: string;
+  }>;
 
   @Prop({ type: Date })
   timeOpened?: Date;

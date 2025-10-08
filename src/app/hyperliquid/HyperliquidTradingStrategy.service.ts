@@ -61,7 +61,7 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
           shouldTrade: false,
           reason: `No perp definition found for ${token}`,
           confidence: 0,
-          recommendedAmount: 0n,
+          recommendedAmount: 0,
           metadata: { direction: PositionDirection.LONG },
         };
       }
@@ -73,7 +73,7 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
           shouldTrade: false,
           reason: 'Hyperliquid trading is disabled',
           confidence: 0,
-          recommendedAmount: 0n,
+          recommendedAmount: 0,
           metadata: { direction: PositionDirection.LONG },
         };
       }
@@ -382,11 +382,9 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         'hyperliquid.maxOpenPositions',
         1,
       ),
-      defaultAmountIn: BigInt(
-        this.configService.get<string>(
-          'hyperliquid.defaultAmountIn',
-          '100000000',
-        ),
+      defaultAmountIn: this.configService.get<number>(
+        'hyperliquid.defaultAmountIn',
+        100,
       ),
       stopLossPercent: this.configService.get<number>(
         'hyperliquid.stopLossPercent',

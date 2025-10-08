@@ -16,4 +16,9 @@ export interface CreateTradeOrderOptions {
   limitPrice?: number;
   originalSize?: number;
   clientOrderId?: string;
+  // Trigger order fields
+  isTrigger?: boolean;
+  triggerPrice?: number;
+  triggerType?: 'tp' | 'sl';
+  isMarket?: boolean;
 }

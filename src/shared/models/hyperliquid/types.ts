@@ -42,12 +42,17 @@ export type HLOrderbook = L2Book & {
 export interface PlacePerpOrderParams {
   symbol: string;
   direction: PositionDirection;
-  quoteAmount: bigint;
+  // quoteAmount is the amount in quote currency (USDC), not minimal units!
+  quoteAmount: number;
   price?: number;
   tif?: Tif;
   leverage?: number;
   clientOrderId?: string;
   reduceOnly?: boolean;
+  // Trigger order fields for SL/TP
+  triggerPrice?: number;
+  triggerType?: 'tp' | 'sl';
+  isMarket?: boolean;
 }
 
 export interface WsFill {
@@ -99,4 +104,19 @@ export interface WsSubscriptionResponse {
       user?: string;
     };
   };
+}
+
+/**
+ * Custom type definitions for Hyperliquid integration
+ */
+
+export interface MarketStats {
+  price: string;
+  volume24h: string;
+  bid: string;
+  ask: string;
+  mark: string;
+  openInterest: string;
+  fundingRate: string;
+  spread: string;
 }

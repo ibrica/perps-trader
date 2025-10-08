@@ -44,7 +44,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
   }
 
   async startTrading(): Promise<void> {
-    this.logger.log('Starting  trading process');
+    this.logger.log('Starting trading process');
 
     const currentOpenPositions =
       await this.tradePositionService.getOpenTradePositions();
@@ -93,7 +93,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
       try {
         await this.enterPosition(opportunity);
-        remainingSlots--; // TODO: check if the order is executed
+        remainingSlots--;
       } catch (error) {
         this.logger.error(
           `Failed to submit trade order for ${opportunity.token} on ${opportunity.platform}:`,
@@ -113,8 +113,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     for (const tradePosition of tradePositions) {
       const { platform, token, exitFlag } = tradePosition;
-      // TODO: check what is happening when no price is available
       const priceResponse = await this.indexerAdapter.getLastPrice(token);
+      if (!priceResponse) {
+        this.logger.warn(`No price response for ${token}`);
+        continue;
+      }
 
       const { price } = priceResponse;
 
@@ -129,7 +132,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
             `Closing position for ${token} on ${platform}, flags; closeAllPositions:  ${settings.closeAllPositions}, exitFlag: ${exitFlag}`,
           );
           await this.exitPosition(tradePosition);
-          nrOfOpenPositions--; // TODO: check if the order is executed
+          nrOfOpenPositions--; // TODO: for now ok, later check if the order is filled
         } catch (error) {
           this.logger.error(`Failed to close position: ${error}`);
         }
@@ -214,6 +217,38 @@ export class TradeManagerService implements OnApplicationBootstrap {
     const platformService =
       this.platformManagerService.getPlatformService(platform);
 
+    // Get platform configuration for trading parameters
+    const platformConfig =
+      this.platformManagerService.getPlatformConfiguration(platform);
+
+    // Calculate SL/TP prices for perps
+    let stopLossPrice: number | undefined;
+    let takeProfitPrice: number | undefined;
+
+    if (
+      tradeType === TradeType.PERPETUAL &&
+      tradingDecision.metadata?.direction
+    ) {
+      const currentPrice = await this.getCurrentPrice(platform, token);
+      const direction = tradingDecision.metadata.direction as PositionDirection;
+      const stopLossPercent =
+        platformConfig.tradingParams.stopLossPercent || 10;
+      const takeProfitPercent =
+        platformConfig.tradingParams.takeProfitPercent || 20;
+
+      if (direction === PositionDirection.LONG) {
+        stopLossPrice = currentPrice * (1 - stopLossPercent / 100);
+        takeProfitPrice = currentPrice * (1 + takeProfitPercent / 100);
+      } else {
+        stopLossPrice = currentPrice * (1 + stopLossPercent / 100);
+        takeProfitPrice = currentPrice * (1 - takeProfitPercent / 100);
+      }
+
+      this.logger.log(
+        `Calculated SL/TP prices for ${token}: SL=${stopLossPrice?.toFixed(4)}, TP=${takeProfitPrice?.toFixed(4)}`,
+      );
+    }
+
     // Change this for perps
     const result = await platformService.enterPosition({
       platform,
@@ -223,6 +258,8 @@ export class TradeManagerService implements OnApplicationBootstrap {
       token,
       amountIn: tradingDecision.recommendedAmount,
       tradeType,
+      stopLossPrice,
+      takeProfitPrice,
     });
 
     const { status, orderId, type, size, price } = result;
@@ -232,13 +269,15 @@ export class TradeManagerService implements OnApplicationBootstrap {
         `Failed to execute trading opportunity for ${token} on ${platform}:`,
         result,
       );
-      return;
+      throw new Error('Failed to enter position');
     }
 
     const tradePositionData = this.createTradePositionData(
       platform,
       token,
       tradingDecision,
+      stopLossPrice,
+      takeProfitPrice,
     );
 
     const tradePosition =
@@ -261,6 +300,13 @@ export class TradeManagerService implements OnApplicationBootstrap {
       price,
     });
 
+    // SL/TP orders will be created automatically by the WebSocket fill handler
+    // when the entry order is confirmed filled. This eliminates the race condition
+    // where we previously waited 500ms and hoped the order was filled.
+    this.logger.log(
+      `Position ${tradePosition._id} created for ${token}. SL/TP orders will be created upon fill confirmation.`,
+    );
+
     if (tradeType === TradeType.PERPETUAL) {
       try {
         const perp = await this.perpService.findByToken(token);
@@ -272,6 +318,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         }
       } catch (error) {
         this.logger.warn(`Failed to reset buyFlag for perp ${token}:`, error);
+        throw error;
       }
     }
   }
@@ -290,7 +337,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     if (status !== TradeOrderStatus.CREATED) {
       this.logger.error(
-        `Failed to execute closing position orderfor ${token} on ${platform}:`,
+        `Failed to execute closing position order for ${token} on ${platform}:`,
         result,
       );
       throw new Error('Failed to close position');
@@ -322,17 +369,47 @@ export class TradeManagerService implements OnApplicationBootstrap {
     }
   }
 
+  private async getCurrentPrice(
+    platform: Platform,
+    token: string,
+  ): Promise<number> {
+    // Get current price from indexer
+    try {
+      const priceData = await this.indexerAdapter.getLastPrice(token);
+      return priceData?.price || 0;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to get price from indexer for ${token}, using fallback: ${error}`,
+      );
+
+      // Fallback: get price from platform service
+      const platformService =
+        this.platformManagerService.getPlatformService(platform);
+      if (platform === Platform.HYPERLIQUID) {
+        const hyperliquidService = (platformService as any).hyperliquidService;
+        if (hyperliquidService) {
+          const ticker = await hyperliquidService.getTicker(token);
+          return parseFloat(ticker.mark);
+        }
+      }
+
+      throw new Error(`Failed to get current price for ${token}`);
+    }
+  }
+
   private createTradePositionData(
     platform: Platform,
     token: string,
     tradingDecision: TradingDecision,
+    stopLossPrice?: number,
+    takeProfitPrice?: number,
   ): CreateTradePositionOptions {
     const baseData = {
       currency:
         this.platformManagerService.getPlatformConfiguration(platform)
           .defaultCurrencyFrom,
       amountIn: tradingDecision.recommendedAmount,
-      amountOut: 0n,
+      amountOut: 0,
       platform,
       status: TradePositionStatus.CREATED, // Position starts as CREATED, WebSocket will set to OPEN when filled
     };
@@ -345,9 +422,12 @@ export class TradeManagerService implements OnApplicationBootstrap {
         positionDirection:
           tradingDecision.metadata?.direction || PositionDirection.LONG,
         leverage: tradingDecision.metadata?.leverage || 3,
-        positionSize: tradingDecision.recommendedAmount || 100000000n, // Default 100 USDC
+        positionSize: tradingDecision.recommendedAmount || 100, // Default 100 USDC
         // Entry price will be set by WebSocket handler when order fills
         token,
+        // Store SL/TP prices - orders will be created by WebSocket handler after fill
+        stopLossPrice,
+        takeProfitPrice,
       };
     } else {
       //  DEX platforms
@@ -371,7 +451,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
   private calculateRealizedPnl(
     entryPrice: number | undefined,
     exitPrice: number | undefined,
-    positionSize: bigint | undefined,
+    positionSize: number | undefined,
     positionDirection: PositionDirection | undefined,
   ): number | undefined {
     if (
@@ -383,12 +463,10 @@ export class TradeManagerService implements OnApplicationBootstrap {
       return undefined;
     }
 
-    const positionSizeNumber = Number(positionSize); // TODO: check if this is correct for all platforms especially for perps
-
     if (positionDirection === PositionDirection.LONG) {
-      return (exitPrice - entryPrice) * positionSizeNumber;
+      return (exitPrice - entryPrice) * positionSize;
     } else {
-      return (entryPrice - exitPrice) * positionSizeNumber;
+      return (entryPrice - exitPrice) * positionSize;
     }
   }
 }

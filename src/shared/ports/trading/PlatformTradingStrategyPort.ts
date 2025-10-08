@@ -4,7 +4,7 @@ import { TradePositionDocument } from '../../../app/trade-position/TradePosition
 
 export interface PlatformTradingParams {
   maxOpenPositions: number;
-  defaultAmountIn: bigint;
+  defaultAmountIn: number;
   stopLossPercent: number;
   takeProfitPercent: number;
   [key: string]: any; // Platform-specific parameters
@@ -14,7 +14,7 @@ export interface TradingDecision {
   shouldTrade: boolean;
   reason: string;
   confidence: number;
-  recommendedAmount?: bigint;
+  recommendedAmount?: number;
   metadata?: Record<string, any>;
 }
 

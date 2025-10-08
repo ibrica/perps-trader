@@ -111,7 +111,7 @@ describe('TradeOrderService', () => {
 
     it('should update a trade order', async () => {
       const mockUpdateOptions: UpdateTradeOrderOptions = {
-        status: TradeOrderStatus.EXECUTED,
+        status: TradeOrderStatus.FILLED,
         price: 51000,
         fee: 10,
       };
@@ -123,7 +123,7 @@ describe('TradeOrderService', () => {
 
       expect(result).toBeDefined();
       if (result) {
-        expect(result.status).toBe(TradeOrderStatus.EXECUTED);
+        expect(result.status).toBe(TradeOrderStatus.FILLED);
         expect(result.price).toBe(mockUpdateOptions.price);
         expect(result.fee).toBe(mockUpdateOptions.fee);
         expect(result.orderId).toBe(createdOrder.orderId);
@@ -134,7 +134,7 @@ describe('TradeOrderService', () => {
     it('should return null if trade order not found', async () => {
       const nonExistentId = new Types.ObjectId().toString();
       const mockUpdateOptions: UpdateTradeOrderOptions = {
-        status: TradeOrderStatus.EXECUTED,
+        status: TradeOrderStatus.FILLED,
       };
 
       const result = await service.updateTradeOrder(
@@ -164,7 +164,7 @@ describe('TradeOrderService', () => {
           size: 200,
         },
         {
-          status: TradeOrderStatus.EXECUTED,
+          status: TradeOrderStatus.FILLED,
           position: new Types.ObjectId().toString(),
           type: 'MARKET',
           orderId: 'order003',
@@ -220,7 +220,7 @@ describe('TradeOrderService', () => {
 
     it('should update trade order by orderId', async () => {
       const mockUpdateOptions: UpdateTradeOrderOptions = {
-        status: TradeOrderStatus.EXECUTED,
+        status: TradeOrderStatus.FILLED,
         price: 51000,
         fee: 15,
       };
@@ -233,7 +233,7 @@ describe('TradeOrderService', () => {
       expect(result).toBeDefined();
       if (result) {
         expect(result.orderId).toBe('order100');
-        expect(result.status).toBe(TradeOrderStatus.EXECUTED);
+        expect(result.status).toBe(TradeOrderStatus.FILLED);
         expect(result.price).toBe(51000);
         expect(result.fee).toBe(15);
         expect(result.size).toBe(100);
@@ -242,7 +242,7 @@ describe('TradeOrderService', () => {
 
     it('should return null if orderId not found', async () => {
       const mockUpdateOptions: UpdateTradeOrderOptions = {
-        status: TradeOrderStatus.EXECUTED,
+        status: TradeOrderStatus.FILLED,
       };
 
       const result = await service.updateByOrderId(
@@ -276,6 +276,16 @@ describe('TradeOrderService', () => {
   describe('handleOrderFill', () => {
     let positionId: string;
 
+    const createTestOrder = async (orderId: string) => {
+      const orderOptions: CreateTradeOrderOptions = {
+        status: TradeOrderStatus.CREATED,
+        position: positionId,
+        type: 'MARKET',
+        orderId,
+      };
+      await service.createTradeOrder(orderOptions);
+    };
+
     beforeEach(async () => {
       // Create a test position
       const position = await positionService.createTradePosition({
@@ -284,23 +294,16 @@ describe('TradeOrderService', () => {
         positionType: PositionType.PERPETUAL,
         token: 'BTC',
         currency: Currency.USDC,
-        amountIn: 1000000n,
+        amountIn: 1000,
       });
       positionId = String(position._id);
-
-      // Create a test order
-      const orderOptions: CreateTradeOrderOptions = {
-        status: TradeOrderStatus.CREATED,
-        position: positionId,
-        type: 'MARKET',
-        orderId: 'fill-order-123',
-      };
-      await service.createTradeOrder(orderOptions);
     });
 
     it('should handle entry order fill and update order', async () => {
+      await createTestOrder('fill-order-1');
+
       const orderFill: OrderFill = {
-        orderId: 'fill-order-123',
+        orderId: 'fill-order-1',
         coin: 'BTC',
         side: 'B',
         size: '0.1',
@@ -312,11 +315,13 @@ describe('TradeOrderService', () => {
 
       await service.handleOrderFill(orderFill);
 
-      const updatedOrder = await service.getByOrderId('fill-order-123');
+      const updatedOrder = await service.getByOrderId('fill-order-1');
       expect(updatedOrder).toBeDefined();
-      expect(updatedOrder?.status).toBe(TradeOrderStatus.EXECUTED);
+      expect(updatedOrder?.status).toBe(TradeOrderStatus.FILLED);
       expect(updatedOrder?.coin).toBe('BTC');
       expect(updatedOrder?.side).toBe('B');
+      expect(updatedOrder?.filledSize).toBe(0.1);
+      expect(updatedOrder?.remainingSize).toBe(0);
       expect(updatedOrder?.size).toBe(0.1);
       expect(updatedOrder?.price).toBe(50000);
       expect(updatedOrder?.fee).toBe(5);
@@ -324,8 +329,10 @@ describe('TradeOrderService', () => {
     });
 
     it('should handle entry order fill and set position to OPEN', async () => {
+      await createTestOrder('fill-order-2');
+
       const orderFill: OrderFill = {
-        orderId: 'fill-order-123',
+        orderId: 'fill-order-2',
         coin: 'BTC',
         side: 'B',
         size: '0.1',
@@ -337,10 +344,7 @@ describe('TradeOrderService', () => {
 
       await service.handleOrderFill(orderFill);
 
-      const position = await positionService.updateTradePosition(
-        positionId,
-        {},
-      );
+      const position = await positionService.getTradePositionById(positionId);
       expect(position?.status).toBe(TradePositionStatus.OPEN);
       expect(position?.entryPrice).toBe(50000);
       expect(position?.currentPrice).toBe(50000);
@@ -348,8 +352,18 @@ describe('TradeOrderService', () => {
     });
 
     it('should handle reduce order fill with closedPnl and set position to CLOSED', async () => {
+      await createTestOrder('fill-order-3');
+
+      // First, set up position with an entry fill to have totalFilledSize and remainingSize
+      await positionService.updateTradePosition(positionId, {
+        status: TradePositionStatus.OPEN,
+        totalFilledSize: 0.1,
+        remainingSize: 0.1,
+        entryPrice: 50000,
+      });
+
       const orderFill: OrderFill = {
-        orderId: 'fill-order-123',
+        orderId: 'fill-order-3',
         coin: 'BTC',
         side: 'S',
         size: '0.1',
@@ -361,19 +375,18 @@ describe('TradeOrderService', () => {
 
       await service.handleOrderFill(orderFill);
 
-      const position = await positionService.updateTradePosition(
-        positionId,
-        {},
-      );
+      const position = await positionService.getTradePositionById(positionId);
       expect(position?.status).toBe(TradePositionStatus.CLOSED);
-      expect(position?.realizedPnl).toBe(200);
+      expect(position?.totalRealizedPnl).toBe(200);
       expect(position?.currentPrice).toBe(52000);
       expect(position?.timeClosed).toBeDefined();
     });
 
     it('should handle order fill with zero closedPnl as entry order', async () => {
+      await createTestOrder('fill-order-4');
+
       const orderFill: OrderFill = {
-        orderId: 'fill-order-123',
+        orderId: 'fill-order-4',
         coin: 'BTC',
         side: 'B',
         size: '0.1',
@@ -385,10 +398,7 @@ describe('TradeOrderService', () => {
 
       await service.handleOrderFill(orderFill);
 
-      const position = await positionService.updateTradePosition(
-        positionId,
-        {},
-      );
+      const position = await positionService.getTradePositionById(positionId);
       expect(position?.status).toBe(TradePositionStatus.OPEN);
       expect(position?.entryPrice).toBe(50000);
     });
@@ -420,7 +430,7 @@ describe('TradeOrderService', () => {
         positionType: PositionType.PERPETUAL,
         token: 'ETH',
         currency: Currency.USDC,
-        amountIn: 500000n,
+        amountIn: 500,
       });
       positionId = String(position._id);
 

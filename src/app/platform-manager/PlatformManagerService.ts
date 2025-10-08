@@ -4,6 +4,7 @@ import {
   TradePositionStatus,
   HL_DEFAULT_CURRENCY_FROM,
   BasePlatformService,
+  PositionDirection,
 } from '../../shared';
 import {
   PlatformManagerPort,
@@ -50,7 +51,7 @@ export class PlatformManagerService extends PlatformManagerPort {
         enabled: true,
         tradingParams: {
           maxOpenPositions: 3,
-          defaultAmountIn: 100_000_000n, // 100 USDC
+          defaultAmountIn: 100, // 100 USDC
           stopLossPercent: 15,
           takeProfitPercent: 25,
         },
@@ -249,5 +250,29 @@ export class PlatformManagerService extends PlatformManagerPort {
       }
     }
     return false;
+  }
+
+  /**
+   * Create stop-loss and take-profit orders for a platform
+   * Delegates to platform-specific implementation
+   */
+  async createStopLossAndTakeProfitOrders(
+    platform: Platform,
+    token: string,
+    direction: PositionDirection,
+    size: number,
+    positionId: string,
+    stopLossPrice?: number,
+    takeProfitPrice?: number,
+  ): Promise<void> {
+    const platformService = this.getPlatformService(platform);
+    await platformService.createStopLossAndTakeProfitOrders(
+      token,
+      direction,
+      size,
+      positionId,
+      stopLossPrice,
+      takeProfitPrice,
+    );
   }
 }

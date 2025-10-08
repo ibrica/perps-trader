@@ -204,11 +204,13 @@ describe('HyperliquidTokenDiscoveryService', () => {
       // First call
       await service.getTokensToTrade();
 
-      // Expire cache
+      // Expire cache by setting lastFetch to past and clearing cache array
       (service as any).lastFetch = Date.now() - 400000;
+      (service as any).marketsCache = []; // Clear the cache array
       jest.clearAllMocks();
 
       mockPerpService.getPerpsForTrading.mockResolvedValue(mockPerps as any);
+      mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
       mockHyperliquidService.getTicker
         .mockResolvedValueOnce(mockTickers.BTC)
         .mockResolvedValueOnce(mockTickers.ETH)

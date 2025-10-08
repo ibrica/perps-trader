@@ -12,7 +12,6 @@ import {
 import {
   HL_SYMBOL_MAP,
   HL_SYMBOL_REVERSE_MAP,
-  HL_BASE_CURRENCY_DECIMALS,
   HLMarket,
   HLTicker,
   HLOrderbook,
@@ -141,9 +140,7 @@ export class HyperliquidService {
 
       const ticker = await this.getTicker(params.symbol);
       const markPrice = parseFloat(ticker.mark);
-      const quoteAmountNum =
-        Number(params.quoteAmount) / 10 ** HL_BASE_CURRENCY_DECIMALS;
-      const baseSize = quoteAmountNum / markPrice;
+      const baseSize = params.quoteAmount / markPrice;
 
       const roundedSize = this.roundToStep(baseSize, market.minSize || 0.001);
 
@@ -211,11 +208,20 @@ export class HyperliquidService {
         is_buy: params.direction === PositionDirection.LONG,
         sz: preciseSize.toString(),
         limit_px: (params.price || markPrice).toString(),
-        order_type: {
-          limit: {
-            tif: tif,
-          },
-        },
+        order_type:
+          params.triggerPrice && params.triggerType
+            ? {
+                trigger: {
+                  triggerPx: params.triggerPrice.toString(),
+                  isMarket: params.isMarket ?? true,
+                  tpsl: params.triggerType,
+                },
+              }
+            : {
+                limit: {
+                  tif: tif,
+                },
+              },
         reduce_only: params.reduceOnly || false,
         ...(params.clientOrderId && { cloid: params.clientOrderId }),
       };
@@ -247,7 +253,13 @@ export class HyperliquidService {
         status: TradeOrderStatus.CREATED,
         size: preciseSize,
         price: markPrice, // TODO: check in the future, price and fee
-        type: String(tif),
+        type: params.triggerType
+          ? `trigger_${params.triggerType}`
+          : String(tif),
+        isTrigger: !!params.triggerPrice,
+        triggerPrice: params.triggerPrice,
+        triggerType: params.triggerType,
+        isMarket: params.isMarket,
       };
     } catch (error) {
       this.logger.error('Failed to place perp order', error);
@@ -333,6 +345,22 @@ export class HyperliquidService {
       return positions.map((pos) => pos.position);
     } catch (error) {
       this.logger.error('Failed to fetch positions', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get position for a specific symbol
+   */
+  async getPosition(symbol: string): Promise<HLPosition | null> {
+    try {
+      const mappedSymbol = this.mapSymbolToHL(symbol);
+      const positions = await this.getPositions();
+
+      const position = positions.find((pos) => pos.coin === mappedSymbol);
+      return position || null;
+    } catch (error) {
+      this.logger.error(`Failed to fetch position for ${symbol}`, error);
       throw error;
     }
   }
