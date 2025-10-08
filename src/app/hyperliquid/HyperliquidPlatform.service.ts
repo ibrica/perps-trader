@@ -207,12 +207,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       };
     } catch (error) {
       this.logger.error('Failed to execute Hyperliquid trade', error);
-
-      return {
-        orderId: '',
-        status: TradeOrderStatus.FAILED,
-        message: error instanceof Error ? error.message : 'Unknown error',
-      };
+      throw error;
     }
   }
 
@@ -441,12 +436,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       };
     } catch (error) {
       this.logger.error('Failed to execute Hyperliquid trade', error);
-
-      return {
-        orderId: '',
-        status: TradeOrderStatus.FAILED,
-        message: error instanceof Error ? error.message : 'Unknown error',
-      };
+      throw error;
     }
   }
 

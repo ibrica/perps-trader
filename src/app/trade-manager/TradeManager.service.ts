@@ -44,7 +44,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
   }
 
   async startTrading(): Promise<void> {
-    this.logger.log('Starting  trading process');
+    this.logger.log('Starting trading process');
 
     const currentOpenPositions =
       await this.tradePositionService.getOpenTradePositions();
@@ -93,7 +93,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
       try {
         await this.enterPosition(opportunity);
-        remainingSlots--; // TODO: check if the order is executed
+        remainingSlots--;
       } catch (error) {
         this.logger.error(
           `Failed to submit trade order for ${opportunity.token} on ${opportunity.platform}:`,
@@ -266,7 +266,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         `Failed to execute trading opportunity for ${token} on ${platform}:`,
         result,
       );
-      return;
+      throw new Error('Failed to enter position');
     }
 
     const tradePositionData = this.createTradePositionData(
@@ -315,6 +315,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
         }
       } catch (error) {
         this.logger.warn(`Failed to reset buyFlag for perp ${token}:`, error);
+        throw error;
       }
     }
   }
