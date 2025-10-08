@@ -511,7 +511,7 @@ describe('HyperliquidPlatformService', () => {
       expect(hyperliquidService.placePerpOrder).not.toHaveBeenCalled();
     });
 
-    describe.skip('trigger price validation', () => {
+    describe('trigger price validation', () => {
       it('should reject invalid SL price for LONG position when SL equals current price', async () => {
         await expect(
           service.createStopLossAndTakeProfitOrders(
