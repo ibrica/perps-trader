@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   BasePlatformService,
   PositionDirection,
   TradeOrderResult,
-  TradeOrderStatus,
   calculateQuoteAmount,
 } from '../../shared';
 import { EnterPositionOptions, Platform, TradeType } from '../../shared';
@@ -20,6 +20,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
   private readonly logger = new Logger(HyperliquidPlatformService.name);
 
   constructor(
+    private readonly configService: ConfigService,
     private readonly hyperliquidService?: HyperliquidService,
     private readonly hyperliquidWebSocket?: HyperliquidWebSocketService,
     private readonly tradeOrderService?: TradeOrderService,
@@ -27,6 +28,33 @@ export class HyperliquidPlatformService extends BasePlatformService {
   ) {
     super();
     this.registerWebSocketHandlers();
+  }
+
+  /**
+   * Validate order size against maximum notional amount
+   * Throws error if order size exceeds configured limit
+   */
+  private validateOrderSize(quoteAmount: number, operation: string): void {
+    const maxNotionalPerOrder = this.configService.get<number>(
+      'hyperliquid.maxNotionalPerOrder',
+      10000,
+    );
+
+    if (!quoteAmount || quoteAmount <= 0) {
+      throw new Error(
+        `Invalid order size for ${operation}: ${quoteAmount}. Must be positive.`,
+      );
+    }
+
+    if (quoteAmount > maxNotionalPerOrder) {
+      throw new Error(
+        `Order size ${quoteAmount.toFixed(2)} for ${operation} exceeds maximum allowed ${maxNotionalPerOrder}. Rejecting order to prevent unintended large positions.`,
+      );
+    }
+
+    this.logger.log(
+      `Order size validation passed for ${operation}: ${quoteAmount.toFixed(2)} (max: ${maxNotionalPerOrder})`,
+    );
   }
 
   /**
@@ -117,7 +145,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       }
     } catch (error) {
       this.logger.error(
-        'Failed to handle position fill for SL/TP creation',
+        'Failed to handle position fill for SL/TP creation, falling  back to manual SL/TP',
         error,
       );
     }
@@ -183,6 +211,9 @@ export class HyperliquidPlatformService extends BasePlatformService {
       // For perps, we're either going long or short on the base asset
       // amountIn represents the quote amount (USDC) we want to use
       const direction = this.determineDirection();
+
+      // Validate order size before placing order to prevent extremely large orders
+      this.validateOrderSize(options.amountIn, 'entry position');
 
       const tradeOrderResult = await this.hyperliquidService.placePerpOrder({
         symbol: token,
@@ -278,6 +309,9 @@ export class HyperliquidPlatformService extends BasePlatformService {
     this.logger.log(
       `Creating SL/TP orders for ${token}: size=${actualSize}, quoteAmount=${quoteAmount}`,
     );
+
+    // Validate order size before placing SL/TP orders
+    this.validateOrderSize(quoteAmount, 'stop-loss/take-profit');
 
     // Determine the opposite direction for closing orders
     const closeDirection =
@@ -384,7 +418,6 @@ export class HyperliquidPlatformService extends BasePlatformService {
       });
     }
 
-    // Save TP order to database
     if (tpResult?.orderId && this.tradeOrderService) {
       this.logger.log(`Take-profit order created`, {
         orderId: tpResult.orderId,
@@ -472,6 +505,9 @@ export class HyperliquidPlatformService extends BasePlatformService {
           platform,
         },
       );
+
+      // Validate order size before placing closing order
+      this.validateOrderSize(quoteAmount, 'exit position');
 
       const tradeOrderResult = await this.hyperliquidService.placePerpOrder({
         symbol: token,

@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { HyperliquidPlatformService } from './HyperliquidPlatform.service';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/HyperliquidWebSocket.service';
@@ -19,9 +20,19 @@ describe('HyperliquidPlatformService', () => {
   let module: TestingModule;
 
   beforeEach(async () => {
+    const mockConfigService = {
+      get: jest.fn((key: string, defaultValue?: any) => {
+        if (key === 'hyperliquid.maxNotionalPerOrder') {
+          return 10000;
+        }
+        return defaultValue;
+      }),
+    };
+
     const mockHyperliquidService = {
       placePerpOrder: jest.fn(),
       getTicker: jest.fn(),
+      getPosition: jest.fn(),
     };
 
     const mockWebSocketService = {
@@ -44,6 +55,10 @@ describe('HyperliquidPlatformService', () => {
     module = await Test.createTestingModule({
       providers: [
         HyperliquidPlatformService,
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
+        },
         {
           provide: HyperliquidService,
           useValue: mockHyperliquidService,
@@ -164,6 +179,20 @@ describe('HyperliquidPlatformService', () => {
         openInterest: '500000',
         fundingRate: '0.0001',
       });
+      hyperliquidService.getPosition.mockReset();
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'BTC',
+        szi: '0.002',
+        leverage: { value: 3, type: 'cross', rawUsd: '150' },
+        unrealizedPnl: '0',
+        entryPx: '50000',
+        cumFunding: { allTime: '0', sinceChange: '0', sinceOpen: '0' },
+        liquidationPx: '0',
+        marginUsed: '50',
+        maxLeverage: 10,
+        positionValue: '100',
+        returnOnEquity: '0',
+      });
       hyperliquidService.placePerpOrder.mockReset();
     });
 
@@ -242,6 +271,18 @@ describe('HyperliquidPlatformService', () => {
     });
 
     it('should create only stop-loss order when TP price not provided', async () => {
+      // Mock different ticker for ETH with mark price of 3000
+      hyperliquidService.getTicker.mockResolvedValue({
+        coin: 'ETH',
+        bid: '3000',
+        ask: '3000',
+        last: '3000',
+        mark: '3000',
+        volume24h: '500000',
+        openInterest: '200000',
+        fundingRate: '0.0001',
+      });
+
       const mockSlResult = {
         orderId: 'sl-only-123',
         status: TradeOrderStatus.CREATED,
@@ -257,7 +298,7 @@ describe('HyperliquidPlatformService', () => {
         PositionDirection.SHORT,
         0.001,
         'position-id-456',
-        3200,
+        3200, // SL above current price for SHORT
         undefined,
       );
 
@@ -316,6 +357,18 @@ describe('HyperliquidPlatformService', () => {
     });
 
     it('should use opposite direction for SHORT positions', async () => {
+      // Mock different ticker for ETH with mark price of 3000
+      hyperliquidService.getTicker.mockResolvedValue({
+        coin: 'ETH',
+        bid: '3000',
+        ask: '3000',
+        last: '3000',
+        mark: '3000',
+        volume24h: '500000',
+        openInterest: '200000',
+        fundingRate: '0.0001',
+      });
+
       const mockSlResult = {
         orderId: 'sl-short-123',
         status: TradeOrderStatus.CREATED,
@@ -330,7 +383,7 @@ describe('HyperliquidPlatformService', () => {
         PositionDirection.SHORT,
         0.001,
         'position-id-short',
-        3200,
+        3200, // SL above current price for SHORT
         undefined,
       );
 
@@ -359,7 +412,7 @@ describe('HyperliquidPlatformService', () => {
       ).rejects.toThrow('Failed to create SL order');
     });
 
-    it('should handle getTicker returning mark: "0" gracefully', async () => {
+    it('should reject order when getTicker returns mark: "0"', async () => {
       hyperliquidService.getTicker.mockResolvedValue({
         coin: 'BTC',
         bid: '50000',
@@ -371,80 +424,51 @@ describe('HyperliquidPlatformService', () => {
         fundingRate: '0.0001',
       });
 
-      const mockSlResult = {
-        orderId: 'sl-order-zero-mark',
-        status: TradeOrderStatus.CREATED,
-        size: 0.002,
-        price: 50000,
-        type: 'trigger_sl',
-      };
+      // Should throw validation error for invalid order size (quoteAmount = 0)
+      await expect(
+        service.createStopLossAndTakeProfitOrders(
+          'BTC',
+          PositionDirection.LONG,
+          0.002,
+          'position-id-zero-mark',
+          45000,
+          undefined,
+        ),
+      ).rejects.toThrow('Invalid order size for stop-loss/take-profit: 0');
 
-      hyperliquidService.placePerpOrder.mockResolvedValue(mockSlResult);
-
-      await service.createStopLossAndTakeProfitOrders(
-        'BTC',
-        PositionDirection.LONG,
-        0.002,
-        'position-id-zero-mark',
-        45000,
-        undefined,
-      );
-
-      // Should use quoteAmount of 0 (0.002 * 0)
-      expect(hyperliquidService.placePerpOrder).toHaveBeenCalledWith({
-        symbol: 'BTC',
-        direction: PositionDirection.SHORT,
-        quoteAmount: 0,
-        triggerPrice: 45000,
-        triggerType: 'sl',
-        isMarket: true,
-        reduceOnly: true,
-      });
+      // Should not attempt to place order
+      expect(hyperliquidService.placePerpOrder).not.toHaveBeenCalled();
     });
 
-    it('should handle getTicker returning mark: undefined gracefully', async () => {
+    it('should reject order when getTicker returns mark: undefined', async () => {
       hyperliquidService.getTicker.mockResolvedValue({
-        coin: 'BTC',
-        bid: '50000',
-        ask: '50000',
-        last: '50000',
+        coin: 'ETH',
+        bid: '3000',
+        ask: '3000',
+        last: '3000',
         mark: undefined as any, // Edge case: mark price is undefined
-        volume24h: '1000000',
-        openInterest: '500000',
+        volume24h: '500000',
+        openInterest: '200000',
         fundingRate: '0.0001',
       });
 
-      const mockTpResult = {
-        orderId: 'tp-order-undefined-mark',
-        status: TradeOrderStatus.CREATED,
-        size: 0.001,
-        price: 3000,
-        type: 'trigger_tp',
-      };
+      // Should throw validation error for invalid order size (quoteAmount = NaN)
+      await expect(
+        service.createStopLossAndTakeProfitOrders(
+          'ETH',
+          PositionDirection.SHORT,
+          0.001,
+          'position-id-undefined-mark',
+          undefined,
+          3500,
+        ),
+      ).rejects.toThrow('Invalid order size for stop-loss/take-profit: NaN');
 
-      hyperliquidService.placePerpOrder.mockResolvedValue(mockTpResult);
-
-      await service.createStopLossAndTakeProfitOrders(
-        'ETH',
-        PositionDirection.SHORT,
-        0.001,
-        'position-id-undefined-mark',
-        undefined,
-        3500,
-      );
-
-      // Should use quoteAmount of NaN (0.001 * NaN) or 0
-      expect(hyperliquidService.placePerpOrder).toHaveBeenCalledWith(
-        expect.objectContaining({
-          symbol: 'ETH',
-          direction: PositionDirection.LONG,
-          triggerPrice: 3500,
-          triggerType: 'tp',
-        }),
-      );
+      // Should not attempt to place order
+      expect(hyperliquidService.placePerpOrder).not.toHaveBeenCalled();
     });
 
-    it('should not create SL/TP orders when position size is 0', async () => {
+    it('should reject SL/TP orders when position size is 0', async () => {
       hyperliquidService.getTicker.mockResolvedValue({
         coin: 'BTC',
         bid: '50000',
@@ -456,42 +480,35 @@ describe('HyperliquidPlatformService', () => {
         fundingRate: '0.0001',
       });
 
-      const mockSlResult = {
-        orderId: 'sl-order-zero-size',
-        status: TradeOrderStatus.CREATED,
-        size: 0,
-        price: 50000,
-        type: 'trigger_sl',
-      };
+      // Mock getPosition to return size of 0
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'BTC',
+        szi: '0', // Position size is 0
+        leverage: { value: 3, type: 'cross', rawUsd: '0' },
+        unrealizedPnl: '0',
+        entryPx: '50000',
+        cumFunding: { allTime: '0', sinceChange: '0', sinceOpen: '0' },
+        liquidationPx: '0',
+        marginUsed: '0',
+        maxLeverage: 10,
+        positionValue: '0',
+        returnOnEquity: '0',
+      });
 
-      const mockTpResult = {
-        orderId: 'tp-order-zero-size',
-        status: TradeOrderStatus.CREATED,
-        size: 0,
-        price: 50000,
-        type: 'trigger_tp',
-      };
+      // Should throw validation error when quoteAmount is 0 (size: 0 * price: 50000 = 0)
+      await expect(
+        service.createStopLossAndTakeProfitOrders(
+          'BTC',
+          PositionDirection.LONG,
+          0, // Edge case: position size is 0
+          'position-id-zero-size',
+          45000,
+          60000,
+        ),
+      ).rejects.toThrow('Invalid order size for stop-loss/take-profit: 0');
 
-      hyperliquidService.placePerpOrder
-        .mockResolvedValueOnce(mockSlResult)
-        .mockResolvedValueOnce(mockTpResult);
-
-      await service.createStopLossAndTakeProfitOrders(
-        'BTC',
-        PositionDirection.LONG,
-        0, // Edge case: position size is 0
-        'position-id-zero-size',
-        45000,
-        60000,
-      );
-
-      // Should still attempt to create orders with quoteAmount of 0
-      // This behavior may need refinement in the actual implementation
-      expect(hyperliquidService.placePerpOrder).toHaveBeenCalledWith(
-        expect.objectContaining({
-          quoteAmount: 0,
-        }),
-      );
+      // Should not attempt to place orders
+      expect(hyperliquidService.placePerpOrder).not.toHaveBeenCalled();
     });
 
     describe.skip('trigger price validation', () => {
@@ -690,6 +707,20 @@ describe('HyperliquidPlatformService', () => {
         volume24h: '1000000',
         openInterest: '500000',
         fundingRate: '0.0001',
+      });
+
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'BTC',
+        szi: '0.002',
+        leverage: { value: 3, type: 'cross', rawUsd: '150' },
+        unrealizedPnl: '0',
+        entryPx: '50000',
+        cumFunding: { allTime: '0', sinceChange: '0', sinceOpen: '0' },
+        liquidationPx: '0',
+        marginUsed: '50',
+        maxLeverage: 10,
+        positionValue: '100',
+        returnOnEquity: '0',
       });
 
       const mockExitResult = {
