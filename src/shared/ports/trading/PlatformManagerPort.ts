@@ -7,7 +7,7 @@ import {
   PlatformTradingParams,
 } from './PlatformTradingStrategyPort';
 import { TradePositionDocument } from '../../../app/trade-position/TradePosition.schema';
-import { BasePlatformService } from '@perps/shared/models/platform';
+import { BasePlatformService } from '@perps/infrastructure';
 import { Currency } from '@perps/shared/constants';
 
 export interface PlatformConfiguration {

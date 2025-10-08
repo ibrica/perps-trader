@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
-  BasePlatformService,
   PositionDirection,
   TradeOrderResult,
   calculateQuoteAmount,
@@ -10,23 +9,28 @@ import { EnterPositionOptions, Platform, TradeType } from '../../shared';
 import { retryCallback } from '../../shared/utils/retryCallback';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/HyperliquidWebSocket.service';
-import { OrderFill } from '../../infrastructure/websocket';
+import {
+  OrderFill,
+  BasePlatformService,
+  PredictorAdapter,
+} from '../../infrastructure';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { TradeOrderService } from '../trade-order/TradeOrder.service';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 
 @Injectable()
 export class HyperliquidPlatformService extends BasePlatformService {
-  private readonly logger = new Logger(HyperliquidPlatformService.name);
+  protected readonly logger = new Logger(HyperliquidPlatformService.name);
 
   constructor(
     private readonly configService: ConfigService,
+    readonly predictorAdapter: PredictorAdapter,
     private readonly hyperliquidService?: HyperliquidService,
     private readonly hyperliquidWebSocket?: HyperliquidWebSocketService,
     private readonly tradeOrderService?: TradeOrderService,
     private readonly tradePositionService?: TradePositionService,
   ) {
-    super();
+    super(predictorAdapter);
     this.registerWebSocketHandlers();
   }
 
@@ -537,10 +541,5 @@ export class HyperliquidPlatformService extends BasePlatformService {
       this.logger.error('Failed to execute Hyperliquid trade', error);
       throw error;
     }
-  }
-
-  private determineDirection(): PositionDirection {
-    // TODO: implement this in next PRs when AI predictor is ready, for now we'll default to LONG just as a placeholder
-    return PositionDirection.LONG;
   }
 }

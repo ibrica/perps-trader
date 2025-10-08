@@ -10,7 +10,7 @@ import {
 } from '../../shared';
 import { PlatformTokenDiscoveryPort } from '../../shared/ports/trading/PlatformTokenDiscoveryPort';
 import { PlatformTradingStrategyPort } from '../../shared/ports/trading/PlatformTradingStrategyPort';
-import { BasePlatformService } from '../../shared';
+import { BasePlatformService } from '../../infrastructure';
 
 describe('PlatformManagerService', () => {
   let service: PlatformManagerService;
