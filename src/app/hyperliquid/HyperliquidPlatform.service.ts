@@ -540,15 +540,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
   }
 
   private determineDirection(): PositionDirection {
-    // TODO: finish this!
-    // For now, we'll default to LONG
-    // In a real implementation, you'd determine this based on:
-    // - AI prediction/recommendation
-    // - User preference
-    // - Market analysis
-    //
-    // This could be extended to use additional fields in CreateTradeOptions
-    // or be determined by the trading strategy
+    // TODO: implement this in next PRs when AI predictor is ready, for now we'll default to LONG just as a placeholder
     return PositionDirection.LONG;
   }
 }
