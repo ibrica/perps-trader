@@ -72,9 +72,7 @@ export class PredictorAdapter {
     return undefined;
   }
 
-  async getTrendsForToken(
-    token: string,
-  ): Promise<TrendsResponse | undefined> {
+  async getTrendsForToken(token: string): Promise<TrendsResponse | undefined> {
     const { result, error } = await retryCallback(
       async () => {
         const response = await axios.get(`${this.url}/trends`, {
