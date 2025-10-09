@@ -41,6 +41,7 @@ export abstract class BasePlatformService {
     const fifteenMinuteTrend = trends[TrendTimeframe.FIFTEEN_MIN].trend;
     if (
       oneHourTrend !== TrendStatus.UNDEFINED &&
+      oneHourTrend !== TrendStatus.NEUTRAL &&
       oneHourTrend === fifteenMinuteTrend
     ) {
       return oneHourTrend === TrendStatus.UP

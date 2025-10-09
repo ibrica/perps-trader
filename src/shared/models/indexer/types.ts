@@ -29,7 +29,7 @@ export interface SubscriptionResponse {
   data?: any;
 }
 
-export interface ErrorResponse {
+export interface IndexerErrorResponse {
   type: 'error';
   message: string;
   code: string;
@@ -38,4 +38,4 @@ export interface ErrorResponse {
 export type WebSocketMessage =
   | TradeNotification
   | SubscriptionResponse
-  | ErrorResponse;
+  | IndexerErrorResponse;

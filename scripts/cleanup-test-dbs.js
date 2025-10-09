@@ -37,7 +37,9 @@ async function cleanupTestDatabases() {
 
     console.log(`\nFound ${testDatabases.length} test database(s):`);
     testDatabases.forEach((db) => {
-      console.log(`  - ${db.name} (${(db.sizeOnDisk / 1024 / 1024).toFixed(2)} MB)`);
+      console.log(
+        `  - ${db.name} (${(db.sizeOnDisk / 1024 / 1024).toFixed(2)} MB)`,
+      );
     });
 
     console.log('\nDropping test databases...');

@@ -141,7 +141,7 @@ export interface HealthResponse {
   clickhouse_connected: boolean;
 }
 
-export interface ErrorResponse {
+export interface PredictorErrorResponse {
   error: string;
   detail?: string | null;
   timestamp: string; // ISO datetime string
@@ -193,7 +193,7 @@ export interface TrendsResponse {
 // API Client helper types
 export interface ApiResponse<T> {
   data?: T;
-  error?: ErrorResponse;
+  error?: PredictorErrorResponse;
 }
 
 // Example usage types

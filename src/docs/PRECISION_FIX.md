@@ -5,13 +5,15 @@
 The codebase was using direct floating-point multiplication for calculating quote amounts from position sizes and prices, which can lead to precision issues due to JavaScript's floating-point arithmetic limitations.
 
 ### Example Issue
+
 ```typescript
 const positionSize = 0.00001; // BTC
-const currentPrice = 50000;   // USD
+const currentPrice = 50000; // USD
 const quoteAmount = positionSize * currentPrice; // Could be 0.5000000000000001 instead of 0.5
 ```
 
 For financial calculations, these small errors can accumulate and cause issues when:
+
 - Closing positions (incorrect amounts sent to exchange)
 - Creating SL/TP orders (mismatched position sizes)
 - Calculating realized P&L
@@ -21,12 +23,15 @@ For financial calculations, these small errors can accumulate and cause issues w
 Created precision utility functions in `src/shared/utils/precision.ts`:
 
 ### 1. `roundToDecimals(value, decimals)`
+
 Rounds a number to a specified number of decimal places using proper rounding.
 
 ### 2. `roundToCents(amount)`
+
 Convenience function to round financial amounts to 2 decimal places (cents).
 
 ### 3. `calculateQuoteAmount(size, price)`
+
 **Main function for position calculations** - calculates quote amount from size and price with proper rounding to nearest cent.
 
 ## Changes Made
@@ -52,11 +57,13 @@ Convenience function to round financial amounts to 2 decimal places (cents).
    - Imported `calculateQuoteAmount` from shared utilities
 
 ### Before
+
 ```typescript
 const quoteAmount = actualSize * currentPrice;
 ```
 
 ### After
+
 ```typescript
 import { calculateQuoteAmount } from '../../shared';
 const quoteAmount = calculateQuoteAmount(actualSize, currentPrice);
@@ -65,7 +72,9 @@ const quoteAmount = calculateQuoteAmount(actualSize, currentPrice);
 ## Testing
 
 ### Unit Tests
+
 All 25 precision tests pass, including:
+
 - Floating-point precision issues (0.1 + 0.2 = 0.3)
 - Real-world trading scenarios (BTC, ETH positions)
 - Edge cases (negative sizes, zero values, large positions)
@@ -73,6 +82,7 @@ All 25 precision tests pass, including:
 - Stress tests (1000 calculations maintaining precision)
 
 ### Build
+
 ✓ TypeScript compilation successful
 ✓ No type errors
 ✓ No linting issues
@@ -99,11 +109,13 @@ All 25 precision tests pass, including:
 Use `calculateQuoteAmount(size, price)` anywhere you need to calculate quote amounts from position sizes and prices. This ensures consistent precision handling across the codebase.
 
 ### Good
+
 ```typescript
 const quoteAmount = calculateQuoteAmount(positionSize, currentPrice);
 ```
 
 ### Avoid
+
 ```typescript
 const quoteAmount = positionSize * currentPrice; // May have precision issues
 const quoteAmount = Math.round(positionSize * currentPrice * 100) / 100; // Verbose, inconsistent
