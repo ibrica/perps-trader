@@ -14,12 +14,7 @@ module.exports = async () => {
     const { databases } = await adminDb.listDatabases();
 
     // Filter test databases (those starting with 'DB_' or matching test patterns)
-    const testDatabases = databases.filter(
-      (db) =>
-        db.name.startsWith('DB_') ||
-        db.name.includes('test') ||
-        db.name.match(/DB_\d+/),
-    );
+    const testDatabases = databases.filter((db) => db.name.startsWith('DB_'));
 
     // Drop all test databases
     for (const db of testDatabases) {

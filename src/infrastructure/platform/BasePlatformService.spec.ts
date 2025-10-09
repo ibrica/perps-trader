@@ -26,7 +26,7 @@ class TestPlatformService extends BasePlatformService {
   // Expose protected method for testing
   public async testDetermineDirection(
     token: string,
-  ): Promise<PositionDirection | undefined> {
+  ): Promise<PositionDirection | null> {
     return this.determineDirection(token);
   }
 }
@@ -132,7 +132,7 @@ describe('BasePlatformService', () => {
       expect(result).toBe(PositionDirection.SHORT);
     });
 
-    it('should return undefined when 1h is UP but 15m is DOWN (trends do not match)', async () => {
+    it('should return null when 1h is UP but 15m is DOWN (trends do not match)', async () => {
       // Arrange
       const token = 'SOL';
       predictorAdapter.getTrendsForToken.mockResolvedValue(
@@ -144,10 +144,10 @@ describe('BasePlatformService', () => {
 
       // Assert
       expect(predictorAdapter.getTrendsForToken).toHaveBeenCalledWith(token);
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
-    it('should return undefined when 1h is DOWN but 15m is UP (trends do not match)', async () => {
+    it('should return null when 1h is DOWN but 15m is UP (trends do not match)', async () => {
       // Arrange
       const token = 'MATIC';
       predictorAdapter.getTrendsForToken.mockResolvedValue(
@@ -159,10 +159,10 @@ describe('BasePlatformService', () => {
 
       // Assert
       expect(predictorAdapter.getTrendsForToken).toHaveBeenCalledWith(token);
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
-    it('should return undefined when 1h trend is UNDEFINED', async () => {
+    it('should return null when 1h trend is UNDEFINED', async () => {
       // Arrange
       const token = 'AVAX';
       predictorAdapter.getTrendsForToken.mockResolvedValue(
@@ -174,10 +174,10 @@ describe('BasePlatformService', () => {
 
       // Assert
       expect(predictorAdapter.getTrendsForToken).toHaveBeenCalledWith(token);
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
-    it('should return undefined when 15m trend is UNDEFINED', async () => {
+    it('should return null when 15m trend is UNDEFINED', async () => {
       // Arrange
       const token = 'DOT';
       predictorAdapter.getTrendsForToken.mockResolvedValue(
@@ -189,10 +189,10 @@ describe('BasePlatformService', () => {
 
       // Assert
       expect(predictorAdapter.getTrendsForToken).toHaveBeenCalledWith(token);
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
-    it('should return undefined when both trends are UNDEFINED', async () => {
+    it('should return null when both trends are UNDEFINED', async () => {
       // Arrange
       const token = 'ADA';
       predictorAdapter.getTrendsForToken.mockResolvedValue(
@@ -204,10 +204,10 @@ describe('BasePlatformService', () => {
 
       // Assert
       expect(predictorAdapter.getTrendsForToken).toHaveBeenCalledWith(token);
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
-    it('should return undefined when both trends are NEUTRAL', async () => {
+    it('should return null when both trends are NEUTRAL', async () => {
       // Arrange
       const token = 'LINK';
       predictorAdapter.getTrendsForToken.mockResolvedValue(
@@ -219,10 +219,10 @@ describe('BasePlatformService', () => {
 
       // Assert
       expect(predictorAdapter.getTrendsForToken).toHaveBeenCalledWith(token);
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
-    it('should return undefined when 1h is UP but 15m is NEUTRAL', async () => {
+    it('should return null when 1h is UP but 15m is NEUTRAL', async () => {
       // Arrange
       const token = 'UNI';
       predictorAdapter.getTrendsForToken.mockResolvedValue(
@@ -234,30 +234,16 @@ describe('BasePlatformService', () => {
 
       // Assert
       expect(predictorAdapter.getTrendsForToken).toHaveBeenCalledWith(token);
-      expect(result).toBeUndefined();
+      expect(result).toBeNull();
     });
 
-    it('should throw error when predictor adapter returns no response', async () => {
+    it('should return null when predictor adapter returns no response', async () => {
       // Arrange
       const token = 'BTC';
-      predictorAdapter.getTrendsForToken.mockResolvedValue(undefined);
+      predictorAdapter.getTrendsForToken.mockResolvedValue(null);
 
       // Act & Assert
-      await expect(service.testDetermineDirection(token)).rejects.toThrow(
-        'No trends response from predictor adapter',
-      );
-      expect(predictorAdapter.getTrendsForToken).toHaveBeenCalledWith(token);
-    });
-
-    it('should throw error when predictor adapter returns null', async () => {
-      // Arrange
-      const token = 'ETH';
-      predictorAdapter.getTrendsForToken.mockResolvedValue(null as any);
-
-      // Act & Assert
-      await expect(service.testDetermineDirection(token)).rejects.toThrow(
-        'No trends response from predictor adapter',
-      );
+      expect(await service.testDetermineDirection(token)).toBeNull();
       expect(predictorAdapter.getTrendsForToken).toHaveBeenCalledWith(token);
     });
   });

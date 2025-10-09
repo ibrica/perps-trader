@@ -30,12 +30,12 @@ export abstract class BasePlatformService {
 
   protected async determineDirection(
     token: string,
-  ): Promise<PositionDirection | undefined> {
+  ): Promise<PositionDirection | null> {
     const trendsResponse = await this.predictorAdapter.getTrendsForToken(token);
     if (!trendsResponse) {
-      throw new Error('No trends response from predictor adapter');
+      return null;
     }
-    // For now only use the one hour trend and the fifteen minute trend to see  if the price is moving in the same direction
+    // For now only use the one hour trend and the fifteen minute trend to see if the price is moving in the same direction
     const { trends } = trendsResponse;
     const oneHourTrend = trends[TrendTimeframe.ONE_HOUR].trend;
     const fifteenMinuteTrend = trends[TrendTimeframe.FIFTEEN_MIN].trend;
@@ -48,5 +48,6 @@ export abstract class BasePlatformService {
         ? PositionDirection.LONG
         : PositionDirection.SHORT;
     }
+    return null;
   }
 }
