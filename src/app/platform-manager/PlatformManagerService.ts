@@ -3,7 +3,6 @@ import {
   Platform,
   TradePositionStatus,
   HL_DEFAULT_CURRENCY_FROM,
-  BasePlatformService,
   PositionDirection,
 } from '../../shared';
 import {
@@ -21,7 +20,8 @@ import { TradePositionService } from '../trade-position/TradePosition.service';
 import {
   PlatformWebSocketService,
   OrderFillCallback,
-} from '../../infrastructure/websocket/PlatformWebSocket';
+  BasePlatformService,
+} from '../../infrastructure';
 
 @Injectable()
 export class PlatformManagerService extends PlatformManagerPort {

@@ -4,6 +4,7 @@ import {
   PredictionHorizon,
   PredictionResponse,
   TokenCategory,
+  TrendsResponse,
   retryCallback,
 } from '../../shared';
 
@@ -65,6 +66,38 @@ export class PredictorAdapter {
     if (error) {
       this.logger.error(
         `Error predicting token ${tokenMint} after retries: ${parseAxiosError(error)}`,
+      );
+    }
+
+    return undefined;
+  }
+
+  async getTrendsForToken(token: string): Promise<TrendsResponse | undefined> {
+    const { result, error } = await retryCallback(
+      async () => {
+        const response = await axios.get(`${this.url}/trends`, {
+          params: { token },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000, // 10 second timeout per request
+        });
+        return response.data;
+      },
+      {
+        maxCount: 3, // Try 3 times for GET requests
+        delayMs: 1000, // Wait 1 second between retries
+        logger: this.logger,
+      },
+    );
+
+    if (result) {
+      return result;
+    }
+
+    if (error) {
+      this.logger.error(
+        `Error fetching trends for token ${token} after retries: ${parseAxiosError(error)}`,
       );
     }
 

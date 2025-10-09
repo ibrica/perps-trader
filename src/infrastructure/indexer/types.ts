@@ -63,7 +63,7 @@ export interface HealthResponse {
 /**
  * Generic error response structure
  */
-export interface ErrorResponse {
+export interface IndexerApiErrorResponse {
   /** Error type/code */
   error: string;
 
@@ -96,7 +96,7 @@ export interface ApiError {
   status: number;
 
   /** Original error response */
-  response?: ErrorResponse;
+  response?: IndexerApiErrorResponse;
 }
 
 // ============================================================================
@@ -106,7 +106,9 @@ export interface ApiError {
 /**
  * Type guard to check if response is an error
  */
-export function isErrorResponse(response: unknown): response is ErrorResponse {
+export function isErrorResponse(
+  response: unknown,
+): response is IndexerApiErrorResponse {
   return !!(
     response &&
     typeof response === 'object' &&

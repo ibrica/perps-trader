@@ -7,6 +7,8 @@ import {
   MarketSentiment,
   PredictionHorizon,
   TokenCategory,
+  TrendsResponse,
+  TrendStatus,
 } from '../../shared';
 
 // Mock axios
@@ -300,6 +302,185 @@ describe('PredictorAdapter', () => {
       expect(Array.isArray(result?.reasoning?.risk_factors)).toBe(true);
       expect(result?.reasoning?.key_factors.length).toBeGreaterThan(0);
       expect(result?.reasoning?.risk_factors.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('getTrendsForToken', () => {
+    const mockTrendsResponse: TrendsResponse = {
+      token: 'BTC',
+      timestamp: '2024-01-15T10:30:45.123Z',
+      trends: {
+        '5m': {
+          trend: TrendStatus.UP,
+          change_pct: 2.5,
+          price: 45000,
+          ma: 43875,
+        },
+        '15m': {
+          trend: TrendStatus.UP,
+          change_pct: 3.2,
+          price: 45000,
+          ma: 43600,
+        },
+        '1h': {
+          trend: TrendStatus.NEUTRAL,
+          change_pct: 0.5,
+          price: 45000,
+          ma: 44775,
+        },
+        '8h': {
+          trend: TrendStatus.DOWN,
+          change_pct: -1.8,
+          price: 45000,
+          ma: 45810,
+        },
+        '1d': {
+          trend: TrendStatus.UNDEFINED,
+          change_pct: null,
+          price: null,
+          ma: null,
+        },
+      },
+    };
+
+    it('should successfully fetch trends for token', async () => {
+      // Arrange
+      mockedAxios.get.mockResolvedValue({
+        data: mockTrendsResponse,
+      });
+
+      // Act
+      const result = await adapter.getTrendsForToken('BTC');
+
+      // Assert
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        `${testUrl}:${testPort}/trends`,
+        {
+          params: { token: 'BTC' },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        },
+      );
+      expect(result).toEqual(mockTrendsResponse);
+      expect(result?.token).toBe('BTC');
+      expect(result?.trends['5m'].trend).toBe(TrendStatus.UP);
+      expect(result?.trends['5m'].change_pct).toBe(2.5);
+    });
+
+    it('should validate trends response structure', async () => {
+      // Arrange
+      mockedAxios.get.mockResolvedValue({
+        data: mockTrendsResponse,
+      });
+
+      // Act
+      const result = await adapter.getTrendsForToken('BTC');
+
+      // Assert
+      expect(result).toBeDefined();
+      expect(result).toHaveProperty('token');
+      expect(result).toHaveProperty('timestamp');
+      expect(result).toHaveProperty('trends');
+
+      // Validate all timeframes exist
+      expect(result?.trends).toHaveProperty('5m');
+      expect(result?.trends).toHaveProperty('15m');
+      expect(result?.trends).toHaveProperty('1h');
+      expect(result?.trends).toHaveProperty('8h');
+      expect(result?.trends).toHaveProperty('1d');
+
+      // Validate trend structure
+      const trend5m = result?.trends['5m'];
+      expect(trend5m).toHaveProperty('trend');
+      expect(trend5m).toHaveProperty('change_pct');
+      expect(trend5m).toHaveProperty('price');
+      expect(trend5m).toHaveProperty('ma');
+    });
+
+    it('should handle different trend statuses correctly', async () => {
+      // Arrange
+      mockedAxios.get.mockResolvedValue({
+        data: mockTrendsResponse,
+      });
+
+      // Act
+      const result = await adapter.getTrendsForToken('ETH');
+
+      // Assert
+      expect(result?.trends['5m'].trend).toBe(TrendStatus.UP);
+      expect(result?.trends['15m'].trend).toBe(TrendStatus.UP);
+      expect(result?.trends['1h'].trend).toBe(TrendStatus.NEUTRAL);
+      expect(result?.trends['8h'].trend).toBe(TrendStatus.DOWN);
+      expect(result?.trends['1d'].trend).toBe(TrendStatus.UNDEFINED);
+    });
+
+    it('should handle UNDEFINED trends with null values', async () => {
+      // Arrange
+      mockedAxios.get.mockResolvedValue({
+        data: mockTrendsResponse,
+      });
+
+      // Act
+      const result = await adapter.getTrendsForToken('SOL');
+
+      // Assert
+      const undefinedTrend = result?.trends['1d'];
+      expect(undefinedTrend?.trend).toBe(TrendStatus.UNDEFINED);
+      expect(undefinedTrend?.change_pct).toBeNull();
+      expect(undefinedTrend?.price).toBeNull();
+      expect(undefinedTrend?.ma).toBeNull();
+    });
+
+    it('should return undefined when request fails', async () => {
+      // Arrange
+      const errorMessage = 'Network Error';
+      mockedAxios.get.mockRejectedValue(new Error(errorMessage));
+
+      // Act
+      const result = await adapter.getTrendsForToken('BTC');
+
+      // Assert
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        `${testUrl}:${testPort}/trends`,
+        {
+          params: { token: 'BTC' },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        },
+      );
+      expect(result).toBeUndefined();
+    });
+
+    it('should handle different token symbols correctly', async () => {
+      // Arrange
+      const ethResponse: TrendsResponse = {
+        ...mockTrendsResponse,
+        token: 'ETH',
+      };
+
+      mockedAxios.get.mockResolvedValue({
+        data: ethResponse,
+      });
+
+      // Act
+      const result = await adapter.getTrendsForToken('ETH');
+
+      // Assert
+      expect(mockedAxios.get).toHaveBeenCalledWith(
+        `${testUrl}:${testPort}/trends`,
+        {
+          params: { token: 'ETH' },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          timeout: 10000,
+        },
+      );
+      expect(result?.token).toBe('ETH');
     });
   });
 });

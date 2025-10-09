@@ -11,6 +11,7 @@
     "dev": "yarn start:dev",
     "test": "node --max-old-space-size=8192 --expose-gc ./node_modules/.bin/jest --testTimeout=600000 --maxWorkers=3",
     "test:integration": "node --max-old-space-size=8192 --expose-gc ./node_modules/.bin/jest --testTimeout=600000 --maxWorkers=3 --forceExit",
+    "test:cleanup": "node scripts/cleanup-test-dbs.js",
     "clean": "rm -rf dist node_modules/.cache && rm -f tsconfig.tsbuildinfo",
     "lint": "eslint \"src/**/*.ts\" -c package.json",
     "lint:fix": "yarn lint --fix",
@@ -77,6 +78,7 @@
   },
   "jest": {
     "testTimeout": 120000,
+    "globalTeardown": "<rootDir>/jest.globalTeardown.js",
     "projects": [
       {
         "displayName": "api",
