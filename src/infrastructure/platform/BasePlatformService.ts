@@ -1,9 +1,12 @@
 import { TradePositionDocument } from '../../app/trade-position/TradePosition.schema';
-import { TradeOrderResult } from '../../shared/models/trade-order';
-import { EnterPositionOptions } from '../../shared/models/platform/EnterPositionOptions';
-import { PositionDirection } from '../../shared/constants/PositionDirection';
 import { PredictorAdapter } from '../predictor/PredictorAdapter';
-import { TrendStatus } from '@perps/shared/models/predictor';
+import {
+  TradeOrderResult,
+  EnterPositionOptions,
+  PositionDirection,
+  TrendTimeframe,
+  TrendStatus,
+} from '../../shared';
 
 export abstract class BasePlatformService {
   constructor(protected readonly predictorAdapter: PredictorAdapter) {}
@@ -27,12 +30,22 @@ export abstract class BasePlatformService {
 
   protected async determineDirection(
     token: string,
-  ): Promise<PositionDirection | null> {
-    const trends = await this.predictorAdapter.getTrendsForToken(token);
-    if (trends?.trends) {
-      return PositionDirection.LONG;
-    } else if (trends?.trends?.trend === TrendStatus.BEARISH) {
-      return PositionDirection.SHORT;
+  ): Promise<PositionDirection | undefined> {
+    const trendsResponse = await this.predictorAdapter.getTrendsForToken(token);
+    if (!trendsResponse) {
+      throw new Error('No trends response from predictor adapter');
+    }
+    // For now only use the one hour trend and the fifteen minute trend to see  if the price is moving in the same direction
+    const { trends } = trendsResponse;
+    const oneHourTrend = trends[TrendTimeframe.ONE_HOUR].trend;
+    const fifteenMinuteTrend = trends[TrendTimeframe.FIFTEEN_MIN].trend;
+    if (
+      oneHourTrend !== TrendStatus.UNDEFINED &&
+      oneHourTrend === fifteenMinuteTrend
+    ) {
+      return oneHourTrend === TrendStatus.UP
+        ? PositionDirection.LONG
+        : PositionDirection.SHORT;
     }
   }
 }
