@@ -29,7 +29,7 @@ export abstract class BasePlatformService {
     token: string,
   ): Promise<PositionDirection | null> {
     const trends = await this.predictorAdapter.getTrendsForToken(token);
-    if (trends?.trends?.trend === TrendStatus.BULLISH) {
+    if (trends?.trends) {
       return PositionDirection.LONG;
     } else if (trends?.trends?.trend === TrendStatus.BEARISH) {
       return PositionDirection.SHORT;

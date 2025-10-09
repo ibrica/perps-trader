@@ -1,12 +1,6 @@
 /**
  * TypeScript definitions for TraderAI Inference API v1.1.0
  * Generated from Python Pydantic schemas
- *
- * Recent updates:
- * - Removed 1-minute prediction horizon
- * - Added ensemble prediction support
- * - Added category-specific predictions
- * - Enhanced with probability gating system
  */
 
 // Enums
@@ -154,6 +148,14 @@ export interface ErrorResponse {
 }
 
 // Trends API types
+export enum TrendTimeframe {
+  FIVE_MIN = '5m',
+  FIFTEEN_MIN = '15m',
+  ONE_HOUR = '1h',
+  EIGHT_HOUR = '8h',
+  ONE_DAY = '1d',
+}
+
 export enum TrendStatus {
   UP = 'UP',
   DOWN = 'DOWN',
@@ -185,13 +187,7 @@ export function isTrendDefined(trend: TrendInfo): trend is TrendInfo & {
 export interface TrendsResponse {
   token: string;
   timestamp: string; // ISO datetime string
-  trends: {
-    '5m': TrendInfo;
-    '15m': TrendInfo;
-    '1h': TrendInfo;
-    '8h': TrendInfo;
-    '1d': TrendInfo;
-  };
+  trends: Record<TrendTimeframe, TrendInfo>;
 }
 
 // API Client helper types
