@@ -77,7 +77,7 @@ describe('IndexerClient', () => {
       // Assert
       expect(result).toEqual(mockPriceResponse);
       expect(fetch).toHaveBeenCalledWith(
-        `${config.baseUrl}/last-price?token-address=${mockPriceResponse.token_symbol}`,
+        `${config.baseUrl}/last-price?token-symbol=${mockPriceResponse.token_symbol}`,
         expect.objectContaining({
           headers: expect.objectContaining({
             'Content-Type': 'application/json',

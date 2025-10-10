@@ -51,7 +51,7 @@ describe('IndexerAdapter', () => {
       // Assert
       expect(result).toEqual(mockResponse);
       expect(global.fetch).toHaveBeenCalledWith(
-        `http://${testHost}:${testApiPort}/last-price?token-address=${testTokenMint}`,
+        `http://${testHost}:${testApiPort}/last-price?token-symbol=${testTokenMint}`,
         expect.objectContaining({
           headers: expect.objectContaining({
             'Content-Type': 'application/json',

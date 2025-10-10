@@ -98,7 +98,7 @@ export class IndexerClient {
     this.logger.debug(`Fetching last price for token: ${tokenAddress}`);
 
     const params = new URLSearchParams({
-      'token-address': tokenAddress,
+      'token-symbol': tokenAddress,
     });
 
     const response = await this.request<LastPriceResponse>(

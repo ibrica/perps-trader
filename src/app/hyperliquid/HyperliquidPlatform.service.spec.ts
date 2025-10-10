@@ -165,6 +165,9 @@ describe('HyperliquidPlatformService', () => {
     });
 
     it('should handle errors gracefully', async () => {
+      jest
+        .spyOn(service as any, 'determineDirection')
+        .mockResolvedValue(PositionDirection.LONG);
       hyperliquidService.placePerpOrder.mockRejectedValue(
         new Error('Exchange error'),
       );
