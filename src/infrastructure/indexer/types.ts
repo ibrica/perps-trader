@@ -33,7 +33,7 @@ export type PriceDataType = 'price' | 'position';
  * Response for GET /last-price endpoint
  */
 export interface LastPriceResponse {
-  /** Token symbol (BTC, ETH, SOL for main/alt coins, or Solana address for meme coins) */
+  /** Token symbol (BTC, ETH, SOL ) */
   token_symbol: string;
 
   /** Token classification type */
@@ -82,7 +82,7 @@ export interface ErrorResponse {
  * Query parameters for GET /last-price
  */
 export interface LastPriceQueryParams {
-  /** Token symbol to lookup (required) - e.g., "BTC", "ETH" for main/alt coins, or Solana address for meme coins */
+  /** Token symbol to lookup (required) - e.g., "BTC", "ETH" for main/alt coins */
   'token-symbol': string;
 }
 
@@ -221,18 +221,13 @@ export interface ApiClientExample {
   /**
    * Get last price for a token
    *
-   * @param tokenSymbol - Token symbol to lookup (BTC, ETH for main/alt coins, or Solana address for meme coins)
+   * @param tokenSymbol - Token symbol to lookup (BTC, ETH for main/alt coins
    * @returns Promise with price/position data
    *
    * @example
    * ```typescript
    * const client = new ApiClient({ baseUrl: 'http://localhost:7071' });
-   *
-   * // For a meme coin (using token address)
-   * const memePrice = await client.getLastPrice('9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM');
-   * if (memePrice.type === 'meme') {
-   *   console.log(`Position: ${memePrice.position}`);
-   * }
+   
    *
    * // For main/alt coins (using token symbol)
    * const btcPrice = await client.getLastPrice('BTC');

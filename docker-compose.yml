@@ -30,7 +30,7 @@ services:
       # Indexer service (required)
       - INDEXER_HOST=${INDEXER_HOST:-sol-indexer}
       - INDEXER_WS_PORT=${INDEXER_WS_PORT:-7070}
-      - INDEXER_API_PORT=${INDEXER_API_PORT:-8080}
+      - INDEXER_API_PORT=${INDEXER_API_PORT:-7071}
       # Hyperliquid Configuration
       - HL_ENABLED=${HL_ENABLED:-false}
       - HL_ENV=${HL_ENV:-testnet}
