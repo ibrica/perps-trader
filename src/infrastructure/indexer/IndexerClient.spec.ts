@@ -23,7 +23,7 @@ describe('IndexerClient', () => {
   };
 
   const mockPriceResponse: LastPriceResponse = {
-    token_address: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
+    token_symbol: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
     type: 'meme',
     position: '500000000',
     timestamp: '2024-01-15T10:30:45.123Z',
@@ -72,12 +72,12 @@ describe('IndexerClient', () => {
       });
 
       // Act
-      const result = await client.getLastPrice(mockPriceResponse.token_address);
+      const result = await client.getLastPrice(mockPriceResponse.token_symbol);
 
       // Assert
       expect(result).toEqual(mockPriceResponse);
       expect(fetch).toHaveBeenCalledWith(
-        `${config.baseUrl}/last-price?token-address=${mockPriceResponse.token_address}`,
+        `${config.baseUrl}/last-price?token-symbol=${mockPriceResponse.token_symbol}`,
         expect.objectContaining({
           headers: expect.objectContaining({
             'Content-Type': 'application/json',
@@ -191,7 +191,7 @@ describe('IndexerClient', () => {
       const tokenAddresses = ['token1', 'token2', 'token3'];
       const mockResponses = tokenAddresses.map((addr, index) => ({
         ...mockPriceResponse,
-        token_address: addr,
+        token_symbol: addr,
         position: `${500000000 + index}`,
       }));
 
@@ -214,9 +214,9 @@ describe('IndexerClient', () => {
 
       // Assert
       expect(result).toHaveLength(3);
-      expect(result[0].token_address).toBe('token1');
-      expect(result[1].token_address).toBe('token2');
-      expect(result[2].token_address).toBe('token3');
+      expect(result[0].token_symbol).toBe('token1');
+      expect(result[1].token_symbol).toBe('token2');
+      expect(result[2].token_symbol).toBe('token3');
       expect(fetch).toHaveBeenCalledTimes(3);
     });
 
@@ -227,7 +227,7 @@ describe('IndexerClient', () => {
       (fetch as jest.Mock)
         .mockResolvedValueOnce({
           ok: true,
-          json: async () => ({ ...mockPriceResponse, token_address: 'token1' }),
+          json: async () => ({ ...mockPriceResponse, token_symbol: 'token1' }),
         })
         .mockRejectedValueOnce(new Error('Token2 failed'));
 
@@ -251,7 +251,7 @@ describe('IndexerClient', () => {
 
       // Act
       const result = await client.getLastPriceWithRetry(
-        mockPriceResponse.token_address,
+        mockPriceResponse.token_symbol,
         3, // max retries
         10, // retry delay (short for testing)
       );
@@ -287,7 +287,7 @@ describe('IndexerClient', () => {
 
       // Act
       const result = await client.getLastPriceWithRetry(
-        mockPriceResponse.token_address,
+        mockPriceResponse.token_symbol,
       );
 
       // Assert

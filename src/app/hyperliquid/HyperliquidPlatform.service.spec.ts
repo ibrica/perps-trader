@@ -12,6 +12,7 @@ import {
   PositionDirection,
   TradeOrderStatus,
 } from '../../shared';
+import { PredictorAdapter } from '../../infrastructure/predictor/PredictorAdapter';
 
 describe('HyperliquidPlatformService', () => {
   let service: HyperliquidPlatformService;
@@ -52,6 +53,10 @@ describe('HyperliquidPlatformService', () => {
       getTradePositionById: jest.fn(),
     };
 
+    const mockPredictorAdapter = {
+      getTrendsForToken: jest.fn(),
+    };
+
     module = await Test.createTestingModule({
       providers: [
         HyperliquidPlatformService,
@@ -74,6 +79,10 @@ describe('HyperliquidPlatformService', () => {
         {
           provide: TradePositionService,
           useValue: mockTradePositionService,
+        },
+        {
+          provide: PredictorAdapter,
+          useValue: mockPredictorAdapter,
         },
       ],
     }).compile();
@@ -103,6 +112,9 @@ describe('HyperliquidPlatformService', () => {
       };
 
       hyperliquidService.placePerpOrder.mockResolvedValue(mockOrderResult);
+      jest
+        .spyOn(service as any, 'determineDirection')
+        .mockResolvedValue(PositionDirection.LONG);
 
       const result = await service.enterPosition({
         platform: Platform.HYPERLIQUID,
@@ -132,6 +144,9 @@ describe('HyperliquidPlatformService', () => {
       };
 
       hyperliquidService.placePerpOrder.mockResolvedValue(mockOrderResult);
+      jest
+        .spyOn(service as any, 'determineDirection')
+        .mockResolvedValue(PositionDirection.LONG);
 
       await service.enterPosition({
         platform: Platform.HYPERLIQUID,
@@ -150,6 +165,9 @@ describe('HyperliquidPlatformService', () => {
     });
 
     it('should handle errors gracefully', async () => {
+      jest
+        .spyOn(service as any, 'determineDirection')
+        .mockResolvedValue(PositionDirection.LONG);
       hyperliquidService.placePerpOrder.mockRejectedValue(
         new Error('Exchange error'),
       );
@@ -163,6 +181,75 @@ describe('HyperliquidPlatformService', () => {
           amountIn: 50,
         }),
       ).rejects.toThrow('Exchange error');
+    });
+
+    it('should throw error when direction cannot be determined', async () => {
+      jest.spyOn(service as any, 'determineDirection').mockResolvedValue(null);
+
+      await expect(
+        service.enterPosition({
+          platform: Platform.HYPERLIQUID,
+          tradeType: TradeType.PERPETUAL,
+          currency: Currency.USDC,
+          token: 'BTC',
+          amountIn: 100,
+        }),
+      ).rejects.toThrow(
+        'Unable to determine trading direction for BTC. No valid trend signals found.',
+      );
+
+      expect(hyperliquidService.placePerpOrder).not.toHaveBeenCalled();
+    });
+
+    it('should enter SHORT position when direction is SHORT', async () => {
+      const mockOrderResult = {
+        orderId: 'short-order-789',
+        status: TradeOrderStatus.CREATED,
+        size: 0.5,
+        price: 150,
+        fee: 0.05,
+        type: 'Ioc',
+      };
+
+      hyperliquidService.placePerpOrder.mockResolvedValue(mockOrderResult);
+      jest
+        .spyOn(service as any, 'determineDirection')
+        .mockResolvedValue(PositionDirection.SHORT);
+
+      const result = await service.enterPosition({
+        platform: Platform.HYPERLIQUID,
+        tradeType: TradeType.PERPETUAL,
+        currency: Currency.USDC,
+        token: 'SOL',
+        amountIn: 75,
+      });
+
+      expect(hyperliquidService.placePerpOrder).toHaveBeenCalledWith({
+        symbol: 'SOL',
+        direction: PositionDirection.SHORT,
+        quoteAmount: 75,
+        tif: 'Ioc',
+      });
+      expect(result.orderId).toBe('short-order-789');
+      expect(result.metadata?.direction).toBe(PositionDirection.SHORT);
+    });
+
+    it('should handle predictor service unavailability', async () => {
+      jest
+        .spyOn(service as any, 'determineDirection')
+        .mockRejectedValue(new Error('Predictor service unavailable'));
+
+      await expect(
+        service.enterPosition({
+          platform: Platform.HYPERLIQUID,
+          tradeType: TradeType.PERPETUAL,
+          currency: Currency.USDC,
+          token: 'ETH',
+          amountIn: 200,
+        }),
+      ).rejects.toThrow('Predictor service unavailable');
+
+      expect(hyperliquidService.placePerpOrder).not.toHaveBeenCalled();
     });
   });
 

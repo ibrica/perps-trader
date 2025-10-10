@@ -1,6 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable  @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types */
 /**
  * TypeScript interfaces for Sol-Indexer REST API
+ *
+ * This file contains type definitions for all API endpoints.
+ * Generated for sol-indexer REST API v1.0
  */
 
 // ============================================================================
@@ -30,8 +33,8 @@ export type PriceDataType = 'price' | 'position';
  * Response for GET /last-price endpoint
  */
 export interface LastPriceResponse {
-  /** Token address (Solana address for meme coins, ticker for main/alt) */
-  token_address: string;
+  /** Token symbol (BTC, ETH, SOL for main/alt coins, or Solana address for meme coins) */
+  token_symbol: string;
 
   /** Token classification type */
   type: TokenType;
@@ -63,7 +66,7 @@ export interface HealthResponse {
 /**
  * Generic error response structure
  */
-export interface IndexerApiErrorResponse {
+export interface ErrorResponse {
   /** Error type/code */
   error: string;
 
@@ -71,11 +74,65 @@ export interface IndexerApiErrorResponse {
   message?: string;
 }
 
+// ============================================================================
+// Request Types
+// ============================================================================
+
+/**
+ * Query parameters for GET /last-price
+ */
+export interface LastPriceQueryParams {
+  /** Token symbol to lookup (required) - e.g., "BTC", "ETH" for main/alt coins, or Solana address for meme coins */
+  'token-symbol': string;
+}
+
+// ============================================================================
+// Internal Data Models (for reference)
+// ============================================================================
+
+/**
+ * Unified monitoring pair model
+ */
+export interface MonitoringPair {
+  token_address: string;
+  token_symbol: string;
+  network: string;
+  pool_address?: string;
+  ticker?: string;
+  name?: string;
+  source: TokenSource;
+  active: boolean;
+  type: TokenType;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Price data model
+ */
+export interface PriceData {
+  /** Price in USD (for main/alt coins) */
+  price?: number;
+
+  /** Position on bonding curve (for meme coins, as string) */
+  position?: string;
+
+  /** Timestamp of the data */
+  timestamp: string;
+
+  /** Data type indicator */
+  type: PriceDataType;
+}
+
+// ============================================================================
+// API Client Types
+// ============================================================================
+
 /**
  * Configuration for API client
  */
 export interface ApiClientConfig {
-  /** Base URL of the API (e.g., "http://localhost:8080") */
+  /** Base URL of the API (e.g., "http://localhost:7071") */
   baseUrl: string;
 
   /** Request timeout in milliseconds */
@@ -83,6 +140,20 @@ export interface ApiClientConfig {
 
   /** Additional headers to include with requests */
   headers?: Record<string, string>;
+}
+
+/**
+ * API client response wrapper
+ */
+export interface ApiResponse<T> {
+  /** Response data */
+  data: T;
+
+  /** HTTP status code */
+  status: number;
+
+  /** Response headers */
+  headers: Record<string, string>;
 }
 
 /**
@@ -96,7 +167,7 @@ export interface ApiError {
   status: number;
 
   /** Original error response */
-  response?: IndexerApiErrorResponse;
+  response?: ErrorResponse;
 }
 
 // ============================================================================
@@ -104,47 +175,85 @@ export interface ApiError {
 // ============================================================================
 
 /**
+ * Union type for all possible API responses
+ */
+export type ApiResponseUnion =
+  | LastPriceResponse
+  | HealthResponse
+  | ErrorResponse;
+
+/**
  * Type guard to check if response is an error
  */
-export function isErrorResponse(
-  response: unknown,
-): response is IndexerApiErrorResponse {
-  return !!(
-    response &&
-    typeof response === 'object' &&
-    'error' in response &&
-    typeof (response as any).error === 'string'
-  );
+export function isErrorResponse(response: any): response is ErrorResponse {
+  return response && typeof response.error === 'string';
 }
 
 /**
  * Type guard to check if response is a LastPriceResponse
  */
 export function isLastPriceResponse(
-  response: unknown,
+  response: any,
 ): response is LastPriceResponse {
-  return !!(
+  return (
     response &&
-    typeof response === 'object' &&
-    'token_address' in response &&
-    typeof (response as any).token_address === 'string' &&
-    'type' in response &&
-    typeof (response as any).type === 'string' &&
-    'timestamp' in response &&
-    typeof (response as any).timestamp === 'string'
+    typeof response.token_symbol === 'string' &&
+    typeof response.type === 'string' &&
+    typeof response.timestamp === 'string'
   );
 }
 
 /**
  * Type guard to check if response is a HealthResponse
  */
-export function isHealthResponse(
-  response: unknown,
-): response is HealthResponse {
-  return !!(
-    response &&
-    typeof response === 'object' &&
-    'status' in response &&
-    typeof (response as any).status === 'string'
-  );
+export function isHealthResponse(response: any): response is HealthResponse {
+  return response && typeof response.status === 'string';
 }
+
+// ============================================================================
+// Example Usage Types
+// ============================================================================
+
+/**
+ * Example usage of the API client
+ */
+export interface ApiClientExample {
+  /**
+   * Get last price for a token
+   *
+   * @param tokenSymbol - Token symbol to lookup (BTC, ETH for main/alt coins, or Solana address for meme coins)
+   * @returns Promise with price/position data
+   *
+   * @example
+   * ```typescript
+   * const client = new ApiClient({ baseUrl: 'http://localhost:7071' });
+   *
+   * // For a meme coin (using token address)
+   * const memePrice = await client.getLastPrice('9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM');
+   * if (memePrice.type === 'meme') {
+   *   console.log(`Position: ${memePrice.position}`);
+   * }
+   *
+   * // For main/alt coins (using token symbol)
+   * const btcPrice = await client.getLastPrice('BTC');
+   * if (btcPrice.price !== undefined) {
+   *   console.log(`BTC Price: $${btcPrice.price}`);
+   * }
+   * ```
+   */
+  getLastPrice(tokenSymbol: string): Promise<LastPriceResponse>;
+
+  /**
+   * Check API health
+   *
+   * @returns Promise with health status
+   */
+  getHealth(): Promise<HealthResponse>;
+}
+
+// Export type guards and utilities as default
+export default {
+  isErrorResponse,
+  isLastPriceResponse,
+  isHealthResponse,
+};
