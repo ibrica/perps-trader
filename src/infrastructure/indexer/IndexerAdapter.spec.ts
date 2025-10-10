@@ -33,7 +33,7 @@ describe('IndexerAdapter', () => {
     it('should fetch last price for a token', async () => {
       // Arrange
       const mockResponse = {
-        token_address: testTokenMint,
+        token_symbol: testTokenMint,
         type: 'meme' as const,
         position: '500000000',
         timestamp: '2024-01-15T10:30:45.123Z',
