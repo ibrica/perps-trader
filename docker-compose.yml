@@ -129,7 +129,7 @@ services:
     container_name: sol-indexer-app
     ports:
       - '7070:7070' # WebSocket port for price feeds
-      - '8080:8080' # API port for price queries
+      - '7071:7071' # API port for price queries
     environment:
       - CHAINSTREAM_API_KEY=${CHAINSTREAM_API_KEY}
       - CHAINSTREAM_WEBSOCKET_URL=${CHAINSTREAM_WEBSOCKET_URL:-wss://chainstream.api.syndica.io}
