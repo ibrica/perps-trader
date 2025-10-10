@@ -85,7 +85,7 @@ The platform is focused exclusively on Hyperliquid perpetual futures trading:
 #### Database
 
 - **MongoDB**: Primary data store for trades, positions, settings
-- **No ClickHouse**: Removed time-series database dependency
+- **No ClickHouse**: Removed time-series database dependency (the indexer and predictor still use it)
 - **No Redis**: Removed caching and message queue dependency
 
 #### Models
