@@ -94,11 +94,11 @@ export class IndexerClient {
   /**
    * Get last price/position data for a token
    */
-  async getLastPrice(tokenAddress: string): Promise<LastPriceResponse> {
-    this.logger.debug(`Fetching last price for token: ${tokenAddress}`);
+  async getLastPrice(tokenSymbol: string): Promise<LastPriceResponse> {
+    this.logger.debug(`Fetching last price for token: ${tokenSymbol}`);
 
     const params = new URLSearchParams({
-      'token-symbol': tokenAddress,
+      'token-symbol': tokenSymbol,
     });
 
     const response = await this.request<LastPriceResponse>(
@@ -110,7 +110,7 @@ export class IndexerClient {
     }
 
     this.logger.debug(
-      `Price fetched for ${tokenAddress}: type=${response.type}, price=${response.price}, position=${response.position}`,
+      `Price fetched for ${tokenSymbol}: type=${response.type}, price=${response.price}, position=${response.position}`,
     );
     return response;
   }
@@ -150,7 +150,7 @@ export class IndexerClient {
    * Get last price with retry logic
    */
   async getLastPriceWithRetry(
-    tokenAddress: string,
+    tokenSymbol: string,
     maxRetries: number = 3,
     retryDelay: number = 1000,
   ): Promise<LastPriceResponse> {
@@ -158,13 +158,13 @@ export class IndexerClient {
 
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
       try {
-        return await this.getLastPrice(tokenAddress);
+        return await this.getLastPrice(tokenSymbol);
       } catch (error) {
         lastError = error instanceof Error ? error : new Error('Unknown error');
 
         if (attempt < maxRetries) {
           this.logger.warn(
-            `Price fetch attempt ${attempt + 1} failed for ${tokenAddress}, retrying in ${retryDelay}ms...`,
+            `Price fetch attempt ${attempt + 1} failed for ${tokenSymbol}, retrying in ${retryDelay}ms...`,
             lastError,
           );
           await new Promise((resolve) => setTimeout(resolve, retryDelay));
@@ -173,7 +173,7 @@ export class IndexerClient {
     }
 
     this.logger.error(
-      `All ${maxRetries + 1} price fetch attempts failed for ${tokenAddress}`,
+      `All ${maxRetries + 1} price fetch attempts failed for ${tokenSymbol}`,
       lastError!,
     );
     throw lastError!;
