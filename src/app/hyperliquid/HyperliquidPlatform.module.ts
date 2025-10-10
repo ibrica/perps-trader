@@ -6,20 +6,24 @@ import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/Hy
 import { HyperliquidModule } from './Hyperliquid.module';
 import { TradeOrderModule } from '../trade-order/TradeOrder.module';
 import { TradeOrderService } from '../trade-order/TradeOrder.service';
+import { PredictorModule } from '../predictor/Predictor.module';
+import { PredictorAdapter } from '../../infrastructure/predictor/PredictorAdapter';
 
 @Module({
-  imports: [HyperliquidModule, TradeOrderModule],
+  imports: [HyperliquidModule, TradeOrderModule, PredictorModule],
   providers: [
     {
       provide: HyperliquidPlatformService,
       useFactory: (
         configService: ConfigService,
+        predictorAdapter: PredictorAdapter,
         hyperliquidService?: HyperliquidService,
         hyperliquidWebSocket?: HyperliquidWebSocketService,
         tradeOrderService?: TradeOrderService,
       ): HyperliquidPlatformService => {
         return new HyperliquidPlatformService(
           configService,
+          predictorAdapter,
           hyperliquidService,
           hyperliquidWebSocket,
           tradeOrderService,
