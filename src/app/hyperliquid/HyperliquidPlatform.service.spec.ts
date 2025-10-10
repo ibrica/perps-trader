@@ -18,7 +18,6 @@ describe('HyperliquidPlatformService', () => {
   let service: HyperliquidPlatformService;
   let hyperliquidService: jest.Mocked<HyperliquidService>;
   let tradeOrderService: jest.Mocked<TradeOrderService>;
-  let predictorAdapter: jest.Mocked<PredictorAdapter>;
   let module: TestingModule;
 
   beforeEach(async () => {
@@ -113,7 +112,9 @@ describe('HyperliquidPlatformService', () => {
       };
 
       hyperliquidService.placePerpOrder.mockResolvedValue(mockOrderResult);
-      jest.spyOn(service as any, 'determineDirection').mockResolvedValue(PositionDirection.LONG);
+      jest
+        .spyOn(service as any, 'determineDirection')
+        .mockResolvedValue(PositionDirection.LONG);
 
       const result = await service.enterPosition({
         platform: Platform.HYPERLIQUID,
@@ -143,7 +144,9 @@ describe('HyperliquidPlatformService', () => {
       };
 
       hyperliquidService.placePerpOrder.mockResolvedValue(mockOrderResult);
-      jest.spyOn(service as any, 'determineDirection').mockResolvedValue(PositionDirection.LONG);
+      jest
+        .spyOn(service as any, 'determineDirection')
+        .mockResolvedValue(PositionDirection.LONG);
 
       await service.enterPosition({
         platform: Platform.HYPERLIQUID,
