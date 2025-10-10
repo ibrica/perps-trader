@@ -214,7 +214,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
       // Determine direction based on the trade
       // For perps, we're either going long or short on the base asset
       // amountIn represents the quote amount (USDC) we want to use
-      const direction = this.determineDirection();
+      const direction = await this.determineDirection(token);
 
       // Validate order size before placing order to prevent extremely large orders
       this.validateOrderSize(options.amountIn, 'entry position');
