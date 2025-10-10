@@ -64,7 +64,6 @@ The platform is focused exclusively on Hyperliquid perpetual futures trading:
 
 - **PredictorModule**: Integrates with external trader-ai service for trading signals
 - **HTTP-based**: Simple REST API integration for predictions
-- **Optional**: Can operate without AI service (fallback to basic strategies)
 
 ### 4. External Service Integration
 
@@ -251,7 +250,7 @@ Clean import paths using TypeScript path mapping:
 1. **TradeMonitorScheduler** runs every minute via NestJS Schedule
 2. **TradeManagerService** orchestrates all trading operations
 3. **HyperliquidService** handles platform-specific interactions
-4. **PredictorModule** gets AI predictions (optional)
+4. **PredictorModule** gets AI predictions
 5. **IndexerModule** provides real-time price data (required)
 
 **Service Dependencies:**
