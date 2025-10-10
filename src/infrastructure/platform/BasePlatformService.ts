@@ -31,6 +31,7 @@ export abstract class BasePlatformService {
   protected async determineDirection(
     token: string,
   ): Promise<PositionDirection | null> {
+    // TODO: organize fallback so predictor can be optional
     const trendsResponse = await this.predictorAdapter.getTrendsForToken(token);
     if (!trendsResponse) {
       return null;
