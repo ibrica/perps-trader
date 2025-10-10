@@ -12,11 +12,13 @@ import {
   PositionDirection,
   TradeOrderStatus,
 } from '../../shared';
+import { PredictorAdapter } from '../../infrastructure/predictor/PredictorAdapter';
 
 describe('HyperliquidPlatformService', () => {
   let service: HyperliquidPlatformService;
   let hyperliquidService: jest.Mocked<HyperliquidService>;
   let tradeOrderService: jest.Mocked<TradeOrderService>;
+  let predictorAdapter: jest.Mocked<PredictorAdapter>;
   let module: TestingModule;
 
   beforeEach(async () => {
@@ -52,6 +54,10 @@ describe('HyperliquidPlatformService', () => {
       getTradePositionById: jest.fn(),
     };
 
+    const mockPredictorAdapter = {
+      getTrendsForToken: jest.fn(),
+    };
+
     module = await Test.createTestingModule({
       providers: [
         HyperliquidPlatformService,
@@ -74,6 +80,10 @@ describe('HyperliquidPlatformService', () => {
         {
           provide: TradePositionService,
           useValue: mockTradePositionService,
+        },
+        {
+          provide: PredictorAdapter,
+          useValue: mockPredictorAdapter,
         },
       ],
     }).compile();
