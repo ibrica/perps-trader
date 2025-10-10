@@ -15,8 +15,8 @@ export class IndexerAdapter {
   /**
    * Get the last price for a token from the indexer API
    */
-  async getLastPrice(tokenMint: string): Promise<LastPriceResponse> {
-    this.logger.log(`Fetching last price for token: ${tokenMint}`);
-    return this.client.getLastPrice(tokenMint);
+  async getLastPrice(token: string): Promise<LastPriceResponse> {
+    this.logger.log(`Fetching last price for token: ${token}`);
+    return this.client.getLastPrice(token);
   }
 }
