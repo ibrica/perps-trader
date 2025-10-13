@@ -136,7 +136,7 @@ services:
       - PUMP_FUN_PROGRAM_ADDRESS=${PUMP_FUN_PROGRAM_ADDRESS:-6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P}
       - LOG_LEVEL=${LOG_LEVEL:-info}
       - LOG_FORMAT=json
-      - SETTINGS_PATH=${SETTINGS_PATH:-config/chainstream.yaml}
+      - SETTINGS_PATH=${SETTINGS_PATH:-config/config.yaml}
       - RPC_URL=${RPC_URL:-https://api.mainnet-beta.solana.com}
       - ENVIRONMENT=${ENVIRONMENT:-production}
       - WEBSOCKET_SERVER_ENABLED=${WEBSOCKET_SERVER_ENABLED:-true}
