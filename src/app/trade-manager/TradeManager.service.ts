@@ -93,7 +93,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
       try {
         await this.enterPosition(opportunity);
-        remainingSlots--;
+        remainingSlots--; // For now we presume the order is filled, we don't open other positions
       } catch (error) {
         this.logger.error(
           `Failed to submit trade order for ${opportunity.token} on ${opportunity.platform}:`,
@@ -103,13 +103,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
     }
   }
 
-  async monitorAndClosePositions(): Promise<number> {
+  async monitorAndClosePositions(): Promise<void> {
     const tradePositions =
       await this.tradePositionService.getOpenTradePositions();
 
     const settings = await this.settingsService.getSettings();
-
-    let nrOfOpenPositions = tradePositions.length;
 
     for (const tradePosition of tradePositions) {
       const { platform, token, exitFlag } = tradePosition;
@@ -132,14 +130,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
             `Closing position for ${token} on ${platform}, flags; closeAllPositions:  ${settings.closeAllPositions}, exitFlag: ${exitFlag}`,
           );
           await this.exitPosition(tradePosition);
-          nrOfOpenPositions--; // TODO: for now ok, later check if the order is filled
         } catch (error) {
           this.logger.error(`Failed to close position: ${error}`);
         }
       }
     }
-
-    return nrOfOpenPositions;
   }
 
   /**
