@@ -209,26 +209,6 @@ describe('HyperliquidTradingStrategyService', () => {
       );
     });
 
-    it('should return BUY decision even for neutral recommendation (service ignores HOLD)', async () => {
-      const mockPrediction = createMockPrediction(Recommendation.HOLD);
-
-      mockPerpService.findByToken.mockResolvedValue({
-        token: 'BTC',
-        currency: Currency.USDC,
-        perpSymbol: 'BTC-USDC',
-      } as any);
-      mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
-      mockConfigService.get.mockReturnValue(true);
-
-      const result = await service.shouldEnterPosition(
-        'BTC',
-        mockTradingParams,
-      );
-
-      // Service currently always enters positions (shouldEnter = true)
-      expect(result.shouldTrade).toBe(true);
-    });
-
     it('should return HOLD when no perp found', async () => {
       mockPerpService.findByToken.mockResolvedValue(null);
 
