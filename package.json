@@ -6,7 +6,7 @@
   "license": "MIT",
   "scripts": {
     "build": "nest build",
-    "start:prod": "node dist/src/main.js",
+    "start:prod": "node dist/main.js",
     "start:dev": "nest start --watch",
     "dev": "yarn start:dev",
     "test": "node --max-old-space-size=8192 --expose-gc ./node_modules/.bin/jest --testTimeout=600000 --maxWorkers=3",
