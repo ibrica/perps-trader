@@ -154,6 +154,11 @@ export class HyperliquidWebSocketService extends PlatformWebSocketService {
       return;
     }
 
+    if (!fills || fills.length === 0) {
+      this.logger.warn('No fills found in user fills message: ', message);
+      return;
+    }
+
     for (const fill of fills) {
       this.logger.log(
         `Order filled: ${fill.coin} ${fill.side} ${fill.sz} @ ${fill.px} (oid: ${fill.oid})`,
@@ -178,6 +183,11 @@ export class HyperliquidWebSocketService extends PlatformWebSocketService {
 
   private handleOrderUpdates(message: WsOrderUpdatesMessage): void {
     const { orders } = message.data;
+
+    if (!orders || orders.length === 0) {
+      this.logger.warn('No orders found in order updates message: ', message);
+      return;
+    }
 
     for (const order of orders) {
       this.logger.debug(
