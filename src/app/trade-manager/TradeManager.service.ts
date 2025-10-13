@@ -211,13 +211,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
       `Executing trading opportunity: ${token} on ${platform} (confidence: ${tradingDecision.confidence})`,
     );
 
-    // Execute the trade
     const tradeType = this.getTradeTypeForPlatform(platform);
 
     const platformService =
       this.platformManagerService.getPlatformService(platform);
 
-    // Get platform configuration for trading parameters
     const platformConfig =
       this.platformManagerService.getPlatformConfiguration(platform);
 
@@ -249,7 +247,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
       );
     }
 
-    // Change this for perps
     const result = await platformService.enterPosition({
       platform,
       currency:

@@ -66,7 +66,6 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         };
       }
 
-      // Check if trading is enabled for Hyperliquid
       const isEnabled = this.configService.get<boolean>('hyperliquid.enabled');
       if (!isEnabled) {
         return {
@@ -80,7 +79,6 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
 
       const tokenCategory = this.determineTokenCategory(token);
 
-      // Get AI prediction
       const aiPrediction = await this.predictorAdapter.predictToken(
         token,
         tokenCategory,
@@ -88,7 +86,6 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         true,
       );
 
-      // Check current positions
       const positions = await this.hyperliquidService.getPositions();
       const currentPositionCount = positions.filter(
         (p) => parseFloat(p.szi) !== 0,
@@ -106,10 +103,8 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         };
       }
 
-      // If we have AI prediction, use it
       if (aiPrediction) {
-        const shouldEnter = true;
-        // const shouldEnter = aiPrediction.recommendation !== Recommendation.HOLD;
+        const shouldEnter = aiPrediction.recommendation !== Recommendation.HOLD;
         const direction =
           aiPrediction.recommendation === Recommendation.BUY
             ? PositionDirection.LONG
@@ -130,6 +125,7 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
               confidence: aiPrediction.confidence,
             },
             leverage:
+              perp.defaultLeverage ||
               tradingParams.defaultLeverage ||
               this.configService.get<number>('hyperliquid.defaultLeverage', 3),
           },
