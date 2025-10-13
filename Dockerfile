@@ -53,4 +53,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD curl -f http://localhost:7777/health || exit 1
 
 # Start the application
-CMD ["node", "dist/src/main.js"]
+CMD ["node", "dist/main.js"]
