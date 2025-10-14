@@ -413,34 +413,4 @@ export class TradeManagerService implements OnApplicationBootstrap {
       };
     }
   }
-
-  /**
-   * Calculates the realized P&L for a trade position
-   * @param entryPrice - The entry price of the position
-   * @param exitPrice - The current/exit price of the position
-   * @param positionSize - The size of the position
-   * @param positionDirection - The direction of the position (LONG or SHORT)
-   * @returns The calculated P&L value, or 0 if any required parameters are missing
-   */
-  private calculateRealizedPnl(
-    entryPrice: number | undefined,
-    exitPrice: number | undefined,
-    positionSize: number | undefined,
-    positionDirection: PositionDirection | undefined,
-  ): number | undefined {
-    if (
-      entryPrice == null ||
-      exitPrice == null ||
-      positionSize == null ||
-      positionDirection == null
-    ) {
-      return undefined;
-    }
-
-    if (positionDirection === PositionDirection.LONG) {
-      return (exitPrice - entryPrice) * positionSize;
-    } else {
-      return (entryPrice - exitPrice) * positionSize;
-    }
-  }
 }
