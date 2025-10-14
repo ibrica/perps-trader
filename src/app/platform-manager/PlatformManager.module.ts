@@ -9,6 +9,7 @@ import { TradePositionModule } from '../trade-position/TradePosition.module';
 import { PerpModule } from '../perps/Perp.module';
 import { PredictorModule } from '../predictor/Predictor.module';
 import { HyperliquidPlatformService } from '../hyperliquid/HyperliquidPlatform.service';
+import { IndexerModule } from '../indexer/Indexer.module';
 
 @Module({
   imports: [
@@ -16,6 +17,7 @@ import { HyperliquidPlatformService } from '../hyperliquid/HyperliquidPlatform.s
     TradePositionModule,
     PerpModule,
     PredictorModule,
+    IndexerModule,
   ],
   providers: [
     PlatformManagerService,

@@ -21,6 +21,7 @@ import {
   PlatformWebSocketService,
   OrderFillCallback,
   BasePlatformService,
+  IndexerAdapter,
 } from '../../infrastructure';
 
 @Injectable()
@@ -39,7 +40,10 @@ export class PlatformManagerService extends PlatformManagerPort {
   private platformConfigurations = new Map<Platform, PlatformConfiguration>();
   private webSocketServices = new Map<Platform, PlatformWebSocketService>();
 
-  constructor(private readonly tradePositionService: TradePositionService) {
+  constructor(
+    private readonly tradePositionService: TradePositionService,
+    private readonly indexerAdapter: IndexerAdapter,
+  ) {
     super();
     this.initializeDefaultConfigurations();
   }
@@ -280,11 +284,7 @@ export class PlatformManagerService extends PlatformManagerPort {
    * Get current price for a token on a platform
    * Tries platform first, then falls back to indexer
    */
-  async getCurrentPrice(
-    platform: Platform,
-    token: string,
-    indexerAdapter?: any,
-  ): Promise<number> {
+  async getCurrentPrice(platform: Platform, token: string): Promise<number> {
     // Try platform first
     try {
       const platformService = this.getPlatformService(platform);
@@ -299,20 +299,18 @@ export class PlatformManagerService extends PlatformManagerPort {
     }
 
     // Fallback to indexer if platform fails
-    if (indexerAdapter) {
-      try {
-        const priceData = await indexerAdapter.getLastPrice(token);
-        if (priceData?.price && priceData.price > 0) {
-          this.logger.debug(
-            `Using indexer price for ${token}: ${priceData.price}`,
-          );
-          return priceData.price;
-        }
-      } catch (error) {
-        this.logger.error(
-          `Failed to get price from indexer for ${token}: ${error}`,
+    try {
+      const priceData = await this.indexerAdapter.getLastPrice(token);
+      if (priceData?.price && priceData.price > 0) {
+        this.logger.debug(
+          `Using indexer price for ${token}: ${priceData.price}`,
         );
+        return priceData.price;
       }
+    } catch (error) {
+      this.logger.error(
+        `Failed to get price from indexer for ${token}: ${error}`,
+      );
     }
 
     throw new Error(`Failed to get current price for ${token}`);
