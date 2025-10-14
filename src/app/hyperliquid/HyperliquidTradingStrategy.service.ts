@@ -114,7 +114,8 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
             ? `AI recommends ${aiPrediction.recommendation} with ${aiPrediction.confidence.toFixed(2)} confidence`
             : 'AI recommends HOLD',
           confidence: aiPrediction.confidence,
-          recommendedAmount: tradingParams.defaultAmountIn,
+          recommendedAmount:
+            perp.recommendedAmount || tradingParams.defaultAmountIn,
           metadata: {
             direction,
             aiPrediction: {

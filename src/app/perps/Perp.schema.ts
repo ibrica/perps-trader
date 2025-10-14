@@ -47,8 +47,8 @@ export class Perp {
   @Prop({ type: Number, default: 1 })
   defaultLeverage?: number;
 
-  @Prop({ type: String })
-  recommendedAmount?: string;
+  @Prop({ type: Number })
+  recommendedAmount?: number;
 
   createdAt?: Date;
 

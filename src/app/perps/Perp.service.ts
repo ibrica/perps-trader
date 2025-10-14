@@ -13,7 +13,7 @@ export interface CreatePerpDto {
   marketDirection?: MarketDirection;
   isActive?: boolean;
   defaultLeverage?: number;
-  recommendedAmount?: string;
+  recommendedAmount?: number;
 }
 
 export interface UpdatePerpDto {
@@ -22,7 +22,7 @@ export interface UpdatePerpDto {
   marketDirection?: MarketDirection;
   isActive?: boolean;
   defaultLeverage?: number;
-  recommendedAmount?: string;
+  recommendedAmount?: number;
 }
 
 @Injectable()

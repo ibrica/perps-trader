@@ -87,7 +87,7 @@ describe('PerpService', () => {
         marketDirection: MarketDirection.UP,
         isActive: false,
         defaultLeverage: 5,
-        recommendedAmount: '1000',
+        recommendedAmount: 1000,
       });
 
       const perp = await service.create(createDto);
@@ -100,7 +100,7 @@ describe('PerpService', () => {
       expect(perp.marketDirection).toBe(MarketDirection.UP);
       expect(perp.isActive).toBe(false);
       expect(perp.defaultLeverage).toBe(5);
-      expect(perp.recommendedAmount).toBe('1000');
+      expect(perp.recommendedAmount).toBe(1000);
     });
   });
 
@@ -238,7 +238,7 @@ describe('PerpService', () => {
         marketDirection: MarketDirection.UP,
         name: 'Updated Perp Name',
         defaultLeverage: 3,
-        recommendedAmount: '500',
+        recommendedAmount: 500,
       };
 
       const updatedPerp = await service.update(String(perp._id), updateDto);
@@ -247,7 +247,7 @@ describe('PerpService', () => {
       expect(updatedPerp.marketDirection).toBe(MarketDirection.UP);
       expect(updatedPerp.name).toBe('Updated Perp Name');
       expect(updatedPerp.defaultLeverage).toBe(3);
-      expect(updatedPerp.recommendedAmount).toBe('500');
+      expect(updatedPerp.recommendedAmount).toBe(500);
     });
 
     it('should throw NotFoundException for non-existent id', async () => {

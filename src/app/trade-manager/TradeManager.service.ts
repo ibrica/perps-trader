@@ -240,7 +240,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
       }
 
       this.logger.log(
-        `Calculated SL/TP prices for ${token}: SL=${stopLossPrice?.toFixed(4)}, TP=${takeProfitPrice?.toFixed(4)}`,
+        `Calculated SL/TP prices for ${token}: SL=${stopLossPrice?.toFixed(2)}, TP=${takeProfitPrice?.toFixed(2)}`,
       );
     }
 
