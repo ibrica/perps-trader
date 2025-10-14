@@ -110,13 +110,14 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     for (const tradePosition of tradePositions) {
       const { platform, token, exitFlag } = tradePosition;
-      const priceResponse = await this.indexerAdapter.getLastPrice(token);
-      if (!priceResponse) {
+      const price = await this.platformManagerService.getCurrentPrice(
+        platform,
+        token,
+      );
+      if (!price) {
         this.logger.warn(`No price response for ${token}`);
         continue;
       }
-
-      const { price } = priceResponse;
 
       const shouldClosePosition =
         settings.closeAllPositions ||
