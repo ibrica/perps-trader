@@ -210,6 +210,7 @@ describe('HyperliquidTradingStrategyService', () => {
     });
 
     it('should return HOLD when no perp found', async () => {
+      mockConfigService.get.mockReturnValue(true); // Enable trading first
       mockPerpService.findByToken.mockResolvedValue(null);
 
       const result = await service.shouldEnterPosition(
