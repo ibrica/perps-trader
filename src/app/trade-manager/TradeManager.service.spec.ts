@@ -492,48 +492,6 @@ describe('TradeManagerService', () => {
     });
   });
 
-  describe('getCurrentPrice', () => {
-    it('should get price from platform first', async () => {
-      platformManagerService.getCurrentPrice.mockResolvedValue(50000);
-
-      const price = await (service as any).getCurrentPrice(
-        Platform.HYPERLIQUID,
-        'BTC',
-      );
-
-      expect(price).toBe(50000);
-      expect(platformManagerService.getCurrentPrice).toHaveBeenCalledWith(
-        Platform.HYPERLIQUID,
-        'BTC',
-      );
-    });
-
-    it('should fallback to indexer when platform fails', async () => {
-      platformManagerService.getCurrentPrice.mockResolvedValue(55000);
-
-      const price = await (service as any).getCurrentPrice(
-        Platform.HYPERLIQUID,
-        'BTC',
-      );
-
-      expect(price).toBe(55000);
-      expect(platformManagerService.getCurrentPrice).toHaveBeenCalledWith(
-        Platform.HYPERLIQUID,
-        'BTC',
-      );
-    });
-
-    it('should throw error when both platform and indexer fail', async () => {
-      platformManagerService.getCurrentPrice.mockRejectedValue(
-        new Error('Failed to get current price for BTC'),
-      );
-
-      await expect(
-        (service as any).getCurrentPrice(Platform.HYPERLIQUID, 'BTC'),
-      ).rejects.toThrow('Failed to get current price for BTC');
-    });
-  });
-
   describe('exitPosition', () => {
     it('should create exit order with opposite side', async () => {
       const mockPlatformService = {

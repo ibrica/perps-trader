@@ -221,7 +221,10 @@ export class TradeManagerService implements OnApplicationBootstrap {
       tradeType === TradeType.PERPETUAL &&
       tradingDecision.metadata?.direction
     ) {
-      const currentPrice = await this.getCurrentPrice(platform, token);
+      const currentPrice = await this.platformManagerService.getCurrentPrice(
+        platform,
+        token,
+      );
       const direction = tradingDecision.metadata.direction as PositionDirection;
       const stopLossPercent =
         platformConfig.tradingParams.stopLossPercent || 10;
@@ -358,13 +361,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
       default:
         return TradeType.PERPETUAL;
     }
-  }
-
-  private async getCurrentPrice(
-    platform: Platform,
-    token: string,
-  ): Promise<number> {
-    return this.platformManagerService.getCurrentPrice(platform, token);
   }
 
   private createTradePositionData(
