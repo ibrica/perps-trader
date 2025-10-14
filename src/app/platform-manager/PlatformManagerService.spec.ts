@@ -35,6 +35,7 @@ describe('PlatformManagerService', () => {
     enterPosition: jest.fn(),
     exitPosition: jest.fn(),
     createStopLossAndTakeProfitOrders: jest.fn(),
+    getCurrentPrice: jest.fn(),
   } as any;
 
   beforeEach(async () => {
@@ -389,6 +390,95 @@ describe('PlatformManagerService', () => {
         90,
         120,
       );
+    });
+  });
+
+  describe('getCurrentPrice', () => {
+    let mockIndexerAdapter: jest.Mocked<IndexerAdapter>;
+
+    beforeEach(() => {
+      service.registerPlatform(
+        mockTokenDiscovery,
+        mockTradingStrategy,
+        mockPlatformService,
+      );
+      // Get the injected indexer adapter from the service
+      mockIndexerAdapter = (service as any).indexerAdapter;
+    });
+
+    it('should get price from platform first', async () => {
+      mockPlatformService.getCurrentPrice.mockResolvedValue(50000);
+
+      const price = await service.getCurrentPrice(Platform.HYPERLIQUID, 'BTC');
+
+      expect(price).toBe(50000);
+      expect(mockPlatformService.getCurrentPrice).toHaveBeenCalledWith('BTC');
+      expect(mockIndexerAdapter.getLastPrice).not.toHaveBeenCalled();
+    });
+
+    it('should fallback to indexer when platform fails', async () => {
+      mockPlatformService.getCurrentPrice.mockRejectedValue(
+        new Error('Platform unavailable'),
+      );
+      mockIndexerAdapter.getLastPrice.mockResolvedValue({
+        price: 51000,
+        token_address: 'BTC',
+      } as any);
+
+      const price = await service.getCurrentPrice(Platform.HYPERLIQUID, 'BTC');
+
+      expect(price).toBe(51000);
+      expect(mockPlatformService.getCurrentPrice).toHaveBeenCalledWith('BTC');
+      expect(mockIndexerAdapter.getLastPrice).toHaveBeenCalledWith('BTC');
+    });
+
+    it('should fallback to indexer when platform returns 0', async () => {
+      mockPlatformService.getCurrentPrice.mockResolvedValue(0);
+      mockIndexerAdapter.getLastPrice.mockResolvedValue({
+        price: 52000,
+        token_address: 'BTC',
+      } as any);
+
+      const price = await service.getCurrentPrice(Platform.HYPERLIQUID, 'BTC');
+
+      expect(price).toBe(52000);
+      expect(mockIndexerAdapter.getLastPrice).toHaveBeenCalledWith('BTC');
+    });
+
+    it('should throw error when both platform and indexer fail', async () => {
+      mockPlatformService.getCurrentPrice.mockRejectedValue(
+        new Error('Platform unavailable'),
+      );
+      mockIndexerAdapter.getLastPrice.mockRejectedValue(
+        new Error('Indexer unavailable'),
+      );
+
+      await expect(
+        service.getCurrentPrice(Platform.HYPERLIQUID, 'BTC'),
+      ).rejects.toThrow('Failed to get current price for BTC');
+    });
+
+    it('should work when platform succeeds', async () => {
+      mockPlatformService.getCurrentPrice.mockResolvedValue(53000);
+
+      const price = await service.getCurrentPrice(Platform.HYPERLIQUID, 'BTC');
+
+      expect(price).toBe(53000);
+      expect(mockPlatformService.getCurrentPrice).toHaveBeenCalledWith('BTC');
+    });
+
+    it('should skip indexer when it returns invalid price', async () => {
+      mockPlatformService.getCurrentPrice.mockRejectedValue(
+        new Error('Platform unavailable'),
+      );
+      mockIndexerAdapter.getLastPrice.mockResolvedValue({
+        price: 0,
+        token_address: 'BTC',
+      } as any);
+
+      await expect(
+        service.getCurrentPrice(Platform.HYPERLIQUID, 'BTC'),
+      ).rejects.toThrow('Failed to get current price for BTC');
     });
   });
 });

@@ -505,7 +505,6 @@ describe('TradeManagerService', () => {
       expect(platformManagerService.getCurrentPrice).toHaveBeenCalledWith(
         Platform.HYPERLIQUID,
         'BTC',
-        service['indexerAdapter'],
       );
     });
 
@@ -521,7 +520,6 @@ describe('TradeManagerService', () => {
       expect(platformManagerService.getCurrentPrice).toHaveBeenCalledWith(
         Platform.HYPERLIQUID,
         'BTC',
-        service['indexerAdapter'],
       );
     });
 
