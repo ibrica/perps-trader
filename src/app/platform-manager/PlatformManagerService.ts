@@ -275,4 +275,46 @@ export class PlatformManagerService extends PlatformManagerPort {
       takeProfitPrice,
     );
   }
+
+  /**
+   * Get current price for a token on a platform
+   * Tries platform first, then falls back to indexer
+   */
+  async getCurrentPrice(
+    platform: Platform,
+    token: string,
+    indexerAdapter?: any,
+  ): Promise<number> {
+    // Try platform first
+    try {
+      const platformService = this.getPlatformService(platform);
+      const price = await platformService.getCurrentPrice(token);
+      if (price && price > 0) {
+        return price;
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to get price from platform for ${token}, trying indexer fallback: ${error}`,
+      );
+    }
+
+    // Fallback to indexer if platform fails
+    if (indexerAdapter) {
+      try {
+        const priceData = await indexerAdapter.getLastPrice(token);
+        if (priceData?.price && priceData.price > 0) {
+          this.logger.debug(
+            `Using indexer price for ${token}: ${priceData.price}`,
+          );
+          return priceData.price;
+        }
+      } catch (error) {
+        this.logger.error(
+          `Failed to get price from indexer for ${token}: ${error}`,
+        );
+      }
+    }
+
+    throw new Error(`Failed to get current price for ${token}`);
+  }
 }

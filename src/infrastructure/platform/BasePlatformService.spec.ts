@@ -23,6 +23,10 @@ class TestPlatformService extends BasePlatformService {
     throw new Error('Not implemented');
   }
 
+  async getCurrentPrice(): Promise<number> {
+    throw new Error('Not implemented');
+  }
+
   // Expose protected method for testing
   public async testDetermineDirection(
     token: string,

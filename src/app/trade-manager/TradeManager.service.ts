@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import {
   Platform,
@@ -365,28 +364,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
     platform: Platform,
     token: string,
   ): Promise<number> {
-    // Get current price from indexer
-    try {
-      const priceData = await this.indexerAdapter.getLastPrice(token);
-      return priceData?.price || 0;
-    } catch (error) {
-      this.logger.warn(
-        `Failed to get price from indexer for ${token}, using fallback: ${error}`,
-      );
-
-      // Fallback: get price from platform service
-      const platformService =
-        this.platformManagerService.getPlatformService(platform);
-      if (platform === Platform.HYPERLIQUID) {
-        const hyperliquidService = (platformService as any).hyperliquidService;
-        if (hyperliquidService) {
-          const ticker = await hyperliquidService.getTicker(token);
-          return parseFloat(ticker.mark);
-        }
-      }
-
-      throw new Error(`Failed to get current price for ${token}`);
-    }
+    return this.platformManagerService.getCurrentPrice(
+      platform,
+      token,
+      this.indexerAdapter,
+    );
   }
 
   private createTradePositionData(

@@ -84,6 +84,7 @@ describe('TradeManagerService', () => {
             getPlatformConfiguration: jest.fn(),
             getPlatformService: jest.fn(),
             createStopLossAndTakeProfitOrders: jest.fn(),
+            getCurrentPrice: jest.fn(),
           },
         },
         {
@@ -207,6 +208,7 @@ describe('TradeManagerService', () => {
         },
         defaultCurrencyFrom: Currency.USDC,
       });
+      platformManagerService.getCurrentPrice.mockResolvedValue(50000);
 
       tradePositionService.createTradePosition.mockResolvedValue({
         _id: 'position-123',
@@ -276,6 +278,7 @@ describe('TradeManagerService', () => {
         },
         defaultCurrencyFrom: Currency.USDC,
       });
+      platformManagerService.getCurrentPrice.mockResolvedValue(50000);
 
       tradePositionService.createTradePosition.mockResolvedValue({
         _id: 'position-456',
@@ -292,11 +295,7 @@ describe('TradeManagerService', () => {
     });
 
     it('should calculate and pass SL/TP prices for LONG positions', async () => {
-      const mockIndexerAdapter = service['indexerAdapter'];
-      mockIndexerAdapter.getLastPrice = jest.fn().mockResolvedValue({
-        price: 50000,
-        token_address: 'BTC',
-      });
+      platformManagerService.getCurrentPrice.mockResolvedValue(50000);
 
       const mockPlatformService = {
         enterPosition: jest.fn().mockResolvedValue({
@@ -376,11 +375,7 @@ describe('TradeManagerService', () => {
         },
       };
 
-      const mockIndexerAdapter = service['indexerAdapter'];
-      mockIndexerAdapter.getLastPrice = jest.fn().mockResolvedValue({
-        price: 50000,
-        token_address: 'BTC',
-      });
+      platformManagerService.getCurrentPrice.mockResolvedValue(50000);
 
       const mockPlatformService = {
         enterPosition: jest.fn().mockResolvedValue({
@@ -445,11 +440,7 @@ describe('TradeManagerService', () => {
     });
 
     it('should handle errors in SL/TP order creation gracefully', async () => {
-      const mockIndexerAdapter = service['indexerAdapter'];
-      mockIndexerAdapter.getLastPrice = jest.fn().mockResolvedValue({
-        price: 50000,
-        token_address: 'BTC',
-      });
+      platformManagerService.getCurrentPrice.mockResolvedValue(50000);
 
       const mockPlatformService = {
         enterPosition: jest.fn().mockResolvedValue({
@@ -502,12 +493,8 @@ describe('TradeManagerService', () => {
   });
 
   describe('getCurrentPrice', () => {
-    it('should get price from indexer', async () => {
-      const mockIndexerAdapter = service['indexerAdapter'];
-      mockIndexerAdapter.getLastPrice = jest.fn().mockResolvedValue({
-        price: 50000,
-        token_address: 'BTC',
-      });
+    it('should get price from platform first', async () => {
+      platformManagerService.getCurrentPrice.mockResolvedValue(50000);
 
       const price = await (service as any).getCurrentPrice(
         Platform.HYPERLIQUID,
@@ -515,26 +502,15 @@ describe('TradeManagerService', () => {
       );
 
       expect(price).toBe(50000);
-      expect(mockIndexerAdapter.getLastPrice).toHaveBeenCalledWith('BTC');
+      expect(platformManagerService.getCurrentPrice).toHaveBeenCalledWith(
+        Platform.HYPERLIQUID,
+        'BTC',
+        service['indexerAdapter'],
+      );
     });
 
-    it('should fallback to platform service when indexer fails', async () => {
-      const mockIndexerAdapter = service['indexerAdapter'];
-      mockIndexerAdapter.getLastPrice = jest
-        .fn()
-        .mockRejectedValue(new Error('Indexer unavailable'));
-
-      const mockPlatformService = {
-        hyperliquidService: {
-          getTicker: jest.fn().mockResolvedValue({
-            mark: '55000',
-          }),
-        },
-      };
-
-      platformManagerService.getPlatformService.mockReturnValue(
-        mockPlatformService as any,
-      );
+    it('should fallback to indexer when platform fails', async () => {
+      platformManagerService.getCurrentPrice.mockResolvedValue(55000);
 
       const price = await (service as any).getCurrentPrice(
         Platform.HYPERLIQUID,
@@ -542,23 +518,16 @@ describe('TradeManagerService', () => {
       );
 
       expect(price).toBe(55000);
-      expect(
-        mockPlatformService.hyperliquidService.getTicker,
-      ).toHaveBeenCalledWith('BTC');
+      expect(platformManagerService.getCurrentPrice).toHaveBeenCalledWith(
+        Platform.HYPERLIQUID,
+        'BTC',
+        service['indexerAdapter'],
+      );
     });
 
-    it('should throw error when both indexer and platform fail', async () => {
-      const mockIndexerAdapter = service['indexerAdapter'];
-      mockIndexerAdapter.getLastPrice = jest
-        .fn()
-        .mockRejectedValue(new Error('Indexer unavailable'));
-
-      const mockPlatformService = {
-        hyperliquidService: undefined,
-      };
-
-      platformManagerService.getPlatformService.mockReturnValue(
-        mockPlatformService as any,
+    it('should throw error when both platform and indexer fail', async () => {
+      platformManagerService.getCurrentPrice.mockRejectedValue(
+        new Error('Failed to get current price for BTC'),
       );
 
       await expect(
