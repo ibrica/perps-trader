@@ -85,6 +85,8 @@ describe('TradeManagerService', () => {
             getPlatformService: jest.fn(),
             createStopLossAndTakeProfitOrders: jest.fn(),
             getCurrentPrice: jest.fn(),
+            enterPosition: jest.fn(),
+            exitPosition: jest.fn(),
           },
         },
         {
@@ -183,20 +185,15 @@ describe('TradeManagerService', () => {
 
   describe('enterPosition', () => {
     it('should create position and order with correct data', async () => {
-      const mockPlatformService = {
-        enterPosition: jest.fn().mockResolvedValue({
-          orderId: 'order-123',
-          status: TradeOrderStatus.CREATED,
-          type: 'market',
-          size: 0.002,
-          price: 50000,
-          fee: 5,
-        }),
-      };
+      platformManagerService.enterPosition.mockResolvedValue({
+        orderId: 'order-123',
+        status: TradeOrderStatus.CREATED,
+        type: 'market',
+        size: 0.002,
+        price: 50000,
+        fee: 5,
+      });
 
-      platformManagerService.getPlatformService.mockReturnValue(
-        mockPlatformService as any,
-      );
       platformManagerService.getPlatformConfiguration.mockReturnValue({
         platform: Platform.HYPERLIQUID,
         enabled: true,
@@ -254,19 +251,14 @@ describe('TradeManagerService', () => {
         },
       };
 
-      const mockPlatformService = {
-        enterPosition: jest.fn().mockResolvedValue({
-          orderId: 'order-456',
-          status: TradeOrderStatus.CREATED,
-          type: 'market',
-          size: 0.002,
-          price: 50000,
-        }),
-      };
+      platformManagerService.enterPosition.mockResolvedValue({
+        orderId: 'order-456',
+        status: TradeOrderStatus.CREATED,
+        type: 'market',
+        size: 0.002,
+        price: 50000,
+      });
 
-      platformManagerService.getPlatformService.mockReturnValue(
-        mockPlatformService as any,
-      );
       platformManagerService.getPlatformConfiguration.mockReturnValue({
         platform: Platform.HYPERLIQUID,
         enabled: true,
@@ -297,27 +289,19 @@ describe('TradeManagerService', () => {
     it('should calculate and pass SL/TP prices for LONG positions', async () => {
       platformManagerService.getCurrentPrice.mockResolvedValue(50000);
 
-      const mockPlatformService = {
-        enterPosition: jest.fn().mockResolvedValue({
-          orderId: 'order-789',
-          status: TradeOrderStatus.CREATED,
-          type: 'market',
-          size: 0.002,
-          price: 50000,
-          metadata: {
-            direction: PositionDirection.LONG,
-            stopLossPrice: 45000,
-            takeProfitPrice: 60000,
-          },
-        }),
-        createStopLossAndTakeProfitOrders: jest
-          .fn()
-          .mockResolvedValue(undefined),
-      };
+      platformManagerService.enterPosition.mockResolvedValue({
+        orderId: 'order-789',
+        status: TradeOrderStatus.CREATED,
+        type: 'market',
+        size: 0.002,
+        price: 50000,
+        metadata: {
+          direction: PositionDirection.LONG,
+          stopLossPrice: 45000,
+          takeProfitPrice: 60000,
+        },
+      });
 
-      platformManagerService.getPlatformService.mockReturnValue(
-        mockPlatformService as any,
-      );
       platformManagerService.getPlatformConfiguration.mockReturnValue({
         platform: Platform.HYPERLIQUID,
         enabled: true,
@@ -341,7 +325,7 @@ describe('TradeManagerService', () => {
       await (service as any).enterPosition(mockTradingOpportunity);
 
       // Verify SL/TP prices are calculated correctly for LONG
-      expect(mockPlatformService.enterPosition).toHaveBeenCalledWith(
+      expect(platformManagerService.enterPosition).toHaveBeenCalledWith(
         expect.objectContaining({
           stopLossPrice: 45000, // 50000 * (1 - 0.10)
           takeProfitPrice: 60000, // 50000 * (1 + 0.20)
@@ -377,27 +361,19 @@ describe('TradeManagerService', () => {
 
       platformManagerService.getCurrentPrice.mockResolvedValue(50000);
 
-      const mockPlatformService = {
-        enterPosition: jest.fn().mockResolvedValue({
-          orderId: 'order-short-123',
-          status: TradeOrderStatus.CREATED,
-          type: 'market',
-          size: 0.002,
-          price: 50000,
-          metadata: {
-            direction: PositionDirection.SHORT,
-            stopLossPrice: 55000,
-            takeProfitPrice: 40000,
-          },
-        }),
-        createStopLossAndTakeProfitOrders: jest
-          .fn()
-          .mockResolvedValue(undefined),
-      };
+      platformManagerService.enterPosition.mockResolvedValue({
+        orderId: 'order-short-123',
+        status: TradeOrderStatus.CREATED,
+        type: 'market',
+        size: 0.002,
+        price: 50000,
+        metadata: {
+          direction: PositionDirection.SHORT,
+          stopLossPrice: 55000,
+          takeProfitPrice: 40000,
+        },
+      });
 
-      platformManagerService.getPlatformService.mockReturnValue(
-        mockPlatformService as any,
-      );
       platformManagerService.getPlatformConfiguration.mockReturnValue({
         platform: Platform.HYPERLIQUID,
         enabled: true,
@@ -422,7 +398,7 @@ describe('TradeManagerService', () => {
 
       // Verify SL/TP prices are calculated correctly for SHORT (inverted)
       const enterPositionCall =
-        mockPlatformService.enterPosition.mock.calls[0][0];
+        platformManagerService.enterPosition.mock.calls[0][0];
       expect(enterPositionCall.stopLossPrice).toBeCloseTo(55000, 1); // 50000 * (1 + 0.10) - price goes up = loss for short
       expect(enterPositionCall.takeProfitPrice).toBeCloseTo(40000, 1); // 50000 * (1 - 0.20) - price goes down = profit for short
 
@@ -442,24 +418,19 @@ describe('TradeManagerService', () => {
     it('should handle errors in SL/TP order creation gracefully', async () => {
       platformManagerService.getCurrentPrice.mockResolvedValue(50000);
 
-      const mockPlatformService = {
-        enterPosition: jest.fn().mockResolvedValue({
-          orderId: 'order-error-test',
-          status: TradeOrderStatus.CREATED,
-          type: 'market',
-          size: 0.002,
-          price: 50000,
-          metadata: {
-            direction: PositionDirection.LONG,
-            stopLossPrice: 45000,
-            takeProfitPrice: 60000,
-          },
-        }),
-      };
+      platformManagerService.enterPosition.mockResolvedValue({
+        orderId: 'order-error-test',
+        status: TradeOrderStatus.CREATED,
+        type: 'market',
+        size: 0.002,
+        price: 50000,
+        metadata: {
+          direction: PositionDirection.LONG,
+          stopLossPrice: 45000,
+          takeProfitPrice: 60000,
+        },
+      });
 
-      platformManagerService.getPlatformService.mockReturnValue(
-        mockPlatformService as any,
-      );
       platformManagerService.getPlatformConfiguration.mockReturnValue({
         platform: Platform.HYPERLIQUID,
         enabled: true,
@@ -494,19 +465,13 @@ describe('TradeManagerService', () => {
 
   describe('exitPosition', () => {
     it('should create exit order with opposite side', async () => {
-      const mockPlatformService = {
-        exitPosition: jest.fn().mockResolvedValue({
-          orderId: 'exit-order-123',
-          status: TradeOrderStatus.CREATED,
-          type: 'market',
-          size: 0.002,
-          price: 52000,
-        }),
-      };
-
-      platformManagerService.getPlatformService.mockReturnValue(
-        mockPlatformService as any,
-      );
+      platformManagerService.exitPosition.mockResolvedValue({
+        orderId: 'exit-order-123',
+        status: TradeOrderStatus.CREATED,
+        type: 'market',
+        size: 0.002,
+        price: 52000,
+      });
 
       await (service as any).exitPosition(mockOpenPosition);
 
@@ -530,19 +495,13 @@ describe('TradeManagerService', () => {
         positionDirection: PositionDirection.SHORT,
       };
 
-      const mockPlatformService = {
-        exitPosition: jest.fn().mockResolvedValue({
-          orderId: 'exit-order-456',
-          status: TradeOrderStatus.CREATED,
-          type: 'market',
-          size: 0.002,
-          price: 48000,
-        }),
-      };
-
-      platformManagerService.getPlatformService.mockReturnValue(
-        mockPlatformService as any,
-      );
+      platformManagerService.exitPosition.mockResolvedValue({
+        orderId: 'exit-order-456',
+        status: TradeOrderStatus.CREATED,
+        type: 'market',
+        size: 0.002,
+        price: 48000,
+      });
 
       await (service as any).exitPosition(shortPosition);
 
