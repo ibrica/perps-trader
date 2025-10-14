@@ -52,7 +52,16 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
     tradingParams: PlatformTradingParams,
   ): Promise<TradingDecision> {
     try {
-      // Get perp definition
+      const isEnabled = this.configService.get<boolean>('hyperliquid.enabled');
+      if (!isEnabled) {
+        return {
+          shouldTrade: false,
+          reason: 'Hyperliquid trading is disabled',
+          confidence: 0,
+          recommendedAmount: 0,
+          metadata: { direction: PositionDirection.LONG },
+        };
+      }
       const perp = await this.perpService.findByToken(token);
 
       if (!perp) {
@@ -60,17 +69,6 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         return {
           shouldTrade: false,
           reason: `No perp definition found for ${token}`,
-          confidence: 0,
-          recommendedAmount: 0,
-          metadata: { direction: PositionDirection.LONG },
-        };
-      }
-
-      const isEnabled = this.configService.get<boolean>('hyperliquid.enabled');
-      if (!isEnabled) {
-        return {
-          shouldTrade: false,
-          reason: 'Hyperliquid trading is disabled',
           confidence: 0,
           recommendedAmount: 0,
           metadata: { direction: PositionDirection.LONG },
