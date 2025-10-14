@@ -4,6 +4,8 @@ import {
   TradePositionStatus,
   HL_DEFAULT_CURRENCY_FROM,
   PositionDirection,
+  EnterPositionOptions,
+  TradeOrderResult,
 } from '../../shared';
 import {
   PlatformManagerPort,
@@ -314,5 +316,27 @@ export class PlatformManagerService extends PlatformManagerPort {
     }
 
     throw new Error(`Failed to get current price for ${token}`);
+  }
+
+  /**
+   * Enter a position on a platform
+   * Delegates to platform-specific implementation
+   */
+  async enterPosition(
+    options: EnterPositionOptions,
+  ): Promise<TradeOrderResult> {
+    const platformService = this.getPlatformService(options.platform);
+    return platformService.enterPosition(options);
+  }
+
+  /**
+   * Exit a position on a platform
+   * Delegates to platform-specific implementation
+   */
+  async exitPosition(
+    tradePosition: TradePositionDocument,
+  ): Promise<TradeOrderResult> {
+    const platformService = this.getPlatformService(tradePosition.platform);
+    return platformService.exitPosition(tradePosition);
   }
 }

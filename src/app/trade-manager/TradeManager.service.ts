@@ -207,9 +207,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     const tradeType = this.getTradeTypeForPlatform(platform);
 
-    const platformService =
-      this.platformManagerService.getPlatformService(platform);
-
     const platformConfig =
       this.platformManagerService.getPlatformConfiguration(platform);
 
@@ -244,7 +241,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
       );
     }
 
-    const result = await platformService.enterPosition({
+    const result = await this.platformManagerService.enterPosition({
       platform,
       currency:
         this.platformManagerService.getPlatformConfiguration(platform)
@@ -322,10 +319,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     this.logger.log(`Closing position: ${token} on ${platform}`);
 
-    const platformService =
-      this.platformManagerService.getPlatformService(platform);
-
-    const result = await platformService.exitPosition(position);
+    const result = await this.platformManagerService.exitPosition(position);
 
     const { status, orderId, type, size, price } = result;
 
