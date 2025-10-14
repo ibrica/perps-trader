@@ -364,11 +364,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
     platform: Platform,
     token: string,
   ): Promise<number> {
-    return this.platformManagerService.getCurrentPrice(
-      platform,
-      token,
-      this.indexerAdapter,
-    );
+    return this.platformManagerService.getCurrentPrice(platform, token);
   }
 
   private createTradePositionData(

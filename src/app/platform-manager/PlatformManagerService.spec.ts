@@ -10,7 +10,7 @@ import {
 } from '../../shared';
 import { PlatformTokenDiscoveryPort } from '../../shared/ports/trading/PlatformTokenDiscoveryPort';
 import { PlatformTradingStrategyPort } from '../../shared/ports/trading/PlatformTradingStrategyPort';
-import { BasePlatformService } from '../../infrastructure';
+import { BasePlatformService, IndexerAdapter } from '../../infrastructure';
 
 describe('PlatformManagerService', () => {
   let service: PlatformManagerService;
@@ -45,6 +45,12 @@ describe('PlatformManagerService', () => {
           provide: TradePositionService,
           useValue: {
             getTradePositionByToken: jest.fn(),
+          },
+        },
+        {
+          provide: IndexerAdapter,
+          useValue: {
+            getLastPrice: jest.fn(),
           },
         },
       ],
