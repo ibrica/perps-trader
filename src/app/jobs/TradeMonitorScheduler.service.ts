@@ -32,9 +32,7 @@ export class TradeMonitorScheduler {
         // Start trading again
         await this.tradeManager.startTrading();
 
-        this.logger.log(
-          `Trade Monitor Scheduler finished - ${open} open positions`,
-        );
+        this.logger.log(`Trade Monitor Scheduler finished`);
       } else {
         this.logger.debug(
           'Trade Monitor Scheduler skipped - lock acquired by another instance',
