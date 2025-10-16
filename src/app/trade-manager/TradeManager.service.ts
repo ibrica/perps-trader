@@ -153,6 +153,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
     const stopLossPrice = tradePosition.stopLossPrice ?? -1;
     const takeProfitPrice = tradePosition.takeProfitPrice ?? Number.MAX_VALUE;
 
+    // Fallback to traditional stop loss/take profit if stop orders are not set
     if (
       currentPrice &&
       (currentPrice < stopLossPrice || currentPrice > takeProfitPrice)
