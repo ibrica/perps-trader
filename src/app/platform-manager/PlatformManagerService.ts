@@ -6,17 +6,13 @@ import {
   PositionDirection,
   EnterPositionOptions,
   TradeOrderResult,
-} from '../../shared';
-import {
   PlatformManagerPort,
   PlatformConfiguration,
   TradingOpportunity,
-} from '../../shared/ports/trading/PlatformManagerPort';
-import { PlatformTokenDiscoveryPort } from '../../shared/ports/trading/PlatformTokenDiscoveryPort';
-import {
   PlatformTradingStrategyPort,
   ExitDecision,
-} from '../../shared/ports/trading/PlatformTradingStrategyPort';
+  PlatformTokenDiscoveryPort,
+} from '../../shared';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 import {
