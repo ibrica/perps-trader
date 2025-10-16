@@ -447,13 +447,8 @@ export class HyperliquidPlatformService extends BasePlatformService {
   }
 
   async getCurrentPrice(token: string): Promise<number> {
-    try {
-      const ticker = await this.hyperliquidService.getTicker(token);
-      return parseFloat(ticker.mark);
-    } catch (error) {
-      this.logger.error(`Failed to get current price for ${token}`, error);
-      throw error;
-    }
+    const ticker = await this.hyperliquidService.getTicker(token);
+    return parseFloat(ticker.mark);
   }
 
   async exitPosition(
