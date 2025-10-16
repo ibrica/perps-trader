@@ -4,6 +4,8 @@ import {
   TradePositionStatus,
   HL_DEFAULT_CURRENCY_FROM,
   PositionDirection,
+  EnterPositionOptions,
+  TradeOrderResult,
 } from '../../shared';
 import {
   PlatformManagerPort,
@@ -21,6 +23,7 @@ import {
   PlatformWebSocketService,
   OrderFillCallback,
   BasePlatformService,
+  IndexerAdapter,
 } from '../../infrastructure';
 
 @Injectable()
@@ -39,7 +42,10 @@ export class PlatformManagerService extends PlatformManagerPort {
   private platformConfigurations = new Map<Platform, PlatformConfiguration>();
   private webSocketServices = new Map<Platform, PlatformWebSocketService>();
 
-  constructor(private readonly tradePositionService: TradePositionService) {
+  constructor(
+    private readonly tradePositionService: TradePositionService,
+    private readonly indexerAdapter: IndexerAdapter,
+  ) {
     super();
     this.initializeDefaultConfigurations();
   }
@@ -51,7 +57,7 @@ export class PlatformManagerService extends PlatformManagerPort {
         enabled: true,
         tradingParams: {
           maxOpenPositions: 3,
-          defaultAmountIn: 100, // 100 USDC
+          defaultAmountIn: 1,
           stopLossPercent: 15,
           takeProfitPercent: 25,
         },
@@ -274,5 +280,63 @@ export class PlatformManagerService extends PlatformManagerPort {
       stopLossPrice,
       takeProfitPrice,
     );
+  }
+
+  /**
+   * Get current price for a token on a platform
+   * Tries platform first, then falls back to indexer
+   */
+  async getCurrentPrice(platform: Platform, token: string): Promise<number> {
+    // Try platform first
+    try {
+      const platformService = this.getPlatformService(platform);
+      const price = await platformService.getCurrentPrice(token);
+      if (price && price > 0) {
+        return price;
+      }
+    } catch (error) {
+      this.logger.warn(
+        `Failed to get price from platform for ${token}, trying indexer fallback: ${error}`,
+      );
+    }
+
+    // Fallback to indexer if platform fails
+    try {
+      const priceData = await this.indexerAdapter.getLastPrice(token);
+      if (priceData?.price && priceData.price > 0) {
+        this.logger.debug(
+          `Using indexer price for ${token}: ${priceData.price}`,
+        );
+        return priceData.price;
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to get price from indexer for ${token}: ${error}`,
+      );
+    }
+
+    throw new Error(`Failed to get current price for ${token}`);
+  }
+
+  /**
+   * Enter a position on a platform
+   * Delegates to platform-specific implementation
+   */
+  async enterPosition(
+    options: EnterPositionOptions,
+  ): Promise<TradeOrderResult> {
+    const platformService = this.getPlatformService(options.platform);
+    return platformService.enterPosition(options);
+  }
+
+  /**
+   * Exit a position on a platform
+   * Delegates to platform-specific implementation
+   */
+  async exitPosition(
+    tradePosition: TradePositionDocument,
+  ): Promise<TradeOrderResult> {
+    const platformService = this.getPlatformService(tradePosition.platform);
+    return platformService.exitPosition(tradePosition);
   }
 }

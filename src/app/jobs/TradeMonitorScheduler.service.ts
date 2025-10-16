@@ -27,15 +27,12 @@ export class TradeMonitorScheduler {
         )
       ) {
         this.logger.log('Trade Monitor Scheduler started');
-        const open = await this.tradeManager.monitorAndClosePositions();
+        await this.tradeManager.monitorAndClosePositions();
 
-        if (open < 5) {
-          await this.tradeManager.startTrading();
-        }
+        // Start trading again
+        await this.tradeManager.startTrading();
 
-        this.logger.log(
-          `Trade Monitor Scheduler finished - ${open} open positions`,
-        );
+        this.logger.log(`Trade Monitor Scheduler finished`);
       } else {
         this.logger.debug(
           'Trade Monitor Scheduler skipped - lock acquired by another instance',

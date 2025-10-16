@@ -177,8 +177,8 @@ services:
     image: clickhouse/clickhouse-server:23.12
     container_name: shared-clickhouse
     ports:
-      - '8123:8123' # HTTP interface
-      - '9000:9000' # TCP interface
+      - '127.0.0.1:8123:8123' # HTTP interface
+      - '127.0.0.1:9000:9000' # TCP interface
     environment:
       - CLICKHOUSE_DB=${CLICKHOUSE_DATABASE:-atrader}
       - CLICKHOUSE_USER=${CLICKHOUSE_USERNAME:-default}

@@ -102,8 +102,6 @@ export class HyperliquidPlatformService extends BasePlatformService {
         return;
       }
 
-      // Get the order with populated position in a single query
-      // This reduces DB calls from 3 to 2 (order+position, then trigger check)
       const order = await this.tradeOrderService.getByOrderId(fill.orderId, {
         queryOptions: { populate: 'position' },
       });
@@ -111,7 +109,6 @@ export class HyperliquidPlatformService extends BasePlatformService {
         return;
       }
 
-      // Extract position from populated order
       const position =
         typeof order.position === 'string'
           ? await this.tradePositionService.getTradePositionById(order.position)
@@ -121,16 +118,13 @@ export class HyperliquidPlatformService extends BasePlatformService {
         return;
       }
 
-      // Check if position has SL/TP prices set but no SL/TP orders created yet
       const hasSlTpPrices = position.stopLossPrice || position.takeProfitPrice;
       if (!hasSlTpPrices) {
         return;
       }
 
-      const positionId =
-        typeof position._id === 'string' ? position._id : String(position._id);
+      const positionId = String(position._id);
 
-      // Check for existing trigger orders
       const hasSlTpOrders = await this.hasExistingSlTpOrders(positionId);
 
       if (!hasSlTpOrders) {
@@ -449,6 +443,11 @@ export class HyperliquidPlatformService extends BasePlatformService {
         isMarket: true,
       });
     }
+  }
+
+  async getCurrentPrice(token: string): Promise<number> {
+    const ticker = await this.hyperliquidService.getTicker(token);
+    return parseFloat(ticker.mark);
   }
 
   async exitPosition(

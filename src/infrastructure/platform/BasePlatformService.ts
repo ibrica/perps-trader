@@ -28,6 +28,8 @@ export abstract class BasePlatformService {
     takeProfitPrice?: number,
   ): Promise<void>;
 
+  abstract getCurrentPrice(token: string): Promise<number>;
+
   protected async determineDirection(
     token: string,
   ): Promise<PositionDirection | null> {

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import {
   Platform,
@@ -93,7 +92,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
       try {
         await this.enterPosition(opportunity);
-        remainingSlots--;
+        remainingSlots--; // For now we presume the order is filled, we don't open other positions
       } catch (error) {
         this.logger.error(
           `Failed to submit trade order for ${opportunity.token} on ${opportunity.platform}:`,
@@ -103,23 +102,22 @@ export class TradeManagerService implements OnApplicationBootstrap {
     }
   }
 
-  async monitorAndClosePositions(): Promise<number> {
+  async monitorAndClosePositions(): Promise<void> {
     const tradePositions =
       await this.tradePositionService.getOpenTradePositions();
 
     const settings = await this.settingsService.getSettings();
 
-    let nrOfOpenPositions = tradePositions.length;
-
     for (const tradePosition of tradePositions) {
       const { platform, token, exitFlag } = tradePosition;
-      const priceResponse = await this.indexerAdapter.getLastPrice(token);
-      if (!priceResponse) {
+      const price = await this.platformManagerService.getCurrentPrice(
+        platform,
+        token,
+      );
+      if (!price) {
         this.logger.warn(`No price response for ${token}`);
         continue;
       }
-
-      const { price } = priceResponse;
 
       const shouldClosePosition =
         settings.closeAllPositions ||
@@ -132,14 +130,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
             `Closing position for ${token} on ${platform}, flags; closeAllPositions:  ${settings.closeAllPositions}, exitFlag: ${exitFlag}`,
           );
           await this.exitPosition(tradePosition);
-          nrOfOpenPositions--; // TODO: for now ok, later check if the order is filled
         } catch (error) {
           this.logger.error(`Failed to close position: ${error}`);
         }
       }
     }
-
-    return nrOfOpenPositions;
   }
 
   /**
@@ -211,13 +206,8 @@ export class TradeManagerService implements OnApplicationBootstrap {
       `Executing trading opportunity: ${token} on ${platform} (confidence: ${tradingDecision.confidence})`,
     );
 
-    // Execute the trade
     const tradeType = this.getTradeTypeForPlatform(platform);
 
-    const platformService =
-      this.platformManagerService.getPlatformService(platform);
-
-    // Get platform configuration for trading parameters
     const platformConfig =
       this.platformManagerService.getPlatformConfiguration(platform);
 
@@ -229,7 +219,10 @@ export class TradeManagerService implements OnApplicationBootstrap {
       tradeType === TradeType.PERPETUAL &&
       tradingDecision.metadata?.direction
     ) {
-      const currentPrice = await this.getCurrentPrice(platform, token);
+      const currentPrice = await this.platformManagerService.getCurrentPrice(
+        platform,
+        token,
+      );
       const direction = tradingDecision.metadata.direction as PositionDirection;
       const stopLossPercent =
         platformConfig.tradingParams.stopLossPercent || 10;
@@ -245,12 +238,11 @@ export class TradeManagerService implements OnApplicationBootstrap {
       }
 
       this.logger.log(
-        `Calculated SL/TP prices for ${token}: SL=${stopLossPrice?.toFixed(4)}, TP=${takeProfitPrice?.toFixed(4)}`,
+        `Calculated SL/TP prices for ${token}: SL=${stopLossPrice?.toFixed(2)}, TP=${takeProfitPrice?.toFixed(2)}`,
       );
     }
 
-    // Change this for perps
-    const result = await platformService.enterPosition({
+    const result = await this.platformManagerService.enterPosition({
       platform,
       currency:
         this.platformManagerService.getPlatformConfiguration(platform)
@@ -328,10 +320,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
 
     this.logger.log(`Closing position: ${token} on ${platform}`);
 
-    const platformService =
-      this.platformManagerService.getPlatformService(platform);
-
-    const result = await platformService.exitPosition(position);
+    const result = await this.platformManagerService.exitPosition(position);
 
     const { status, orderId, type, size, price } = result;
 
@@ -366,34 +355,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
         return TradeType.PERPETUAL;
       default:
         return TradeType.PERPETUAL;
-    }
-  }
-
-  private async getCurrentPrice(
-    platform: Platform,
-    token: string,
-  ): Promise<number> {
-    // Get current price from indexer
-    try {
-      const priceData = await this.indexerAdapter.getLastPrice(token);
-      return priceData?.price || 0;
-    } catch (error) {
-      this.logger.warn(
-        `Failed to get price from indexer for ${token}, using fallback: ${error}`,
-      );
-
-      // Fallback: get price from platform service
-      const platformService =
-        this.platformManagerService.getPlatformService(platform);
-      if (platform === Platform.HYPERLIQUID) {
-        const hyperliquidService = (platformService as any).hyperliquidService;
-        if (hyperliquidService) {
-          const ticker = await hyperliquidService.getTicker(token);
-          return parseFloat(ticker.mark);
-        }
-      }
-
-      throw new Error(`Failed to get current price for ${token}`);
     }
   }
 
@@ -437,36 +398,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
         positionType: PositionType.SPOT,
         // Entry price will be set by WebSocket handler when order fills
       };
-    }
-  }
-
-  /**
-   * Calculates the realized P&L for a trade position
-   * @param entryPrice - The entry price of the position
-   * @param exitPrice - The current/exit price of the position
-   * @param positionSize - The size of the position
-   * @param positionDirection - The direction of the position (LONG or SHORT)
-   * @returns The calculated P&L value, or 0 if any required parameters are missing
-   */
-  private calculateRealizedPnl(
-    entryPrice: number | undefined,
-    exitPrice: number | undefined,
-    positionSize: number | undefined,
-    positionDirection: PositionDirection | undefined,
-  ): number | undefined {
-    if (
-      entryPrice == null ||
-      exitPrice == null ||
-      positionSize == null ||
-      positionDirection == null
-    ) {
-      return undefined;
-    }
-
-    if (positionDirection === PositionDirection.LONG) {
-      return (exitPrice - entryPrice) * positionSize;
-    } else {
-      return (entryPrice - exitPrice) * positionSize;
     }
   }
 }

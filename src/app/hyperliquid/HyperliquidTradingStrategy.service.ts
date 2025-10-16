@@ -52,7 +52,16 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
     tradingParams: PlatformTradingParams,
   ): Promise<TradingDecision> {
     try {
-      // Get perp definition
+      const isEnabled = this.configService.get<boolean>('hyperliquid.enabled');
+      if (!isEnabled) {
+        return {
+          shouldTrade: false,
+          reason: 'Hyperliquid trading is disabled',
+          confidence: 0,
+          recommendedAmount: 0,
+          metadata: { direction: PositionDirection.LONG },
+        };
+      }
       const perp = await this.perpService.findByToken(token);
 
       if (!perp) {
@@ -66,21 +75,8 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         };
       }
 
-      // Check if trading is enabled for Hyperliquid
-      const isEnabled = this.configService.get<boolean>('hyperliquid.enabled');
-      if (!isEnabled) {
-        return {
-          shouldTrade: false,
-          reason: 'Hyperliquid trading is disabled',
-          confidence: 0,
-          recommendedAmount: 0,
-          metadata: { direction: PositionDirection.LONG },
-        };
-      }
-
       const tokenCategory = this.determineTokenCategory(token);
 
-      // Get AI prediction
       const aiPrediction = await this.predictorAdapter.predictToken(
         token,
         tokenCategory,
@@ -88,7 +84,6 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         true,
       );
 
-      // Check current positions
       const positions = await this.hyperliquidService.getPositions();
       const currentPositionCount = positions.filter(
         (p) => parseFloat(p.szi) !== 0,
@@ -106,10 +101,8 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         };
       }
 
-      // If we have AI prediction, use it
       if (aiPrediction) {
-        const shouldEnter = true;
-        // const shouldEnter = aiPrediction.recommendation !== Recommendation.HOLD;
+        const shouldEnter = aiPrediction.recommendation !== Recommendation.HOLD;
         const direction =
           aiPrediction.recommendation === Recommendation.BUY
             ? PositionDirection.LONG
@@ -121,7 +114,8 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
             ? `AI recommends ${aiPrediction.recommendation} with ${aiPrediction.confidence.toFixed(2)} confidence`
             : 'AI recommends HOLD',
           confidence: aiPrediction.confidence,
-          recommendedAmount: tradingParams.defaultAmountIn,
+          recommendedAmount:
+            perp.recommendedAmount || tradingParams.defaultAmountIn,
           metadata: {
             direction,
             aiPrediction: {
@@ -130,6 +124,7 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
               confidence: aiPrediction.confidence,
             },
             leverage:
+              perp.defaultLeverage ||
               tradingParams.defaultLeverage ||
               this.configService.get<number>('hyperliquid.defaultLeverage', 3),
           },
