@@ -123,8 +123,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         return;
       }
 
-      const positionId =
-        typeof position._id === 'string' ? position._id : String(position._id);
+      const positionId = String(position._id);
 
       const hasSlTpOrders = await this.hasExistingSlTpOrders(positionId);
 
