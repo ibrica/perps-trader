@@ -5,9 +5,11 @@ import {
   TradeOrderResult,
   calculateQuoteAmount,
   TradeOrderStatus,
+  EnterPositionOptions,
+  Platform,
+  TradeType,
+  retryCallback,
 } from '../../shared';
-import { EnterPositionOptions, Platform, TradeType } from '../../shared';
-import { retryCallback } from '../../shared/utils/retryCallback';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/HyperliquidWebSocket.service';
 import {
