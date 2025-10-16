@@ -296,7 +296,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
     // when the entry order is confirmed filled. This eliminates the race condition
     // where we previously waited 500ms and hoped the order was filled.
     this.logger.log(
-      `Position ${tradePosition._id} created for ${token}. SL/TP orders will be created upon fill confirmation.`,
+      `Position ${String(tradePosition._id)} created for ${token}. SL/TP orders will be created upon fill confirmation.`,
     );
 
     if (tradeType === TradeType.PERPETUAL) {
