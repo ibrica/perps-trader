@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Test, TestingModule } from '@nestjs/testing';
 import { TradeManagerService } from './TradeManager.service';
+import { TrailingService } from './Trailing.service';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 import { TradeOrderService } from '../trade-order/TradeOrder.service';
 import { IndexerAdapter } from '../../infrastructure/indexer/IndexerAdapter';
@@ -87,6 +88,7 @@ describe('TradeManagerService', () => {
             getCurrentPrice: jest.fn(),
             enterPosition: jest.fn(),
             exitPosition: jest.fn(),
+            replaceTakeProfitOrder: jest.fn(),
           },
         },
         {
@@ -100,6 +102,12 @@ describe('TradeManagerService', () => {
           provide: SettingsService,
           useValue: {
             getSettings: jest.fn(),
+          },
+        },
+        {
+          provide: TrailingService,
+          useValue: {
+            evaluateTrailing: jest.fn(),
           },
         },
       ],

@@ -103,6 +103,13 @@ export class TradePosition {
   @Prop({ type: Boolean, default: false })
   exitFlag?: boolean;
 
+  // Trailing stop-loss/take-profit tracking
+  @Prop({ type: Date })
+  lastTrailAt?: Date;
+
+  @Prop({ type: Number, default: 0 })
+  trailCount?: number;
+
   createdAt?: Date;
 
   updatedAt?: Date;

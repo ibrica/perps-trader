@@ -339,4 +339,25 @@ export class PlatformManagerService extends PlatformManagerPort {
     const platformService = this.getPlatformService(tradePosition.platform);
     return platformService.exitPosition(tradePosition);
   }
+
+  /**
+   * Replace take-profit order for trailing functionality
+   * Delegates to platform-specific implementation
+   * Platforms that don't support trailing will use the no-op default
+   */
+  async replaceTakeProfitOrder(
+    platform: Platform,
+    token: string,
+    direction: PositionDirection,
+    positionId: string,
+    newTpPrice: number,
+  ): Promise<void> {
+    const platformService = this.getPlatformService(platform);
+    await platformService.replaceTakeProfitOrder(
+      token,
+      direction,
+      positionId,
+      newTpPrice,
+    );
+  }
 }

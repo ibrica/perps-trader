@@ -127,7 +127,10 @@ export class TradeOrderService {
     fill: OrderFill,
   ): Promise<void> {
     try {
-      const positionId = String(order.position._id);
+      const positionId =
+        typeof order.position === 'string'
+          ? order.position
+          : String(order.position._id);
 
       const position =
         await this.tradePositionService.getTradePositionById(positionId);

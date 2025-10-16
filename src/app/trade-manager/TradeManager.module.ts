@@ -1,5 +1,6 @@
 import { DynamicModule, Global, Module } from '@nestjs/common';
 import { TradeManagerService } from './TradeManager.service';
+import { TrailingService } from './Trailing.service';
 import { TradePositionModule } from '../trade-position/TradePosition.module';
 import { PredictorModule } from '../predictor/Predictor.module';
 import { PlatformManagerModule } from '../platform-manager/PlatformManager.module';
@@ -19,7 +20,7 @@ import { TradeOrderModule } from '../trade-order/TradeOrder.module';
     SettingsModule,
     IndexerModule,
   ],
-  providers: [TradeManagerService],
+  providers: [TradeManagerService, TrailingService],
   exports: [TradeManagerService],
 })
 export class TradeManagerModule {

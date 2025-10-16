@@ -30,6 +30,24 @@ export abstract class BasePlatformService {
 
   abstract getCurrentPrice(token: string): Promise<number>;
 
+  /**
+   * Replace take-profit order for trailing functionality
+   * Optional method - platforms that don't support trailing can leave as no-op
+   */
+  async replaceTakeProfitOrder(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    token: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    direction: PositionDirection,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    positionId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    newTpPrice: number,
+  ): Promise<void> {
+    // Default implementation: no-op
+    // Platforms that support trailing should override this
+  }
+
   protected async determineDirection(
     token: string,
   ): Promise<PositionDirection | null> {

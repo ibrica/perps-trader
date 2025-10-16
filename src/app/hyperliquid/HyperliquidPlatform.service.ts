@@ -4,6 +4,7 @@ import {
   PositionDirection,
   TradeOrderResult,
   calculateQuoteAmount,
+  TradeOrderStatus,
 } from '../../shared';
 import { EnterPositionOptions, Platform, TradeType } from '../../shared';
 import { retryCallback } from '../../shared/utils/retryCallback';
@@ -448,6 +449,147 @@ export class HyperliquidPlatformService extends BasePlatformService {
   async getCurrentPrice(token: string): Promise<number> {
     const ticker = await this.hyperliquidService.getTicker(token);
     return parseFloat(ticker.mark);
+  }
+
+  /**
+   * Replace take-profit order for trailing functionality
+   * Cancels existing TP order(s) and creates new one at new price
+   * Does NOT update stop-loss on exchange (SL is DB-only for trailing)
+   */
+  async replaceTakeProfitOrder(
+    token: string,
+    direction: PositionDirection,
+    positionId: string,
+    newTpPrice: number,
+  ): Promise<void> {
+    try {
+      // 1. Find active TP trigger orders for the position
+      const tpOrders = await this.tradeOrderService.getMany({
+        position: positionId,
+        isTrigger: true,
+        triggerType: 'tp',
+        status: { $in: ['CREATED', 'PARTIALLY_FILLED'] },
+      });
+
+      if (tpOrders.length === 0) {
+        this.logger.warn(
+          `No active TP orders found for position ${positionId}, creating new TP order`,
+        );
+      }
+
+      // 2. Cancel each TP order via exchange
+      for (const order of tpOrders) {
+        try {
+          await this.hyperliquidService.cancelOrder(token, order.orderId);
+          this.logger.log(
+            `Cancelled TP order ${order.orderId} for trailing update`,
+          );
+
+          // Mark as cancelled in DB
+          await this.tradeOrderService.updateTradeOrder(String(order._id), {
+            status: TradeOrderStatus.CANCELLED,
+          });
+        } catch (error) {
+          this.logger.error(
+            `Failed to cancel TP order ${order.orderId}: ${error.message}`,
+          );
+          // Continue with other orders even if one fails
+        }
+      }
+
+      // 3. Fetch current exchange position size to handle partial fills
+      const { result: exchangePosition, error: retryError } =
+        await retryCallback(
+          async () => {
+            const position = await this.hyperliquidService.getPosition(token);
+            if (!position || !position.szi) {
+              throw new Error(`No position found for ${token}`);
+            }
+            return position;
+          },
+          {
+            maxCount: 3,
+            delayMs: 2000,
+            logger: this.logger,
+          },
+        );
+
+      if (!exchangePosition || !exchangePosition.szi) {
+        this.logger.error(
+          `Failed to fetch position for ${token} after cancelling TP orders`,
+          retryError,
+        );
+        throw new Error(
+          `Cannot replace TP order: no position found for ${token}`,
+        );
+      }
+
+      const actualSize = Math.abs(parseFloat(exchangePosition.szi));
+
+      if (actualSize === 0) {
+        this.logger.warn(
+          `Position size is 0 for ${token}, skipping TP order creation`,
+        );
+        return;
+      }
+
+      // 4. Get current price and compute quote amount
+      const ticker = await this.hyperliquidService.getTicker(token);
+      const currentPrice = parseFloat(ticker.mark);
+      const quoteAmount = calculateQuoteAmount(actualSize, currentPrice);
+
+      this.logger.log(
+        `Replacing TP order for ${token}: size=${actualSize}, currentPrice=${currentPrice}, newTP=${newTpPrice}`,
+      );
+
+      // Validate order size
+      this.validateOrderSize(quoteAmount, 'replace take-profit');
+
+      // 5. Determine close direction (opposite of position direction)
+      const closeDirection =
+        direction === PositionDirection.LONG
+          ? PositionDirection.SHORT
+          : PositionDirection.LONG;
+
+      // 6. Place new TP trigger order
+      const tpResult = await this.hyperliquidService.placePerpOrder({
+        symbol: token,
+        direction: closeDirection,
+        quoteAmount,
+        triggerPrice: newTpPrice,
+        triggerType: 'tp',
+        isMarket: true,
+        reduceOnly: true,
+      });
+
+      this.logger.log(
+        `New TP order created for trailing: orderId=${tpResult.orderId}, triggerPrice=${newTpPrice}`,
+      );
+
+      // 7. Persist new TP order in DB
+      if (tpResult?.orderId && this.tradeOrderService) {
+        await this.tradeOrderService.createTradeOrder({
+          orderId: tpResult.orderId,
+          status: tpResult.status,
+          position: positionId,
+          type: tpResult.type || 'trigger_tp',
+          coin: token,
+          side: closeDirection,
+          size: tpResult.size,
+          price: tpResult.price,
+          isTrigger: true,
+          triggerPrice: newTpPrice,
+          triggerType: 'tp',
+          isMarket: true,
+        });
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to replace TP order for ${token}: ${error.message}`,
+        error,
+      );
+      throw error;
+    }
   }
 
   async exitPosition(
