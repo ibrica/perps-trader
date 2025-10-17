@@ -455,7 +455,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
   /**
    * Replace take-profit order for trailing functionality
-   * Cancels existing TP order(s) and creates new one at new price
+   * Creates new TP order FIRST, then cancels old ones to avoid protection gap
    * Does NOT update stop-loss on exchange (SL is DB-only for trailing)
    */
   async replaceTakeProfitOrder(
@@ -465,41 +465,8 @@ export class HyperliquidPlatformService extends BasePlatformService {
     newTpPrice: number,
   ): Promise<void> {
     try {
-      // 1. Find active TP trigger orders for the position
-      const tpOrders = await this.tradeOrderService.getMany({
-        position: positionId,
-        isTrigger: true,
-        triggerType: 'tp',
-        status: { $in: ['CREATED', 'PARTIALLY_FILLED'] },
-      });
-
-      if (tpOrders.length === 0) {
-        this.logger.warn(
-          `No active TP orders found for position ${positionId}, creating new TP order`,
-        );
-      }
-
-      // 2. Cancel each TP order via exchange
-      for (const order of tpOrders) {
-        try {
-          await this.hyperliquidService.cancelOrder(token, order.orderId);
-          this.logger.log(
-            `Cancelled TP order ${order.orderId} for trailing update`,
-          );
-
-          // Mark as cancelled in DB
-          await this.tradeOrderService.updateTradeOrder(String(order._id), {
-            status: TradeOrderStatus.CANCELLED,
-          });
-        } catch (error) {
-          this.logger.error(
-            `Failed to cancel TP order ${order.orderId}: ${error.message}`,
-          );
-          // Continue with other orders even if one fails
-        }
-      }
-
-      // 3. Fetch current exchange position size to handle partial fills
+      // 1. Fetch current exchange position size to handle partial fills
+      // Do this FIRST before any order operations
       const { result: exchangePosition, error: retryError } =
         await retryCallback(
           async () => {
@@ -517,10 +484,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         );
 
       if (!exchangePosition || !exchangePosition.szi) {
-        this.logger.error(
-          `Failed to fetch position for ${token} after cancelling TP orders`,
-          retryError,
-        );
+        this.logger.error(`Failed to fetch position for ${token}`, retryError);
         throw new Error(
           `Cannot replace TP order: no position found for ${token}`,
         );
@@ -535,7 +499,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         return;
       }
 
-      // 4. Get current price and compute quote amount
+      // 2. Get current price and compute quote amount
       const ticker = await this.hyperliquidService.getTicker(token);
       const currentPrice = parseFloat(ticker.mark);
       const quoteAmount = calculateQuoteAmount(actualSize, currentPrice);
@@ -547,13 +511,14 @@ export class HyperliquidPlatformService extends BasePlatformService {
       // Validate order size
       this.validateOrderSize(quoteAmount, 'replace take-profit');
 
-      // 5. Determine close direction (opposite of position direction)
+      // 3. Determine close direction (opposite of position direction)
       const closeDirection =
         direction === PositionDirection.LONG
           ? PositionDirection.SHORT
           : PositionDirection.LONG;
 
-      // 6. Place new TP trigger order
+      // 4. IMPORTANT: Place new TP trigger order BEFORE cancelling old ones
+      // This eliminates the gap where position has no TP protection
       const tpResult = await this.hyperliquidService.placePerpOrder({
         symbol: token,
         direction: closeDirection,
@@ -568,7 +533,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         `New TP order created for trailing: orderId=${tpResult.orderId}, triggerPrice=${newTpPrice}`,
       );
 
-      // 7. Persist new TP order in DB
+      // 5. Persist new TP order in DB
       if (tpResult?.orderId && this.tradeOrderService) {
         await this.tradeOrderService.createTradeOrder({
           orderId: tpResult.orderId,
@@ -584,6 +549,38 @@ export class HyperliquidPlatformService extends BasePlatformService {
           triggerType: 'tp',
           isMarket: true,
         });
+      }
+
+      // 6. Now that new TP order is in place, cancel old TP orders
+      // Query for existing TP orders (excluding the one we just created)
+      if (this.tradeOrderService) {
+        const existingTpOrders = await this.tradeOrderService.getMany({
+          position: positionId,
+          isTrigger: true,
+          triggerType: 'tp',
+          // Exclude the newly created order
+          orderId: { $ne: tpResult.orderId },
+        });
+
+        if (existingTpOrders.length > 0) {
+          this.logger.log(
+            `Cancelling ${existingTpOrders.length} old TP order(s) for ${token}`,
+          );
+
+          // Cancel all old TP orders
+          for (const order of existingTpOrders) {
+            try {
+              await this.hyperliquidService.cancelOrder(order.orderId, token);
+              this.logger.log(`Cancelled old TP order: ${order.orderId}`);
+            } catch (cancelError) {
+              // Log but don't throw - the new TP order is already in place
+              this.logger.warn(
+                `Failed to cancel old TP order ${order.orderId}: ${cancelError.message}`,
+                cancelError,
+              );
+            }
+          }
+        }
       }
     } catch (error) {
       this.logger.error(
