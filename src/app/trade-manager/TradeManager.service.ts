@@ -201,7 +201,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
       );
 
       // Replace TP order on exchange (SL stays DB-only)
-      await this.platformManagerService.replaceTakeProfitOrder(
+      const result = await this.platformManagerService.replaceTakeProfitOrder(
         platform,
         token,
         positionDirection,
@@ -210,7 +210,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
       );
 
       this.logger.log(
-        `Successfully trailed ${token}: SL=${evaluation.newStopLossPrice?.toFixed(4)}, TP=${evaluation.newTakeProfitPrice?.toFixed(4)} (trail #${(position.trailCount || 0) + 1})`,
+        `Successfully trailed ${token}: SL=${evaluation.newStopLossPrice?.toFixed(4)}, TP=${evaluation.newTakeProfitPrice?.toFixed(4)} (trail #${(position.trailCount || 0) + 1}) - New order: ${result.newOrderId}, Cancelled: ${result.cancelledCount}`,
       );
     } catch (error) {
       this.logger.error(

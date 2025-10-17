@@ -4,7 +4,6 @@ import {
   PositionDirection,
   TradeOrderResult,
   calculateQuoteAmount,
-  TradeOrderStatus,
   EnterPositionOptions,
   Platform,
   TradeType,
@@ -457,13 +456,14 @@ export class HyperliquidPlatformService extends BasePlatformService {
    * Replace take-profit order for trailing functionality
    * Creates new TP order FIRST, then cancels old ones to avoid protection gap
    * Does NOT update stop-loss on exchange (SL is DB-only for trailing)
+   * @returns Object with new order ID and count of cancelled orders for verification
    */
   async replaceTakeProfitOrder(
     token: string,
     direction: PositionDirection,
     positionId: string,
     newTpPrice: number,
-  ): Promise<void> {
+  ): Promise<{ newOrderId: string; cancelledCount: number }> {
     try {
       // 1. Fetch current exchange position size to handle partial fills
       // Do this FIRST before any order operations
@@ -560,6 +560,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
 
       // 7. Now that new TP order is confirmed, cancel old TP orders
       // Query for existing TP orders (excluding the one we just created)
+      let cancelledCount = 0;
       if (this.tradeOrderService) {
         const existingTpOrders = await this.tradeOrderService.getMany({
           position: positionId,
@@ -578,6 +579,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
           for (const order of existingTpOrders) {
             try {
               await this.hyperliquidService.cancelOrder(order.orderId, token);
+              cancelledCount++;
               this.logger.log(`Cancelled old TP order: ${order.orderId}`);
             } catch (cancelError) {
               // Log but don't throw - the new TP order is already in place
@@ -589,6 +591,12 @@ export class HyperliquidPlatformService extends BasePlatformService {
           }
         }
       }
+
+      // Return success verification data
+      return {
+        newOrderId: tpResult.orderId,
+        cancelledCount,
+      };
     } catch (error) {
       this.logger.error(
         `Failed to replace TP order for ${token}: ${error.message}`,

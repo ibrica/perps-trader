@@ -33,6 +33,7 @@ export abstract class BasePlatformService {
   /**
    * Replace take-profit order for trailing functionality
    * Optional method - platforms that don't support trailing can leave as no-op
+   * @returns Object with new order ID and count of cancelled orders for verification
    */
   async replaceTakeProfitOrder(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -43,9 +44,10 @@ export abstract class BasePlatformService {
     positionId: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     newTpPrice: number,
-  ): Promise<void> {
-    // Default implementation: no-op
-    // Platforms that support trailing should override this
+  ): Promise<{ newOrderId: string; cancelledCount: number }> {
+    // Default implementation: no-op for platforms that don't support trailing
+    // Return empty result to indicate no action taken
+    return { newOrderId: '', cancelledCount: 0 };
   }
 
   protected async determineDirection(

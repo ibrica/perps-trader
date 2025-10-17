@@ -340,6 +340,7 @@ export class PlatformManagerService extends PlatformManagerPort {
    * Replace take-profit order for trailing functionality
    * Delegates to platform-specific implementation
    * Platforms that don't support trailing will use the no-op default
+   * @returns Object with new order ID and count of cancelled orders for verification
    */
   async replaceTakeProfitOrder(
     platform: Platform,
@@ -347,9 +348,9 @@ export class PlatformManagerService extends PlatformManagerPort {
     direction: PositionDirection,
     positionId: string,
     newTpPrice: number,
-  ): Promise<void> {
+  ): Promise<{ newOrderId: string; cancelledCount: number }> {
     const platformService = this.getPlatformService(platform);
-    await platformService.replaceTakeProfitOrder(
+    return await platformService.replaceTakeProfitOrder(
       token,
       direction,
       positionId,
