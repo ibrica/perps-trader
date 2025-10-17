@@ -529,12 +529,19 @@ export class HyperliquidPlatformService extends BasePlatformService {
         reduceOnly: true,
       });
 
+      // 5. Verify new TP order was created successfully
+      if (!tpResult?.orderId) {
+        throw new Error(
+          `Failed to create new TP order for ${token}: orderId is missing`,
+        );
+      }
+
       this.logger.log(
         `New TP order created for trailing: orderId=${tpResult.orderId}, triggerPrice=${newTpPrice}`,
       );
 
-      // 5. Persist new TP order in DB
-      if (tpResult?.orderId && this.tradeOrderService) {
+      // 6. Persist new TP order in DB
+      if (this.tradeOrderService) {
         await this.tradeOrderService.createTradeOrder({
           orderId: tpResult.orderId,
           status: tpResult.status,
@@ -551,7 +558,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         });
       }
 
-      // 6. Now that new TP order is in place, cancel old TP orders
+      // 7. Now that new TP order is confirmed, cancel old TP orders
       // Query for existing TP orders (excluding the one we just created)
       if (this.tradeOrderService) {
         const existingTpOrders = await this.tradeOrderService.getMany({
