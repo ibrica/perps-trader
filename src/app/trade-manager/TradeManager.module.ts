@@ -6,7 +6,6 @@ import { PredictorModule } from '../predictor/Predictor.module';
 import { PlatformManagerModule } from '../platform-manager/PlatformManager.module';
 import { PerpModule } from '../perps/Perp.module';
 import { SettingsModule } from '../settings/Settings.module';
-import { IndexerModule } from '../indexer/Indexer.module';
 import { TradeOrderModule } from '../trade-order/TradeOrder.module';
 
 @Global()
@@ -18,7 +17,6 @@ import { TradeOrderModule } from '../trade-order/TradeOrder.module';
     PlatformManagerModule,
     PerpModule,
     SettingsModule,
-    IndexerModule,
   ],
   providers: [TradeManagerService, TrailingService],
   exports: [TradeManagerService],

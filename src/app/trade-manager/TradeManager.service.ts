@@ -11,7 +11,6 @@ import {
   MAX_TOTAL_POSITIONS,
   TradeOrderStatus,
 } from '../../shared';
-import { IndexerAdapter } from '../../infrastructure';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { PlatformManagerService } from '../platform-manager/PlatformManagerService';
@@ -27,7 +26,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
   constructor(
     private tradePositionService: TradePositionService,
     private tradeOrderService: TradeOrderService,
-    private indexerAdapter: IndexerAdapter,
     private platformManagerService: PlatformManagerService,
     private perpService: PerpService,
     private settingsService: SettingsService,
