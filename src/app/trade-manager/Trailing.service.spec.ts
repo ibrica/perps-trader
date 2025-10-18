@@ -502,7 +502,9 @@ describe('TrailingService', () => {
         const result = await service.evaluateTrailing(mockPosition, 2450);
 
         expect(result.shouldTrail).toBe(false);
-        expect(result.reason).toBe('AI does not support continuation: No AI prediction available');
+        expect(result.reason).toBe(
+          'AI does not support continuation: No AI prediction available',
+        );
       });
 
       it('should not trail when AI prediction throws error', async () => {
