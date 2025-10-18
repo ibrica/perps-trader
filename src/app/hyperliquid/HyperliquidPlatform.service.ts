@@ -496,7 +496,7 @@ export class HyperliquidPlatformService extends BasePlatformService {
         this.logger.warn(
           `Position size is 0 for ${token}, skipping TP order creation`,
         );
-        return;
+        return { newOrderId: null, cancelledCount: 0 };
       }
 
       // 2. Get current price and compute quote amount
