@@ -40,4 +40,21 @@ export const hyperliquidConfig = registerAs('hyperliquid', () => ({
     process.env.HL_MAX_NOTIONAL_PER_ORDER || '10000',
   ),
   maxTotalNotional: parseFloat(process.env.HL_MAX_TOTAL_NOTIONAL || '50000'),
+
+  // Trailing stop-loss and take-profit configuration
+  trailingActivationRatio: parseFloat(
+    process.env.HL_TRAILING_ACTIVATION_RATIO || '0.8',
+  ),
+  trailingStopOffsetPercent: parseFloat(
+    process.env.HL_TRAILING_STOP_OFFSET_PERCENT || '2',
+  ),
+  trailingTpOffsetPercent: parseFloat(
+    process.env.HL_TRAILING_TP_OFFSET_PERCENT || '10',
+  ),
+  trailingMinIntervalMs: parseInt(
+    process.env.HL_TRAILING_MIN_INTERVAL_MS || '300000',
+  ), // 5 minutes default
+  predictorMinConfidence: parseFloat(
+    process.env.HL_PREDICTOR_MIN_CONFIDENCE || '0.6',
+  ),
 }));

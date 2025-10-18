@@ -4,9 +4,11 @@ import {
   PositionDirection,
   TradeOrderResult,
   calculateQuoteAmount,
+  EnterPositionOptions,
+  Platform,
+  TradeType,
+  retryCallback,
 } from '../../shared';
-import { EnterPositionOptions, Platform, TradeType } from '../../shared';
-import { retryCallback } from '../../shared/utils/retryCallback';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { HyperliquidWebSocketService } from '../../infrastructure/hyperliquid/HyperliquidWebSocket.service';
 import {
@@ -448,6 +450,160 @@ export class HyperliquidPlatformService extends BasePlatformService {
   async getCurrentPrice(token: string): Promise<number> {
     const ticker = await this.hyperliquidService.getTicker(token);
     return parseFloat(ticker.mark);
+  }
+
+  /**
+   * Replace take-profit order for trailing functionality
+   * Creates new TP order FIRST, then cancels old ones to avoid protection gap
+   * Does NOT update stop-loss on exchange (SL is DB-only for trailing)
+   * @returns Object with new order ID and count of cancelled orders for verification
+   */
+  async replaceTakeProfitOrder(
+    token: string,
+    direction: PositionDirection,
+    positionId: string,
+    newTpPrice: number,
+  ): Promise<{ newOrderId: string; cancelledCount: number }> {
+    try {
+      // 1. Fetch current exchange position size to handle partial fills
+      // Do this FIRST before any order operations
+      const { result: exchangePosition, error: retryError } =
+        await retryCallback(
+          async () => {
+            const position = await this.hyperliquidService.getPosition(token);
+            if (!position || !position.szi) {
+              throw new Error(`No position found for ${token}`);
+            }
+            return position;
+          },
+          {
+            maxCount: 3,
+            delayMs: 2000,
+            logger: this.logger,
+          },
+        );
+
+      if (!exchangePosition || !exchangePosition.szi) {
+        this.logger.error(`Failed to fetch position for ${token}`, retryError);
+        throw new Error(
+          `Cannot replace TP order: no position found for ${token}`,
+        );
+      }
+
+      const actualSize = Math.abs(parseFloat(exchangePosition.szi));
+
+      if (actualSize === 0) {
+        this.logger.warn(
+          `Position size is 0 for ${token}, skipping TP order creation`,
+        );
+        return { newOrderId: null, cancelledCount: 0 };
+      }
+
+      // 2. Get current price and compute quote amount
+      const ticker = await this.hyperliquidService.getTicker(token);
+      const currentPrice = parseFloat(ticker.mark);
+      const quoteAmount = calculateQuoteAmount(actualSize, currentPrice);
+
+      this.logger.log(
+        `Replacing TP order for ${token}: size=${actualSize}, currentPrice=${currentPrice}, newTP=${newTpPrice}`,
+      );
+
+      // Validate order size
+      this.validateOrderSize(quoteAmount, 'replace take-profit');
+
+      // 3. Determine close direction (opposite of position direction)
+      const closeDirection =
+        direction === PositionDirection.LONG
+          ? PositionDirection.SHORT
+          : PositionDirection.LONG;
+
+      // 4. IMPORTANT: Place new TP trigger order BEFORE cancelling old ones
+      // This eliminates the gap where position has no TP protection
+      const tpResult = await this.hyperliquidService.placePerpOrder({
+        symbol: token,
+        direction: closeDirection,
+        quoteAmount,
+        triggerPrice: newTpPrice,
+        triggerType: 'tp',
+        isMarket: true,
+        reduceOnly: true,
+      });
+
+      // 5. Verify new TP order was created successfully
+      if (!tpResult?.orderId) {
+        throw new Error(
+          `Failed to create new TP order for ${token}: orderId is missing`,
+        );
+      }
+
+      this.logger.log(
+        `New TP order created for trailing: orderId=${tpResult.orderId}, triggerPrice=${newTpPrice}`,
+      );
+
+      // 6. Persist new TP order in DB
+      if (this.tradeOrderService) {
+        await this.tradeOrderService.createTradeOrder({
+          orderId: tpResult.orderId,
+          status: tpResult.status,
+          position: positionId,
+          type: tpResult.type || 'trigger_tp',
+          coin: token,
+          side: closeDirection,
+          size: tpResult.size,
+          price: tpResult.price,
+          isTrigger: true,
+          triggerPrice: newTpPrice,
+          triggerType: 'tp',
+          isMarket: true,
+        });
+      }
+
+      // 7. Now that new TP order is confirmed, cancel old TP orders
+      // Query for existing TP orders (excluding the one we just created)
+      let cancelledCount = 0;
+      if (this.tradeOrderService) {
+        const existingTpOrders = await this.tradeOrderService.getMany({
+          position: positionId,
+          isTrigger: true,
+          triggerType: 'tp',
+          // Exclude the newly created order
+          orderId: { $ne: tpResult.orderId },
+        });
+
+        if (existingTpOrders.length > 0) {
+          this.logger.log(
+            `Cancelling ${existingTpOrders.length} old TP order(s) for ${token}`,
+          );
+
+          // Cancel all old TP orders
+          for (const order of existingTpOrders) {
+            try {
+              await this.hyperliquidService.cancelOrder(order.orderId, token);
+              cancelledCount++;
+              this.logger.log(`Cancelled old TP order: ${order.orderId}`);
+            } catch (cancelError) {
+              // Log but don't throw - the new TP order is already in place
+              this.logger.warn(
+                `Failed to cancel old TP order ${order.orderId}: ${cancelError.message}`,
+                cancelError,
+              );
+            }
+          }
+        }
+      }
+
+      // Return success verification data
+      return {
+        newOrderId: tpResult.orderId,
+        cancelledCount,
+      };
+    } catch (error) {
+      this.logger.error(
+        `Failed to replace TP order for ${token}: ${error.message}`,
+        error,
+      );
+      throw error;
+    }
   }
 
   async exitPosition(

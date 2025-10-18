@@ -831,4 +831,455 @@ describe('HyperliquidPlatformService', () => {
       );
     });
   });
+
+  describe('replaceTakeProfitOrder', () => {
+    beforeEach(() => {
+      hyperliquidService.getTicker.mockReset();
+      hyperliquidService.getPosition.mockReset();
+      hyperliquidService.placePerpOrder.mockReset();
+      hyperliquidService.cancelOrder = jest.fn().mockResolvedValue(undefined);
+      tradeOrderService.getMany.mockReset();
+      tradeOrderService.createTradeOrder.mockReset();
+    });
+
+    it('should create new TP order BEFORE cancelling old ones (protection gap fix)', async () => {
+      // Given: Position with old TP order
+      hyperliquidService.getTicker.mockResolvedValue({
+        coin: 'ETH',
+        bid: '2448',
+        ask: '2452',
+        last: '2450',
+        mark: '2450',
+        volume24h: '1000000',
+        openInterest: '500000',
+        fundingRate: '0.0001',
+      });
+
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'ETH',
+        szi: '1.0',
+        entryPx: '2000',
+        positionValue: '2450',
+        unrealizedPnl: '450',
+        returnOnEquity: '0.225',
+        liquidationPx: '1000',
+        marginUsed: '2000',
+        maxLeverage: 10,
+        leverage: { type: 'cross', value: 1, rawUsd: '2000' },
+        cumFunding: { allTime: '0', sinceOpen: '0', sinceChange: '0' },
+      });
+
+      const mockNewTpOrder = {
+        orderId: 'new-tp-123',
+        status: TradeOrderStatus.CREATED,
+        size: 1.0,
+        price: 2695,
+        type: 'trigger_tp',
+      };
+
+      hyperliquidService.placePerpOrder.mockResolvedValue(mockNewTpOrder);
+
+      tradeOrderService.getMany.mockResolvedValue([
+        {
+          orderId: 'old-tp-456',
+          position: 'pos-123',
+          triggerType: 'tp',
+          isTrigger: true,
+        } as any,
+      ]);
+
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'ETH',
+        szi: '1.0',
+        entryPx: '2000',
+        positionValue: '2450',
+        unrealizedPnl: '450',
+        returnOnEquity: '0.225',
+        liquidationPx: '1000',
+        marginUsed: '2000',
+        maxLeverage: 10,
+        leverage: { type: 'cross', value: 1, rawUsd: '2000' },
+        cumFunding: { allTime: '0', sinceOpen: '0', sinceChange: '0' },
+      });
+
+      // When: Replace TP order
+      const result = await service.replaceTakeProfitOrder(
+        'ETH',
+        PositionDirection.LONG,
+        'pos-123',
+        2695,
+      );
+
+      // Then: New TP order created FIRST
+      expect(hyperliquidService.placePerpOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          symbol: 'ETH',
+          direction: PositionDirection.SHORT,
+          triggerPrice: 2695,
+          triggerType: 'tp',
+          reduceOnly: true,
+        }),
+      );
+
+      // And: Old order cancelled AFTER new one created
+      expect(hyperliquidService.cancelOrder).toHaveBeenCalledWith(
+        'old-tp-456',
+        'ETH',
+      );
+
+      // And: Returns verification data
+      expect(result).toEqual({
+        newOrderId: 'new-tp-123',
+        cancelledCount: 1,
+      });
+    });
+
+    it('should throw error if new TP order creation returns null orderId', async () => {
+      // Given: Exchange fails to create order
+      hyperliquidService.getTicker.mockResolvedValue({
+        coin: 'ETH',
+        bid: '2448',
+        ask: '2452',
+        last: '2450',
+        mark: '2450',
+        volume24h: '1000000',
+        openInterest: '500000',
+        fundingRate: '0.0001',
+      });
+
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'ETH',
+        szi: '1.0',
+        entryPx: '2000',
+        positionValue: '2450',
+        unrealizedPnl: '450',
+        returnOnEquity: '0.225',
+        liquidationPx: '1000',
+        marginUsed: '2000',
+        maxLeverage: 10,
+        leverage: { type: 'cross', value: 1, rawUsd: '2000' },
+        cumFunding: { allTime: '0', sinceOpen: '0', sinceChange: '0' },
+      });
+
+      // Mock: Returns null orderId
+      hyperliquidService.placePerpOrder.mockResolvedValue({
+        orderId: null, // FAILURE!
+        status: TradeOrderStatus.FAILED,
+        size: 0,
+        price: 0,
+      } as any);
+
+      tradeOrderService.getMany.mockResolvedValue([
+        { orderId: 'old-tp-789', triggerType: 'tp' } as any,
+      ]);
+
+      // When/Then: Should throw immediately
+      await expect(
+        service.replaceTakeProfitOrder(
+          'ETH',
+          PositionDirection.LONG,
+          'pos-456',
+          2695,
+        ),
+      ).rejects.toThrow('Failed to create new TP order for ETH: orderId is missing');
+
+      // And: Old orders NOT cancelled
+      expect(hyperliquidService.cancelOrder).not.toHaveBeenCalled();
+    });
+
+    it('should save new TP order to database before cancelling old ones', async () => {
+      // Given: Setup mocks
+      hyperliquidService.getTicker.mockResolvedValue({
+        coin: 'BTC',
+        bid: '49800',
+        ask: '50200',
+        last: '50000',
+        mark: '50000',
+        volume24h: '10000000',
+        openInterest: '5000000',
+        fundingRate: '0.0001',
+      });
+
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'BTC',
+        szi: '0.1', // Reduced to keep under 10000 limit
+        entryPx: '48000',
+        positionValue: '5000',
+        unrealizedPnl: '200',
+        returnOnEquity: '0.04',
+        liquidationPx: '40000',
+        marginUsed: '2400',
+        maxLeverage: 10,
+        leverage: { type: 'cross', value: 2, rawUsd: '4800' },
+        cumFunding: { allTime: '0', sinceOpen: '0', sinceChange: '0' },
+      });
+
+      hyperliquidService.placePerpOrder.mockResolvedValue({
+        orderId: 'new-tp-btc-999',
+        status: TradeOrderStatus.CREATED,
+        size: 0.5,
+        price: 55000,
+        type: 'trigger_tp',
+      });
+
+      tradeOrderService.getMany.mockResolvedValue([]);
+
+      // When: Replace TP
+      await service.replaceTakeProfitOrder(
+        'BTC',
+        PositionDirection.LONG,
+        'pos-btc-123',
+        55000,
+      );
+
+      // Then: New order saved to DB
+      expect(tradeOrderService.createTradeOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          orderId: 'new-tp-btc-999',
+          position: 'pos-btc-123',
+          triggerType: 'tp',
+          triggerPrice: 55000,
+          isTrigger: true,
+        }),
+      );
+    });
+
+    it('should handle multiple old TP orders', async () => {
+      // Given: Multiple old TP orders exist
+      hyperliquidService.getTicker.mockResolvedValue({
+        coin: 'ETH',
+        bid: '2448',
+        ask: '2452',
+        last: '2450',
+        mark: '2450',
+        volume24h: '1000000',
+        openInterest: '500000',
+        fundingRate: '0.0001',
+      });
+
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'ETH',
+        szi: '2.0',
+        entryPx: '2000',
+        positionValue: '4900',
+        unrealizedPnl: '900',
+        returnOnEquity: '0.18',
+        liquidationPx: '1500',
+        marginUsed: '3000',
+        maxLeverage: 10,
+        leverage: { type: 'cross', value: 1.5, rawUsd: '4500' },
+        cumFunding: { allTime: '0', sinceOpen: '0', sinceChange: '0' },
+      });
+
+      hyperliquidService.placePerpOrder.mockResolvedValue({
+        orderId: 'new-tp-multi-123',
+        status: TradeOrderStatus.CREATED,
+        size: 2.0,
+        price: 2695,
+        type: 'trigger_tp',
+      });
+
+      // Multiple old orders
+      tradeOrderService.getMany.mockResolvedValue([
+        { orderId: 'old-tp-1', triggerType: 'tp' } as any,
+        { orderId: 'old-tp-2', triggerType: 'tp' } as any,
+        { orderId: 'old-tp-3', triggerType: 'tp' } as any,
+      ]);
+
+      // When: Replace TP
+      const result = await service.replaceTakeProfitOrder(
+        'ETH',
+        PositionDirection.LONG,
+        'pos-multi',
+        2695,
+      );
+
+      // Then: All old orders cancelled
+      expect(hyperliquidService.cancelOrder).toHaveBeenCalledTimes(3);
+      expect(hyperliquidService.cancelOrder).toHaveBeenCalledWith('old-tp-1', 'ETH');
+      expect(hyperliquidService.cancelOrder).toHaveBeenCalledWith('old-tp-2', 'ETH');
+      expect(hyperliquidService.cancelOrder).toHaveBeenCalledWith('old-tp-3', 'ETH');
+
+      // And: Returns correct count
+      expect(result.cancelledCount).toBe(3);
+    });
+
+    it('should handle cancellation failures gracefully', async () => {
+      // Given: Setup with old order
+      hyperliquidService.getTicker.mockResolvedValue({
+        coin: 'SOL',
+        bid: '148',
+        ask: '152',
+        last: '150',
+        mark: '150',
+        volume24h: '500000',
+        openInterest: '250000',
+        fundingRate: '0.0001',
+      });
+
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'SOL',
+        szi: '10.0',
+        entryPx: '140',
+        positionValue: '1500',
+        unrealizedPnl: '100',
+        returnOnEquity: '0.067',
+        liquidationPx: '100',
+        marginUsed: '1000',
+        maxLeverage: 10,
+        leverage: { type: 'cross', value: 1.5, rawUsd: '1500' },
+        cumFunding: { allTime: '0', sinceOpen: '0', sinceChange: '0' },
+      });
+
+      hyperliquidService.placePerpOrder.mockResolvedValue({
+        orderId: 'new-tp-sol-456',
+        status: TradeOrderStatus.CREATED,
+        size: 10.0,
+        price: 165,
+        type: 'trigger_tp',
+      });
+
+      tradeOrderService.getMany.mockResolvedValue([
+        { orderId: 'old-tp-fail', triggerType: 'tp' } as any,
+      ]);
+
+      // Mock: Cancellation fails
+      hyperliquidService.cancelOrder = jest
+        .fn()
+        .mockRejectedValue(new Error('Order not found on exchange'));
+
+      // When: Replace TP (should NOT throw despite cancellation failure)
+      const result = await service.replaceTakeProfitOrder(
+        'SOL',
+        PositionDirection.LONG,
+        'pos-sol-789',
+        165,
+      );
+
+      // Then: New order still created and saved
+      expect(result.newOrderId).toBe('new-tp-sol-456');
+      expect(tradeOrderService.createTradeOrder).toHaveBeenCalled();
+
+      // And: Cancellation was attempted
+      expect(hyperliquidService.cancelOrder).toHaveBeenCalled();
+
+      // And: Returns 0 cancelled (failed to cancel)
+      expect(result.cancelledCount).toBe(0);
+    });
+
+    it('should work for SHORT positions', async () => {
+      // Given: SHORT position
+      hyperliquidService.getTicker.mockResolvedValue({
+        coin: 'ETH',
+        bid: '1548',
+        ask: '1552',
+        last: '1550',
+        mark: '1550',
+        volume24h: '1000000',
+        openInterest: '500000',
+        fundingRate: '0.0001',
+      });
+
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'ETH',
+        szi: '-1.5', // Negative for SHORT
+        entryPx: '2000',
+        positionValue: '2325',
+        unrealizedPnl: '675',
+        returnOnEquity: '0.29',
+        liquidationPx: '2500',
+        marginUsed: '2000',
+        maxLeverage: 10,
+        leverage: { type: 'cross', value: 1.2, rawUsd: '2400' },
+        cumFunding: { allTime: '0', sinceOpen: '0', sinceChange: '0' },
+      });
+
+      hyperliquidService.placePerpOrder.mockResolvedValue({
+        orderId: 'new-tp-short-789',
+        status: TradeOrderStatus.CREATED,
+        size: 1.5,
+        price: 1395, // 1550 * 0.90 for SHORT
+        type: 'trigger_tp',
+      });
+
+      tradeOrderService.getMany.mockResolvedValue([
+        { orderId: 'old-tp-short', triggerType: 'tp' } as any,
+      ]);
+
+      // When: Replace TP for SHORT
+      const result = await service.replaceTakeProfitOrder(
+        'ETH',
+        PositionDirection.SHORT,
+        'pos-short-456',
+        1395,
+      );
+
+      // Then: Close direction is LONG (opposite of SHORT)
+      expect(hyperliquidService.placePerpOrder).toHaveBeenCalledWith(
+        expect.objectContaining({
+          direction: PositionDirection.LONG,
+          triggerPrice: 1395,
+          triggerType: 'tp',
+        }),
+      );
+
+      // And: Successful replacement
+      expect(result.newOrderId).toBe('new-tp-short-789');
+      expect(result.cancelledCount).toBe(1);
+    });
+
+    it('should query for old TP orders excluding the new one', async () => {
+      // Given: Setup
+      hyperliquidService.getTicker.mockResolvedValue({
+        coin: 'BTC',
+        bid: '49800',
+        ask: '50200',
+        last: '50000',
+        mark: '50000',
+        volume24h: '10000000',
+        openInterest: '5000000',
+        fundingRate: '0.0001',
+      });
+
+      hyperliquidService.getPosition.mockResolvedValue({
+        coin: 'BTC',
+        szi: '0.15', // Reduced to keep under 10000 limit
+        entryPx: '48000',
+        positionValue: '7500',
+        unrealizedPnl: '300',
+        returnOnEquity: '0.04',
+        liquidationPx: '40000',
+        marginUsed: '3600',
+        maxLeverage: 10,
+        leverage: { type: 'cross', value: 2, rawUsd: '7200' },
+        cumFunding: { allTime: '0', sinceOpen: '0', sinceChange: '0' },
+      });
+
+      hyperliquidService.placePerpOrder.mockResolvedValue({
+        orderId: 'new-unique-123',
+        status: TradeOrderStatus.CREATED,
+        size: 1.0,
+        price: 55000,
+        type: 'trigger_tp',
+      });
+
+      tradeOrderService.getMany.mockResolvedValue([]);
+
+      // When: Replace TP
+      await service.replaceTakeProfitOrder(
+        'BTC',
+        PositionDirection.LONG,
+        'pos-query-test',
+        55000,
+      );
+
+      // Then: Query excludes new order ID
+      expect(tradeOrderService.getMany).toHaveBeenCalledWith({
+        position: 'pos-query-test',
+        isTrigger: true,
+        triggerType: 'tp',
+        orderId: { $ne: 'new-unique-123' }, // Excludes new order!
+      });
+    });
+  });
 });

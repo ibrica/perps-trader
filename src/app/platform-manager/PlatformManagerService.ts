@@ -6,17 +6,13 @@ import {
   PositionDirection,
   EnterPositionOptions,
   TradeOrderResult,
-} from '../../shared';
-import {
   PlatformManagerPort,
   PlatformConfiguration,
   TradingOpportunity,
-} from '../../shared/ports/trading/PlatformManagerPort';
-import { PlatformTokenDiscoveryPort } from '../../shared/ports/trading/PlatformTokenDiscoveryPort';
-import {
   PlatformTradingStrategyPort,
   ExitDecision,
-} from '../../shared/ports/trading/PlatformTradingStrategyPort';
+  PlatformTokenDiscoveryPort,
+} from '../../shared';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 import {
@@ -338,5 +334,27 @@ export class PlatformManagerService extends PlatformManagerPort {
   ): Promise<TradeOrderResult> {
     const platformService = this.getPlatformService(tradePosition.platform);
     return platformService.exitPosition(tradePosition);
+  }
+
+  /**
+   * Replace take-profit order for trailing functionality
+   * Delegates to platform-specific implementation
+   * Platforms that don't support trailing will use the no-op default
+   * @returns Object with new order ID and count of cancelled orders for verification
+   */
+  async replaceTakeProfitOrder(
+    platform: Platform,
+    token: string,
+    direction: PositionDirection,
+    positionId: string,
+    newTpPrice: number,
+  ): Promise<{ newOrderId: string; cancelledCount: number }> {
+    const platformService = this.getPlatformService(platform);
+    return await platformService.replaceTakeProfitOrder(
+      token,
+      direction,
+      positionId,
+      newTpPrice,
+    );
   }
 }

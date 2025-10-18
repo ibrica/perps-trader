@@ -30,6 +30,26 @@ export abstract class BasePlatformService {
 
   abstract getCurrentPrice(token: string): Promise<number>;
 
+  /**
+   * Replace take-profit order for trailing functionality
+   * Optional method - platforms that don't support trailing can leave as no-op
+   * @returns Object with new order ID and count of cancelled orders for verification
+   */
+  async replaceTakeProfitOrder(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    token: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    direction: PositionDirection,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    positionId: string,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    newTpPrice: number,
+  ): Promise<{ newOrderId: string; cancelledCount: number }> {
+    // Default implementation: no-op for platforms that don't support trailing
+    // Return empty result to indicate no action taken
+    return { newOrderId: '', cancelledCount: 0 };
+  }
+
   protected async determineDirection(
     token: string,
   ): Promise<PositionDirection | null> {

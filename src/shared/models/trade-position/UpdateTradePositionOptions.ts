@@ -35,4 +35,6 @@ export interface UpdateTradePositionOptions {
   timeOpened?: Date;
   timeClosed?: Date;
   exitFlag?: boolean;
+  lastTrailAt?: Date;
+  trailCount?: number;
 }

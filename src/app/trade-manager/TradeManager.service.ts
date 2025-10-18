@@ -11,13 +11,13 @@ import {
   MAX_TOTAL_POSITIONS,
   TradeOrderStatus,
 } from '../../shared';
-import { IndexerAdapter } from '../../infrastructure';
 import { TradePositionService } from '../trade-position/TradePosition.service';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { PlatformManagerService } from '../platform-manager/PlatformManagerService';
 import { PerpService } from '../perps/Perp.service';
 import { SettingsService } from '../settings/Settings.service';
 import { TradeOrderService } from '../trade-order/TradeOrder.service';
+import { TrailingService } from './Trailing.service';
 
 @Injectable()
 export class TradeManagerService implements OnApplicationBootstrap {
@@ -26,10 +26,10 @@ export class TradeManagerService implements OnApplicationBootstrap {
   constructor(
     private tradePositionService: TradePositionService,
     private tradeOrderService: TradeOrderService,
-    private indexerAdapter: IndexerAdapter,
     private platformManagerService: PlatformManagerService,
     private perpService: PerpService,
     private settingsService: SettingsService,
+    private trailingService: TrailingService,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -119,6 +119,24 @@ export class TradeManagerService implements OnApplicationBootstrap {
         continue;
       }
 
+      // Step 1: Evaluate and apply trailing (if eligible)
+      // This runs before close evaluation so TP gets moved before manual close
+      if (
+        platform === Platform.HYPERLIQUID &&
+        tradePosition.status === TradePositionStatus.OPEN
+      ) {
+        try {
+          await this.evaluateAndApplyTrailing(tradePosition, price);
+        } catch (error) {
+          this.logger.error(
+            `Failed to evaluate trailing for ${token}: ${error.message}`,
+            error,
+          );
+          // Continue to close evaluation even if trailing fails
+        }
+      }
+
+      // Step 2: Evaluate exit (stop-loss/TP breach or AI exit)
       const shouldClosePosition =
         settings.closeAllPositions ||
         exitFlag ||
@@ -138,6 +156,91 @@ export class TradeManagerService implements OnApplicationBootstrap {
   }
 
   /**
+   * Evaluate trailing for a position and apply if conditions are met
+   * This updates both DB and exchange TP order, DB-only SL
+   */
+  private async evaluateAndApplyTrailing(
+    position: TradePositionDocument,
+    currentPrice: number,
+  ): Promise<void> {
+    const { token, positionDirection, platform } = position;
+
+    // Evaluate whether trailing should be applied
+    const evaluation = await this.trailingService.evaluateTrailing(
+      position,
+      currentPrice,
+    );
+
+    if (!evaluation.shouldTrail) {
+      // Log only if we're close to TP threshold to avoid spam
+      if (evaluation.progressToTp && evaluation.progressToTp >= 0.7) {
+        this.logger.debug(
+          `Trailing not applied for ${token}: ${evaluation.reason}`,
+        );
+      }
+      return;
+    }
+
+    this.logger.log(`Applying trailing for ${token}: ${evaluation.reason}`, {
+      currentPrice,
+      newSL: evaluation.newStopLossPrice,
+      newTP: evaluation.newTakeProfitPrice,
+      progressToTp: evaluation.progressToTp,
+    });
+
+    try {
+      // Update DB first (SL and TP prices, tracking fields)
+      await this.tradePositionService.updateTradePosition(
+        String(position._id),
+        {
+          stopLossPrice: evaluation.newStopLossPrice,
+          takeProfitPrice: evaluation.newTakeProfitPrice,
+          lastTrailAt: new Date(),
+          trailCount: (position.trailCount || 0) + 1,
+        },
+      );
+
+      // Replace TP order on exchange (SL stays DB-only)
+      const result = await this.platformManagerService.replaceTakeProfitOrder(
+        platform,
+        token,
+        positionDirection,
+        String(position._id),
+        evaluation.newTakeProfitPrice,
+      );
+
+      this.logger.log(
+        `Successfully trailed ${token}: SL=${evaluation.newStopLossPrice?.toFixed(4)}, TP=${evaluation.newTakeProfitPrice?.toFixed(4)} (trail #${(position.trailCount || 0) + 1}) - New order: ${result.newOrderId}, Cancelled: ${result.cancelledCount}`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to apply trailing for ${token}: ${error.message}`,
+        error,
+      );
+      // Attempt to rollback DB update if exchange operation failed
+      try {
+        await this.tradePositionService.updateTradePosition(
+          String(position._id),
+          {
+            stopLossPrice: position.stopLossPrice,
+            takeProfitPrice: position.takeProfitPrice,
+            // Don't rollback lastTrailAt and trailCount to maintain rate limiting
+          },
+        );
+        this.logger.log(
+          `Rolled back DB changes for ${token} after trailing failure`,
+        );
+      } catch (rollbackError) {
+        this.logger.error(
+          `Failed to rollback trailing changes for ${token}`,
+          rollbackError,
+        );
+      }
+      throw error;
+    }
+  }
+
+  /**
    * Determines whether a position should be closed based on various conditions
    * Checks traditional conditions first (cheaper to evaluate), then AI if needed
    * @param tradePosition - The trade position to evaluate
@@ -153,6 +256,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
     const stopLossPrice = tradePosition.stopLossPrice ?? -1;
     const takeProfitPrice = tradePosition.takeProfitPrice ?? Number.MAX_VALUE;
 
+    // Fallback to traditional stop loss/take profit if stop orders are not set
     if (
       currentPrice &&
       (currentPrice < stopLossPrice || currentPrice > takeProfitPrice)
@@ -296,7 +400,7 @@ export class TradeManagerService implements OnApplicationBootstrap {
     // when the entry order is confirmed filled. This eliminates the race condition
     // where we previously waited 500ms and hoped the order was filled.
     this.logger.log(
-      `Position ${tradePosition._id} created for ${token}. SL/TP orders will be created upon fill confirmation.`,
+      `Position ${String(tradePosition._id)} created for ${token}. SL/TP orders will be created upon fill confirmation.`,
     );
 
     if (tradeType === TradeType.PERPETUAL) {
