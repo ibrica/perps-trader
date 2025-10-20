@@ -404,6 +404,56 @@ describe('HyperliquidTradingStrategyService', () => {
       expect(result.reason).toContain('0.05 buffer');
     });
 
+    it('should reject early when AI and timing directions conflict (before waiting)', async () => {
+      const mockPrediction = createMockPrediction(Recommendation.BUY);
+      mockPrediction.confidence = 0.85; // High AI confidence
+
+      mockPerpService.findByToken.mockResolvedValue({
+        token: 'BTC',
+        currency: Currency.USDC,
+        perpSymbol: 'BTC-USDC',
+      } as any);
+      mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
+      mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
+        token: 'BTC',
+        timestamp: new Date().toISOString(),
+        trends: {} as any,
+      });
+      // Timing says wait_correction BUT direction conflicts
+      mockEntryTimingService.evaluateEntryTiming.mockResolvedValue({
+        shouldEnterNow: false, // Would normally wait
+        direction: PositionDirection.SHORT, // Conflicts with BUY (LONG)
+        timing: 'wait_correction',
+        confidence: 0.8,
+        reason: 'Waiting for correction',
+        metadata: {
+          primaryTrend: TrendStatus.DOWN,
+          primaryTimeframe: '1h',
+          correctionTrend: TrendStatus.UP,
+          correctionTimeframe: '5m',
+          reversalDetected: false,
+          trendAlignment: false,
+        },
+      });
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'hyperliquid.enabled') return true;
+        if (key === 'hyperliquid.predictorMinConfidence') return 0.6;
+        if (key === 'hyperliquid.defaultLeverage') return 3;
+        return undefined;
+      });
+
+      const result = await service.shouldEnterPosition(
+        'BTC',
+        mockTradingParams,
+      );
+
+      // Should reject immediately due to direction mismatch, not wait
+      expect(result.shouldTrade).toBe(false);
+      expect(result.reason).toContain('Direction mismatch');
+      expect(result.reason).toContain('LONG');
+      expect(result.reason).toContain('SHORT');
+    });
+
     it('should use minimum confidence when combining AI and timing', async () => {
       const mockPrediction = createMockPrediction(Recommendation.BUY);
       mockPrediction.confidence = 0.7; // Moderate AI confidence

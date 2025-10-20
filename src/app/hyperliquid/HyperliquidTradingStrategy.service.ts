@@ -165,15 +165,19 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
             const timingEval =
               await this.entryTimingService.evaluateEntryTiming(token, trends);
 
-            // If timing says wait for correction, don't enter yet
-            if (!timingEval.shouldEnterNow) {
-              this.logger.log(
-                `Entry timing: waiting for better entry on ${token}: ${timingEval.reason}`,
+            // IMPORTANT: Check direction alignment FIRST before waiting
+            // This prevents wasting time waiting for corrections when directions conflict
+            if (
+              timingEval.direction &&
+              timingEval.direction !== aiDirection
+            ) {
+              this.logger.warn(
+                `Direction mismatch detected early for ${token}: AI says ${aiDirection}, trends say ${timingEval.direction}. Skipping timing evaluation.`,
               );
               return {
                 shouldTrade: false,
-                reason: `Entry timing: ${timingEval.reason}`,
-                confidence: aiPrediction.confidence * timingEval.confidence,
+                reason: `Direction mismatch: AI says ${aiDirection}, trends say ${timingEval.direction}`,
+                confidence: aiPrediction.confidence * 0.5,
                 recommendedAmount: 0,
                 metadata: {
                   direction: aiDirection,
@@ -192,15 +196,15 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
               };
             }
 
-            // Timing is good, check if direction matches AI prediction
-            if (timingEval.direction !== aiDirection) {
-              this.logger.warn(
-                `Entry timing direction ${timingEval.direction} conflicts with AI direction ${aiDirection} for ${token}`,
+            // Direction alignment is good, now check if timing says to wait
+            if (!timingEval.shouldEnterNow) {
+              this.logger.log(
+                `Entry timing: waiting for better entry on ${token}: ${timingEval.reason}`,
               );
               return {
                 shouldTrade: false,
-                reason: `Direction mismatch: AI says ${aiDirection}, trends say ${timingEval.direction}`,
-                confidence: aiPrediction.confidence * 0.5,
+                reason: `Entry timing: ${timingEval.reason}`,
+                confidence: aiPrediction.confidence * timingEval.confidence,
                 recommendedAmount: 0,
                 metadata: {
                   direction: aiDirection,
