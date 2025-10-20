@@ -165,7 +165,6 @@ export class TradeManagerService implements OnApplicationBootstrap {
   ): Promise<void> {
     const { token, positionDirection, platform } = position;
 
-    // Evaluate whether trailing should be applied
     const evaluation = await this.trailingService.evaluateTrailing(
       position,
       currentPrice,
