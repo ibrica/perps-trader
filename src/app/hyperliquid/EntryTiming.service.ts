@@ -36,6 +36,18 @@ export interface EntryTimingEvaluation {
  * Examples:
  * - LONG: 1hr UP → wait for 5m DOWN correction → enter when 5m turns UP
  * - SHORT: 1hr DOWN → wait for 5m UP correction → enter when 5m turns DOWN
+ *
+ * ⚠️ KNOWN LIMITATIONS:
+ * 1. Correction Depth Measurement (lines 190-215)
+ *    - Uses current MA deviation as proxy instead of tracking actual price extremes
+ *    - May trigger entries before correction fully completes
+ *    - Can result in suboptimal entry prices during deeper corrections
+ *    - See inline TODO for implementation of proper extreme tracking
+ *
+ * 2. No Historical State
+ *    - Each evaluation is stateless (no memory of previous price action)
+ *    - Cannot distinguish between "correction starting" vs "correction ending"
+ *    - Relies on trend direction change to infer reversal
  */
 @Injectable()
 export class EntryTimingService {
@@ -187,17 +199,42 @@ export class EntryTimingService {
     // Determine if there's a correction (opposite direction)
     const isCorrection = this.isCorrection(primaryTrend, shortTrend);
 
-    // NOTE: currentDeviationPct represents CURRENT deviation from MA, not historical correction
-    // For better accuracy, we use this as a proxy for correction magnitude
-    // Future improvement: Track historical price extremes for true correction depth
+    // ⚠️ LIMITATION: Using current MA deviation as correction depth proxy
+    // ──────────────────────────────────────────────────────────────────────
+    // CURRENT APPROACH:
+    //   - Uses trend.change_pct (current price deviation from MA)
+    //   - Example: If price is 2% above MA, we assume 2% correction depth
+    //
+    // PROBLEM:
+    //   - Doesn't track actual price extremes (peak-to-trough movement)
+    //   - Can trigger entries too early during shallow pullbacks
+    //   - Example:
+    //       Price went from $100 → $110 (10% up) → $108 (2% pullback)
+    //       Current approach: Sees 2% deviation, might enter if aligned
+    //       Better approach: Sees 2% correction of a 10% move (not deep enough)
+    //
+    // IMPACT:
+    //   - May enter before correction fully completes
+    //   - Could result in suboptimal entry prices
+    //   - Risk of entering during larger pullback continuation
+    //
+    // TODO: Implement proper correction depth tracking
+    //   1. Track price extremes (highs for LONG, lows for SHORT) per token/timeframe
+    //   2. Calculate: correctionDepth = (currentPrice - extremePrice) / extremePrice
+    //   3. Store extremes with timestamps, reset on trend direction change
+    //   4. Requires: New service/cache for price extreme tracking
+    //   5. Benefit: More accurate correction measurement, better entry timing
+    // ──────────────────────────────────────────────────────────────────────
 
     // Case 1: Trends aligned - potential reversal from correction
     if (trendsAligned) {
-      // Current deviation from MA indicates potential correction magnitude
+      // Current deviation from MA as proxy for correction magnitude
+      // NOTE: This is a simplification - see limitation notes above
       const deviationFromMA = Math.abs(currentDeviationPct);
 
       if (deviationFromMA >= minCorrectionPct) {
         // Strong reversal signal - price deviated significantly and now aligns
+        // ⚠️ May trigger before correction truly completes (see limitation above)
         return {
           shouldEnterNow: true,
           direction,
