@@ -54,7 +54,21 @@ export const hyperliquidConfig = registerAs('hyperliquid', () => ({
   trailingMinIntervalMs: parseInt(
     process.env.HL_TRAILING_MIN_INTERVAL_MS || '300000',
   ), // 5 minutes default
+
+  // AI Prediction configuration
   predictorMinConfidence: parseFloat(
     process.env.HL_PREDICTOR_MIN_CONFIDENCE || '0.6',
   ),
+
+  // Entry timing optimization configuration
+  entryTimingEnabled:
+    process.env.HL_ENTRY_TIMING_ENABLED === 'false' ? false : true, // Default enabled
+  entryTimingShortTimeframe:
+    process.env.HL_ENTRY_TIMING_SHORT_TF || '5m', // 5m or 15m
+  entryTimingMinCorrectionPct: parseFloat(
+    process.env.HL_ENTRY_TIMING_MIN_CORRECTION_PCT || '1.5',
+  ), // Minimum correction depth percentage
+  entryTimingReversalConfidence: parseFloat(
+    process.env.HL_ENTRY_TIMING_REVERSAL_CONFIDENCE || '0.6',
+  ), // Confidence for reversal detection
 }));

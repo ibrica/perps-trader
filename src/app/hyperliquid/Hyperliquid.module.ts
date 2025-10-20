@@ -14,6 +14,7 @@ import { PerpModule } from '../perps';
 import { PredictorModule } from '../predictor/Predictor.module';
 import { CryptoJsService } from '../../infrastructure';
 import { HyperliquidPlatformService } from './HyperliquidPlatform.service';
+import { EntryTimingService } from './EntryTiming.service';
 
 @Module({
   imports: [
@@ -87,6 +88,7 @@ import { HyperliquidPlatformService } from './HyperliquidPlatform.service';
     HyperliquidWebSocketService,
 
     // Platform services
+    EntryTimingService,
     HyperliquidTradingStrategyService,
     HyperliquidTokenDiscoveryService,
     HyperliquidPlatformService,
@@ -94,6 +96,7 @@ import { HyperliquidPlatformService } from './HyperliquidPlatform.service';
   exports: [
     HyperliquidService,
     HyperliquidWebSocketService,
+    EntryTimingService,
     HyperliquidTradingStrategyService,
     HyperliquidTokenDiscoveryService,
     HyperliquidSignatureAdapter,

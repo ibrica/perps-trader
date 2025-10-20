@@ -10,8 +10,11 @@ import {
   TokenCategory,
   PredictionHorizon,
   Recommendation,
+  TrendStatus,
+  TrendTimeframe,
 } from '../../shared/models/predictor/types';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
+import { EntryTimingService } from './EntryTiming.service';
 
 describe('HyperliquidTradingStrategyService', () => {
   let service: HyperliquidTradingStrategyService;
@@ -19,6 +22,7 @@ describe('HyperliquidTradingStrategyService', () => {
   let mockHyperliquidService: jest.Mocked<HyperliquidService>;
   let mockPerpService: jest.Mocked<PerpService>;
   let mockPredictorAdapter: jest.Mocked<PredictorAdapter>;
+  let mockEntryTimingService: jest.Mocked<EntryTimingService>;
 
   const mockTokenAddress = 'So11111111111111111111111111111111111111112';
 
@@ -102,6 +106,11 @@ describe('HyperliquidTradingStrategyService', () => {
 
     mockPredictorAdapter = {
       predictToken: jest.fn(),
+      getTrendsForToken: jest.fn(),
+    } as any;
+
+    mockEntryTimingService = {
+      evaluateEntryTiming: jest.fn(),
     } as any;
 
     const module: TestingModule = await Test.createTestingModule({
@@ -122,6 +131,10 @@ describe('HyperliquidTradingStrategyService', () => {
         {
           provide: PredictorAdapter,
           useValue: mockPredictorAdapter,
+        },
+        {
+          provide: EntryTimingService,
+          useValue: mockEntryTimingService,
         },
       ],
     }).compile();
@@ -170,7 +183,7 @@ describe('HyperliquidTradingStrategyService', () => {
   });
 
   describe('shouldEnterPosition', () => {
-    it('should return BUY decision for buy recommendation', async () => {
+    it('should return BUY decision for buy recommendation with good timing', async () => {
       const mockPrediction = createMockPrediction(Recommendation.BUY);
 
       mockPerpService.findByToken.mockResolvedValue({
@@ -179,6 +192,26 @@ describe('HyperliquidTradingStrategyService', () => {
         perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
+      mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
+        token: 'BTC',
+        timestamp: new Date().toISOString(),
+        trends: {} as any,
+      });
+      mockEntryTimingService.evaluateEntryTiming.mockResolvedValue({
+        shouldEnterNow: true,
+        direction: PositionDirection.LONG,
+        timing: 'reversal_detected',
+        confidence: 0.85,
+        reason: 'Reversal detected',
+        metadata: {
+          primaryTrend: TrendStatus.UP,
+          primaryTimeframe: '1h',
+          correctionTrend: TrendStatus.UP,
+          correctionTimeframe: '5m',
+          reversalDetected: true,
+          trendAlignment: true,
+        },
+      });
       mockConfigService.get.mockImplementation((key: string) => {
         if (key === 'hyperliquid.enabled') return true;
         if (key === 'hyperliquid.predictorMinConfidence') return 0.6;
@@ -191,18 +224,18 @@ describe('HyperliquidTradingStrategyService', () => {
         mockTradingParams,
       );
 
-      expect(result).toEqual({
-        shouldTrade: true,
-        reason: expect.any(String),
-        confidence: 0.85,
-        recommendedAmount: expect.any(Number),
-        metadata: expect.objectContaining({
-          direction: PositionDirection.LONG,
-          aiPrediction: expect.objectContaining({
-            recommendation: Recommendation.BUY,
-            predictedChange: 12.3,
-            confidence: 0.85,
-          }),
+      expect(result.shouldTrade).toBe(true);
+      expect(result.confidence).toBeGreaterThan(0.8); // Combined confidence
+      expect(result.metadata).toMatchObject({
+        direction: PositionDirection.LONG,
+        aiPrediction: expect.objectContaining({
+          recommendation: Recommendation.BUY,
+          predictedChange: 12.3,
+          confidence: 0.85,
+        }),
+        entryTiming: expect.objectContaining({
+          timing: 'reversal_detected',
+          timingConfidence: 0.85,
         }),
       });
 
@@ -212,6 +245,8 @@ describe('HyperliquidTradingStrategyService', () => {
         PredictionHorizon.ONE_HOUR,
         true,
       );
+      expect(mockPredictorAdapter.getTrendsForToken).toHaveBeenCalledWith('BTC');
+      expect(mockEntryTimingService.evaluateEntryTiming).toHaveBeenCalled();
     });
 
     it('should return HOLD when no perp found', async () => {
@@ -272,7 +307,7 @@ describe('HyperliquidTradingStrategyService', () => {
       expect(result.reason).toContain('threshold');
     });
 
-    it('should accept predictions above confidence threshold', async () => {
+    it('should accept predictions above confidence threshold with good timing', async () => {
       const mockPrediction = createMockPrediction(Recommendation.BUY);
       mockPrediction.confidence = 0.75; // Above threshold
 
@@ -282,6 +317,26 @@ describe('HyperliquidTradingStrategyService', () => {
         perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
+      mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
+        token: 'BTC',
+        timestamp: new Date().toISOString(),
+        trends: {} as any,
+      });
+      mockEntryTimingService.evaluateEntryTiming.mockResolvedValue({
+        shouldEnterNow: true,
+        direction: PositionDirection.LONG,
+        timing: 'immediate',
+        confidence: 0.7,
+        reason: 'Good timing',
+        metadata: {
+          primaryTrend: TrendStatus.UP,
+          primaryTimeframe: '1h',
+          correctionTrend: TrendStatus.UP,
+          correctionTimeframe: '5m',
+          reversalDetected: false,
+          trendAlignment: true,
+        },
+      });
       mockConfigService.get.mockImplementation((key: string) => {
         if (key === 'hyperliquid.enabled') return true;
         if (key === 'hyperliquid.predictorMinConfidence') return 0.6;
@@ -295,8 +350,8 @@ describe('HyperliquidTradingStrategyService', () => {
       );
 
       expect(result.shouldTrade).toBe(true);
-      expect(result.confidence).toBe(0.75);
-      expect(result.reason).toContain('AI recommends BUY');
+      expect(result.confidence).toBeGreaterThan(0.7); // Combined confidence
+      expect(result.reason).toContain('AI');
     });
   });
 

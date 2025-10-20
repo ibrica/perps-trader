@@ -16,6 +16,7 @@ import {
   TokenCategory,
 } from '../../shared/models/predictor/types';
 import { PerpService } from '../perps/Perp.service';
+import { EntryTimingService } from './EntryTiming.service';
 
 @Injectable()
 export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPort {
@@ -27,6 +28,7 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
     private hyperliquidService: HyperliquidService,
     private perpService: PerpService,
     private predictorAdapter: PredictorAdapter,
+    private entryTimingService: EntryTimingService,
   ) {
     super();
   }
@@ -132,21 +134,145 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         }
 
         const shouldEnter = aiPrediction.recommendation !== Recommendation.HOLD;
-        const direction =
+
+        if (!shouldEnter) {
+          return {
+            shouldTrade: false,
+            reason: 'AI recommends HOLD',
+            confidence: aiPrediction.confidence,
+            recommendedAmount: 0,
+            metadata: {
+              direction: PositionDirection.LONG,
+              aiPrediction: {
+                recommendation: aiPrediction.recommendation,
+                predictedChange: aiPrediction.percentage_change,
+                confidence: aiPrediction.confidence,
+              },
+            },
+          };
+        }
+
+        const aiDirection =
           aiPrediction.recommendation === Recommendation.BUY
             ? PositionDirection.LONG
             : PositionDirection.SHORT;
 
+        // Check entry timing based on multi-timeframe trends
+        try {
+          const trends = await this.predictorAdapter.getTrendsForToken(token);
+
+          if (trends) {
+            const timingEval = await this.entryTimingService.evaluateEntryTiming(
+              token,
+              trends,
+            );
+
+            // If timing says wait for correction, don't enter yet
+            if (!timingEval.shouldEnterNow) {
+              this.logger.log(
+                `Entry timing: waiting for better entry on ${token}: ${timingEval.reason}`,
+              );
+              return {
+                shouldTrade: false,
+                reason: `Entry timing: ${timingEval.reason}`,
+                confidence: aiPrediction.confidence * timingEval.confidence,
+                recommendedAmount: 0,
+                metadata: {
+                  direction: aiDirection,
+                  aiPrediction: {
+                    recommendation: aiPrediction.recommendation,
+                    predictedChange: aiPrediction.percentage_change,
+                    confidence: aiPrediction.confidence,
+                  },
+                  entryTiming: {
+                    timing: timingEval.timing,
+                    timingConfidence: timingEval.confidence,
+                    reason: timingEval.reason,
+                    ...timingEval.metadata,
+                  },
+                },
+              };
+            }
+
+            // Timing is good, check if direction matches AI prediction
+            if (timingEval.direction !== aiDirection) {
+              this.logger.warn(
+                `Entry timing direction ${timingEval.direction} conflicts with AI direction ${aiDirection} for ${token}`,
+              );
+              return {
+                shouldTrade: false,
+                reason: `Direction mismatch: AI says ${aiDirection}, trends say ${timingEval.direction}`,
+                confidence: aiPrediction.confidence * 0.5,
+                recommendedAmount: 0,
+                metadata: {
+                  direction: aiDirection,
+                  aiPrediction: {
+                    recommendation: aiPrediction.recommendation,
+                    predictedChange: aiPrediction.percentage_change,
+                    confidence: aiPrediction.confidence,
+                  },
+                  entryTiming: {
+                    timing: timingEval.timing,
+                    timingConfidence: timingEval.confidence,
+                    reason: timingEval.reason,
+                    ...timingEval.metadata,
+                  },
+                },
+              };
+            }
+
+            // All checks passed - enter position with combined confidence
+            const combinedConfidence =
+              aiPrediction.confidence * 0.7 + timingEval.confidence * 0.3;
+
+            this.logger.log(
+              `Entry approved for ${token}: AI ${aiPrediction.recommendation} (${aiPrediction.confidence.toFixed(2)}), Timing ${timingEval.timing} (${timingEval.confidence.toFixed(2)}), Combined: ${combinedConfidence.toFixed(2)}`,
+            );
+
+            return {
+              shouldTrade: true,
+              reason: `AI: ${aiPrediction.recommendation} (${aiPrediction.confidence.toFixed(2)}), Timing: ${timingEval.reason}`,
+              confidence: combinedConfidence,
+              recommendedAmount:
+                perp.recommendedAmount || tradingParams.defaultAmountIn,
+              metadata: {
+                direction: aiDirection,
+                aiPrediction: {
+                  recommendation: aiPrediction.recommendation,
+                  predictedChange: aiPrediction.percentage_change,
+                  confidence: aiPrediction.confidence,
+                },
+                entryTiming: {
+                  timing: timingEval.timing,
+                  timingConfidence: timingEval.confidence,
+                  reason: timingEval.reason,
+                  ...timingEval.metadata,
+                },
+                leverage:
+                  perp.defaultLeverage ||
+                  tradingParams.defaultLeverage ||
+                  this.configService.get<number>(
+                    'hyperliquid.defaultLeverage',
+                    3,
+                  ),
+              },
+            };
+          }
+        } catch (error) {
+          this.logger.warn(
+            `Failed to evaluate entry timing for ${token}, proceeding with AI only: ${error.message}`,
+          );
+        }
+
+        // Fallback: if trends unavailable, use AI prediction only
         return {
-          shouldTrade: shouldEnter,
-          reason: shouldEnter
-            ? `AI recommends ${aiPrediction.recommendation} with ${aiPrediction.confidence.toFixed(2)} confidence`
-            : 'AI recommends HOLD',
+          shouldTrade: true,
+          reason: `AI recommends ${aiPrediction.recommendation} with ${aiPrediction.confidence.toFixed(2)} confidence (timing unavailable)`,
           confidence: aiPrediction.confidence,
           recommendedAmount:
             perp.recommendedAmount || tradingParams.defaultAmountIn,
           metadata: {
-            direction,
+            direction: aiDirection,
             aiPrediction: {
               recommendation: aiPrediction.recommendation,
               predictedChange: aiPrediction.percentage_change,
