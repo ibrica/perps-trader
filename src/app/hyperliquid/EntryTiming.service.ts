@@ -159,6 +159,9 @@ export class EntryTimingService {
 
   /**
    * Evaluate timing based on primary and short timeframe trends
+   *
+   * @param currentDeviationPct - Current price deviation from MA (from trend.change_pct)
+   *                               This is NOT historical correction depth, but current snapshot
    */
   private evaluateWithShortTrend(
     token: string,
@@ -167,7 +170,7 @@ export class EntryTimingService {
     primaryTimeframe: string,
     shortTrend: TrendStatus,
     shortTimeframe: string,
-    correctionDepthPct: number,
+    currentDeviationPct: number,
   ): EntryTimingEvaluation {
     const minCorrectionPct = this.configService.get<number>(
       'hyperliquid.entryTimingMinCorrectionPct',
@@ -184,25 +187,29 @@ export class EntryTimingService {
     // Determine if there's a correction (opposite direction)
     const isCorrection = this.isCorrection(primaryTrend, shortTrend);
 
+    // NOTE: currentDeviationPct represents CURRENT deviation from MA, not historical correction
+    // For better accuracy, we use this as a proxy for correction magnitude
+    // Future improvement: Track historical price extremes for true correction depth
+
     // Case 1: Trends aligned - potential reversal from correction
     if (trendsAligned) {
-      // Check if we had sufficient correction depth
-      const correctionDepth = Math.abs(correctionDepthPct);
+      // Current deviation from MA indicates potential correction magnitude
+      const deviationFromMA = Math.abs(currentDeviationPct);
 
-      if (correctionDepth >= minCorrectionPct) {
-        // Strong reversal signal after good correction
+      if (deviationFromMA >= minCorrectionPct) {
+        // Strong reversal signal - price deviated significantly and now aligns
         return {
           shouldEnterNow: true,
           direction,
           timing: 'reversal_detected',
           confidence: 0.85,
-          reason: `Reversal detected: ${shortTimeframe} turned ${shortTrend} after ${correctionDepth.toFixed(1)}% correction, aligning with 1hr ${primaryTrend}`,
+          reason: `Reversal detected: ${shortTimeframe} turned ${shortTrend} with ${deviationFromMA.toFixed(1)}% deviation from MA, aligning with 1hr ${primaryTrend}`,
           metadata: {
             primaryTrend,
             primaryTimeframe,
             correctionTrend: shortTrend,
             correctionTimeframe: shortTimeframe,
-            correctionDepthPct: correctionDepth,
+            correctionDepthPct: deviationFromMA, // Renamed for clarity in metadata
             reversalDetected: true,
             trendAlignment: true,
           },
@@ -221,7 +228,7 @@ export class EntryTimingService {
           primaryTimeframe,
           correctionTrend: shortTrend,
           correctionTimeframe: shortTimeframe,
-          correctionDepthPct: Math.abs(correctionDepthPct),
+          correctionDepthPct: Math.abs(currentDeviationPct),
           reversalDetected: true,
           trendAlignment: true,
         },
@@ -230,20 +237,20 @@ export class EntryTimingService {
 
     // Case 2: Correction in progress - wait for reversal
     if (isCorrection) {
-      const correctionDepth = Math.abs(correctionDepthPct);
+      const deviationFromMA = Math.abs(currentDeviationPct);
 
       return {
         shouldEnterNow: false,
         direction,
         timing: 'wait_correction',
         confidence: reversalConfidence,
-        reason: `Correction in progress: ${shortTimeframe} ${shortTrend} (${correctionDepth.toFixed(1)}% from MA) opposes 1hr ${primaryTrend}, waiting for reversal`,
+        reason: `Correction in progress: ${shortTimeframe} ${shortTrend} (${deviationFromMA.toFixed(1)}% from MA) opposes 1hr ${primaryTrend}, waiting for reversal`,
         metadata: {
           primaryTrend,
           primaryTimeframe,
           correctionTrend: shortTrend,
           correctionTimeframe: shortTimeframe,
-          correctionDepthPct: correctionDepth,
+          correctionDepthPct: deviationFromMA,
           reversalDetected: false,
           trendAlignment: false,
         },
@@ -263,7 +270,7 @@ export class EntryTimingService {
           primaryTimeframe,
           correctionTrend: TrendStatus.NEUTRAL,
           correctionTimeframe: shortTimeframe,
-          correctionDepthPct: Math.abs(correctionDepthPct),
+          correctionDepthPct: Math.abs(currentDeviationPct),
           reversalDetected: false,
           trendAlignment: false,
         },
@@ -282,7 +289,7 @@ export class EntryTimingService {
         primaryTimeframe,
         correctionTrend: shortTrend,
         correctionTimeframe: shortTimeframe,
-        correctionDepthPct: Math.abs(correctionDepthPct),
+        correctionDepthPct: Math.abs(currentDeviationPct),
         reversalDetected: false,
         trendAlignment: false,
       },

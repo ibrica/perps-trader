@@ -336,6 +336,26 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
       const bidPrice = parseFloat(ticker.bid);
       const askPrice = parseFloat(ticker.ask);
 
+      // Validate prices to prevent division by zero or invalid calculations
+      if (
+        !markPrice ||
+        markPrice <= 0 ||
+        !bidPrice ||
+        bidPrice <= 0 ||
+        !askPrice ||
+        askPrice <= 0
+      ) {
+        this.logger.warn(
+          `Invalid ticker prices for ${token}: mark=${markPrice}, bid=${bidPrice}, ask=${askPrice}`,
+        );
+        return {
+          shouldTrade: false,
+          reason: `Invalid ticker prices (mark: ${markPrice}, bid: ${bidPrice}, ask: ${askPrice})`,
+          confidence: 0,
+          metadata: { direction: PositionDirection.LONG },
+        };
+      }
+
       // Simple momentum check
       const spread = (askPrice - bidPrice) / markPrice;
       const momentum = markPrice > (bidPrice + askPrice) / 2 ? 'UP' : 'DOWN';
