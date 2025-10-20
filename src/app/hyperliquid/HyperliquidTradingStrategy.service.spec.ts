@@ -351,8 +351,105 @@ describe('HyperliquidTradingStrategyService', () => {
       );
 
       expect(result.shouldTrade).toBe(true);
-      expect(result.confidence).toBeGreaterThan(0.7); // Combined confidence
+      // Confidence capped by minimum (0.7), not weighted average (0.735)
+      expect(result.confidence).toBe(0.7);
       expect(result.reason).toContain('AI');
+    });
+
+    it('should reject when AI confidence is barely above threshold despite good timing', async () => {
+      const mockPrediction = createMockPrediction(Recommendation.BUY);
+      mockPrediction.confidence = 0.61; // Just above 0.6 threshold
+
+      mockPerpService.findByToken.mockResolvedValue({
+        token: 'BTC',
+        currency: Currency.USDC,
+        perpSymbol: 'BTC-USDC',
+      } as any);
+      mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
+      mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
+        token: 'BTC',
+        timestamp: new Date().toISOString(),
+        trends: {} as any,
+      });
+      mockEntryTimingService.evaluateEntryTiming.mockResolvedValue({
+        shouldEnterNow: true,
+        direction: PositionDirection.LONG,
+        timing: 'reversal_detected',
+        confidence: 0.85, // High timing confidence
+        reason: 'Strong reversal',
+        metadata: {
+          primaryTrend: TrendStatus.UP,
+          primaryTimeframe: '1h',
+          correctionTrend: TrendStatus.UP,
+          correctionTimeframe: '5m',
+          reversalDetected: true,
+          trendAlignment: true,
+        },
+      });
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'hyperliquid.enabled') return true;
+        if (key === 'hyperliquid.predictorMinConfidence') return 0.6;
+        if (key === 'hyperliquid.defaultLeverage') return 3;
+        return undefined;
+      });
+
+      const result = await service.shouldEnterPosition(
+        'BTC',
+        mockTradingParams,
+      );
+
+      // Should reject because AI buffer (0.61 - 0.6 = 0.01) is < 0.05
+      expect(result.shouldTrade).toBe(false);
+      expect(result.reason).toContain('too close to threshold');
+      expect(result.reason).toContain('0.05 buffer');
+    });
+
+    it('should use minimum confidence when combining AI and timing', async () => {
+      const mockPrediction = createMockPrediction(Recommendation.BUY);
+      mockPrediction.confidence = 0.7; // Moderate AI confidence
+
+      mockPerpService.findByToken.mockResolvedValue({
+        token: 'BTC',
+        currency: Currency.USDC,
+        perpSymbol: 'BTC-USDC',
+      } as any);
+      mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
+      mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
+        token: 'BTC',
+        timestamp: new Date().toISOString(),
+        trends: {} as any,
+      });
+      mockEntryTimingService.evaluateEntryTiming.mockResolvedValue({
+        shouldEnterNow: true,
+        direction: PositionDirection.LONG,
+        timing: 'reversal_detected',
+        confidence: 0.9, // Higher timing confidence
+        reason: 'Strong reversal',
+        metadata: {
+          primaryTrend: TrendStatus.UP,
+          primaryTimeframe: '1h',
+          correctionTrend: TrendStatus.UP,
+          correctionTimeframe: '5m',
+          reversalDetected: true,
+          trendAlignment: true,
+        },
+      });
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'hyperliquid.enabled') return true;
+        if (key === 'hyperliquid.predictorMinConfidence') return 0.6;
+        if (key === 'hyperliquid.defaultLeverage') return 3;
+        return undefined;
+      });
+
+      const result = await service.shouldEnterPosition(
+        'BTC',
+        mockTradingParams,
+      );
+
+      expect(result.shouldTrade).toBe(true);
+      // Combined should be capped by minimum (0.7), not weighted average (0.76)
+      expect(result.confidence).toBeLessThanOrEqual(0.7);
+      expect(result.confidence).toBeGreaterThan(0.65);
     });
   });
 

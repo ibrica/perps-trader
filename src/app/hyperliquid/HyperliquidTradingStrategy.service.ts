@@ -219,12 +219,54 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
               };
             }
 
-            // All checks passed - enter position with combined confidence
-            const combinedConfidence =
+            // All checks passed - calculate combined confidence
+            // Use minimum of AI and timing to prevent masking weak signals
+            const minConfidence = Math.min(
+              aiPrediction.confidence,
+              timingEval.confidence,
+            );
+            const weightedAverage =
               aiPrediction.confidence * 0.7 + timingEval.confidence * 0.3;
 
+            // Final confidence is weighted average, but capped by minimum
+            // This prevents high timing from masking weak AI (or vice versa)
+            const combinedConfidence = Math.min(weightedAverage, minConfidence);
+
+            // Additional safety: reject if AI is barely above threshold even with good timing
+            const minConfidenceThreshold = this.configService.get<number>(
+              'hyperliquid.predictorMinConfidence',
+              0.6,
+            );
+            const aiBuffer = aiPrediction.confidence - minConfidenceThreshold;
+
+            if (aiBuffer < 0.05 && timingEval.confidence > 0.75) {
+              this.logger.warn(
+                `Rejecting ${token}: AI confidence ${aiPrediction.confidence.toFixed(2)} too close to threshold ${minConfidenceThreshold} (buffer: ${aiBuffer.toFixed(2)}), despite good timing ${timingEval.confidence.toFixed(2)}`,
+              );
+              return {
+                shouldTrade: false,
+                reason: `AI confidence ${aiPrediction.confidence.toFixed(2)} too close to threshold ${minConfidenceThreshold} (need ≥0.05 buffer)`,
+                confidence: combinedConfidence,
+                recommendedAmount: 0,
+                metadata: {
+                  direction: aiDirection,
+                  aiPrediction: {
+                    recommendation: aiPrediction.recommendation,
+                    predictedChange: aiPrediction.percentage_change,
+                    confidence: aiPrediction.confidence,
+                  },
+                  entryTiming: {
+                    timing: timingEval.timing,
+                    timingConfidence: timingEval.confidence,
+                    reason: timingEval.reason,
+                    ...timingEval.metadata,
+                  },
+                },
+              };
+            }
+
             this.logger.log(
-              `Entry approved for ${token}: AI ${aiPrediction.recommendation} (${aiPrediction.confidence.toFixed(2)}), Timing ${timingEval.timing} (${timingEval.confidence.toFixed(2)}), Combined: ${combinedConfidence.toFixed(2)}`,
+              `Entry approved for ${token}: AI ${aiPrediction.recommendation} (${aiPrediction.confidence.toFixed(2)}), Timing ${timingEval.timing} (${timingEval.confidence.toFixed(2)}), Combined: ${combinedConfidence.toFixed(2)} (min: ${minConfidence.toFixed(2)}, weighted: ${weightedAverage.toFixed(2)})`,
             );
 
             return {
