@@ -12,7 +12,6 @@ import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 
 describe('TrailingService', () => {
   let service: TrailingService;
-  let configService: jest.Mocked<ConfigService>;
   let predictorAdapter: jest.Mocked<PredictorAdapter>;
 
   beforeEach(async () => {
@@ -48,7 +47,6 @@ describe('TrailingService', () => {
     }).compile();
 
     service = module.get<TrailingService>(TrailingService);
-    configService = module.get(ConfigService);
     predictorAdapter = module.get(PredictorAdapter);
   });
 

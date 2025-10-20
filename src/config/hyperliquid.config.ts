@@ -63,8 +63,7 @@ export const hyperliquidConfig = registerAs('hyperliquid', () => ({
   // Entry timing optimization configuration
   entryTimingEnabled:
     process.env.HL_ENTRY_TIMING_ENABLED === 'false' ? false : true, // Default enabled
-  entryTimingShortTimeframe:
-    process.env.HL_ENTRY_TIMING_SHORT_TF || '5m', // 5m or 15m
+  entryTimingShortTimeframe: process.env.HL_ENTRY_TIMING_SHORT_TF || '5m', // 5m or 15m
   entryTimingMinCorrectionPct: parseFloat(
     process.env.HL_ENTRY_TIMING_MIN_CORRECTION_PCT || '1.5',
   ), // Minimum correction depth percentage

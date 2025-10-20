@@ -11,7 +11,6 @@ import {
   PredictionHorizon,
   Recommendation,
   TrendStatus,
-  TrendTimeframe,
 } from '../../shared/models/predictor/types';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 import { EntryTimingService } from './EntryTiming.service';
@@ -245,7 +244,9 @@ describe('HyperliquidTradingStrategyService', () => {
         PredictionHorizon.ONE_HOUR,
         true,
       );
-      expect(mockPredictorAdapter.getTrendsForToken).toHaveBeenCalledWith('BTC');
+      expect(mockPredictorAdapter.getTrendsForToken).toHaveBeenCalledWith(
+        'BTC',
+      );
       expect(mockEntryTimingService.evaluateEntryTiming).toHaveBeenCalled();
     });
 

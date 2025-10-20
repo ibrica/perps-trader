@@ -184,9 +184,6 @@ export class EntryTimingService {
     // Determine if there's a correction (opposite direction)
     const isCorrection = this.isCorrection(primaryTrend, shortTrend);
 
-    // Determine if reversal is happening (short trend matches primary)
-    const isReversal = trendsAligned;
-
     // Case 1: Trends aligned - potential reversal from correction
     if (trendsAligned) {
       // Check if we had sufficient correction depth
@@ -353,9 +350,7 @@ export class EntryTimingService {
   /**
    * Create immediate entry evaluation (when timing optimization is disabled)
    */
-  private createImmediateEntry(
-    trends: TrendsResponse,
-  ): EntryTimingEvaluation {
+  private createImmediateEntry(trends: TrendsResponse): EntryTimingEvaluation {
     const primaryTrend = trends.trends[TrendTimeframe.ONE_HOUR];
 
     if (!isTrendDefined(primaryTrend)) {

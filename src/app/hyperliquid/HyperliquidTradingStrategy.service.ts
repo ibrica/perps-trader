@@ -162,10 +162,8 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
           const trends = await this.predictorAdapter.getTrendsForToken(token);
 
           if (trends) {
-            const timingEval = await this.entryTimingService.evaluateEntryTiming(
-              token,
-              trends,
-            );
+            const timingEval =
+              await this.entryTimingService.evaluateEntryTiming(token, trends);
 
             // If timing says wait for correction, don't enter yet
             if (!timingEval.shouldEnterNow) {
