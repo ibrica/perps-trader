@@ -102,6 +102,35 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
       }
 
       if (aiPrediction) {
+        // Check confidence threshold
+        const minConfidence = this.configService.get<number>(
+          'hyperliquid.predictorMinConfidence',
+          0.6,
+        );
+
+        if (aiPrediction.confidence < minConfidence) {
+          this.logger.debug(
+            `AI confidence ${aiPrediction.confidence.toFixed(2)} below threshold ${minConfidence} for ${token}`,
+          );
+          return {
+            shouldTrade: false,
+            reason: `AI confidence ${aiPrediction.confidence.toFixed(2)} below threshold ${minConfidence}`,
+            confidence: aiPrediction.confidence,
+            recommendedAmount: 0,
+            metadata: {
+              direction:
+                aiPrediction.recommendation === Recommendation.BUY
+                  ? PositionDirection.LONG
+                  : PositionDirection.SHORT,
+              aiPrediction: {
+                recommendation: aiPrediction.recommendation,
+                predictedChange: aiPrediction.percentage_change,
+                confidence: aiPrediction.confidence,
+              },
+            },
+          };
+        }
+
         const shouldEnter = aiPrediction.recommendation !== Recommendation.HOLD;
         const direction =
           aiPrediction.recommendation === Recommendation.BUY

@@ -179,7 +179,12 @@ describe('HyperliquidTradingStrategyService', () => {
         perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
-      mockConfigService.get.mockReturnValue(true);
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'hyperliquid.enabled') return true;
+        if (key === 'hyperliquid.predictorMinConfidence') return 0.6;
+        if (key === 'hyperliquid.defaultLeverage') return 3;
+        return undefined;
+      });
 
       const result = await service.shouldEnterPosition(
         'BTC',
@@ -239,9 +244,9 @@ describe('HyperliquidTradingStrategyService', () => {
       expect(result.reason).toBe('Hyperliquid trading is disabled');
     });
 
-    it('should return BUY for low confidence predictions (service uses AI prediction directly)', async () => {
+    it('should reject low confidence predictions below threshold', async () => {
       const mockPrediction = createMockPrediction(Recommendation.BUY);
-      mockPrediction.confidence = 0.3; // Low confidence
+      mockPrediction.confidence = 0.3; // Low confidence (below default 0.6)
 
       mockPerpService.findByToken.mockResolvedValue({
         token: 'BTC',
@@ -249,16 +254,49 @@ describe('HyperliquidTradingStrategyService', () => {
         perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
-      mockConfigService.get.mockReturnValue(true);
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'hyperliquid.enabled') return true;
+        if (key === 'hyperliquid.predictorMinConfidence') return 0.6;
+        return undefined;
+      });
 
       const result = await service.shouldEnterPosition(
         'BTC',
         mockTradingParams,
       );
 
-      // Service uses AI prediction directly without confidence threshold
-      expect(result.shouldTrade).toBe(true);
+      // Service now enforces confidence threshold
+      expect(result.shouldTrade).toBe(false);
       expect(result.confidence).toBe(0.3);
+      expect(result.reason).toContain('confidence');
+      expect(result.reason).toContain('threshold');
+    });
+
+    it('should accept predictions above confidence threshold', async () => {
+      const mockPrediction = createMockPrediction(Recommendation.BUY);
+      mockPrediction.confidence = 0.75; // Above threshold
+
+      mockPerpService.findByToken.mockResolvedValue({
+        token: 'BTC',
+        currency: Currency.USDC,
+        perpSymbol: 'BTC-USDC',
+      } as any);
+      mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
+      mockConfigService.get.mockImplementation((key: string) => {
+        if (key === 'hyperliquid.enabled') return true;
+        if (key === 'hyperliquid.predictorMinConfidence') return 0.6;
+        if (key === 'hyperliquid.defaultLeverage') return 3;
+        return undefined;
+      });
+
+      const result = await service.shouldEnterPosition(
+        'BTC',
+        mockTradingParams,
+      );
+
+      expect(result.shouldTrade).toBe(true);
+      expect(result.confidence).toBe(0.75);
+      expect(result.reason).toContain('AI recommends BUY');
     });
   });
 
