@@ -981,7 +981,9 @@ describe('HyperliquidPlatformService', () => {
           'pos-456',
           2695,
         ),
-      ).rejects.toThrow('Failed to create new TP order for ETH: orderId is missing');
+      ).rejects.toThrow(
+        'Failed to create new TP order for ETH: orderId is missing',
+      );
 
       // And: Old orders NOT cancelled
       expect(hyperliquidService.cancelOrder).not.toHaveBeenCalled();
@@ -1096,9 +1098,18 @@ describe('HyperliquidPlatformService', () => {
 
       // Then: All old orders cancelled
       expect(hyperliquidService.cancelOrder).toHaveBeenCalledTimes(3);
-      expect(hyperliquidService.cancelOrder).toHaveBeenCalledWith('old-tp-1', 'ETH');
-      expect(hyperliquidService.cancelOrder).toHaveBeenCalledWith('old-tp-2', 'ETH');
-      expect(hyperliquidService.cancelOrder).toHaveBeenCalledWith('old-tp-3', 'ETH');
+      expect(hyperliquidService.cancelOrder).toHaveBeenCalledWith(
+        'old-tp-1',
+        'ETH',
+      );
+      expect(hyperliquidService.cancelOrder).toHaveBeenCalledWith(
+        'old-tp-2',
+        'ETH',
+      );
+      expect(hyperliquidService.cancelOrder).toHaveBeenCalledWith(
+        'old-tp-3',
+        'ETH',
+      );
 
       // And: Returns correct count
       expect(result.cancelledCount).toBe(3);

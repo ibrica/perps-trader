@@ -41,24 +41,63 @@ The platform is focused exclusively on Hyperliquid perpetual futures trading:
 
 ### 2. Trading Engine Components
 
+**📖 IMPORTANT**: For detailed trading decision logic, see [docs/trade-decision-flow.md](docs/trade-decision-flow.md)
+
+This document explains the complete trade lifecycle: token discovery → entry decision → monitoring → exit.
+
+#### High-Level Trading Flow
+
+```
+Token Discovery → Entry Decision → Position Opened → Monitoring → Exit Decision
+       ↓               ↓                                  ↓            ↓
+   buyFlag=true   AI + Timing              Every minute cron      SL/TP or AI
+   Market active  Confidence ≥0.6          Trailing stops         exit signal
+```
+
+**Key Decision Points:**
+
+1. **Token Discovery** (`HyperliquidTokenDiscovery`)
+   - Filters: `buyFlag=true`, `isActive=true`, market spread <10%
+   - Prevents duplicate positions via automatic `buyFlag=false` after entry
+
+2. **Entry Decision** (`HyperliquidTradingStrategy.shouldEnterPosition`)
+   - **AI Confidence**: Minimum 0.6 threshold (configurable via `HL_PREDICTOR_MIN_CONFIDENCE`)
+   - **Entry Timing**: Waits for corrective movements then reversal (multi-timeframe trend analysis)
+     - Primary trend (1hr) determines direction (LONG/SHORT)
+     - Short trend (5m/15m) detects corrections and reversals
+     - Only enters when trends align or reversal detected
+   - **Combined Score**: 70% AI confidence + 30% timing confidence
+
+3. **Position Monitoring** (`TradeMonitorScheduler` - every minute)
+   - **Trailing SL/TP**: Activates at 80% progress to take-profit
+     - New SL: current price ± 2%
+     - New TP: current price ± 10%
+   - Rate limited to 5 minutes between trailing updates
+
+4. **Exit Decision** (`TradeManager.shouldClosePosition`)
+   - Priority 1: Manual triggers (`closeAllPositions`, `exitFlag`)
+   - Priority 2: SL/TP breach (fallback if exchange orders fail)
+   - Priority 3: AI exit recommendation (direction reversal or adverse movement)
+
 #### Trade Manager Service
 
 - Orchestrates trading operations on Hyperliquid
 - Manages trade positions and lifecycle
-- Handles entry/exit decisions based on AI predictions
+- Handles entry/exit decisions based on AI predictions + timing signals
 - Monitors real-time market data and executes trades
 
 #### Hyperliquid Service
 
 - **HyperliquidService**: Handles API integration and order execution
-- **HyperliquidTradingStrategy**: AI-powered entry/exit decision logic
-- **HyperliquidTokenDiscovery**: Token/symbol discovery and mapping
+- **HyperliquidTradingStrategy**: AI-powered entry/exit decision logic with timing optimization
+- **HyperliquidTokenDiscovery**: Token/symbol discovery and market validation
+- **EntryTimingService**: Multi-timeframe trend analysis for optimal entry timing
 
 #### Job Scheduling
 
 - **TradeMonitorScheduler**: NestJS Schedule-based cron job (every minute)
 - **Distributed Locking**: MongoDB-based locks to prevent duplicate execution
-- **Position Monitoring**: Continuous monitoring and automated closing
+- **Position Monitoring**: Continuous monitoring with trailing stops and exit evaluation
 
 ### 3. AI Integration
 
@@ -323,3 +362,44 @@ Simple error hierarchy in `src/shared/`:
 - **No Redis/ClickHouse**: Simplified to MongoDB only
 - **NestJS Schedule**: Simple cron jobs, no message queues
 - **Production ready**: Docker, monitoring, health checks included
+
+## Trading Decision Logic (Recent Enhancements)
+
+**See [docs/trade-decision-flow.md](docs/trade-decision-flow.md) for complete details**
+
+Recent improvements to entry logic:
+
+1. **AI Confidence Threshold** (v2024.1)
+   - Config: `HL_PREDICTOR_MIN_CONFIDENCE=0.6` (default)
+   - Rejects AI predictions below threshold to prevent low-quality trades
+   - File: [HyperliquidTradingStrategy.service.ts:111-134](src/app/hyperliquid/HyperliquidTradingStrategy.service.ts#L111-L134)
+
+2. **Entry Timing Optimization** (v2024.1)
+   - Multi-timeframe trend analysis (1hr + 5m/15m)
+   - Waits for corrections then enters on reversal
+   - Prevents entering at local tops/bottoms
+   - Config: `HL_ENTRY_TIMING_ENABLED=true` (default)
+   - Files:
+     - [EntryTiming.service.ts](src/app/hyperliquid/EntryTiming.service.ts) - Core timing logic
+     - [HyperliquidTradingStrategy.service.ts:160-286](src/app/hyperliquid/HyperliquidTradingStrategy.service.ts#L160-L286) - Integration
+
+3. **Combined Confidence Scoring**
+   - Final score = 70% AI confidence + 30% timing confidence
+   - Both signals must align for entry approval
+
+**Key Configuration**:
+```bash
+# AI Confidence
+HL_PREDICTOR_MIN_CONFIDENCE=0.6
+
+# Entry Timing
+HL_ENTRY_TIMING_ENABLED=true
+HL_ENTRY_TIMING_SHORT_TF=5m
+HL_ENTRY_TIMING_MIN_CORRECTION_PCT=1.5
+HL_ENTRY_TIMING_REVERSAL_CONFIDENCE=0.6
+
+# Trailing Stops
+HL_TRAILING_ACTIVATION_RATIO=0.8
+HL_TRAILING_STOP_OFFSET_PERCENT=2
+HL_TRAILING_TP_OFFSET_PERCENT=10
+```

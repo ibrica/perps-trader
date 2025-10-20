@@ -5,6 +5,7 @@ import { HyperliquidClient } from '../../infrastructure/hyperliquid/HyperliquidC
 import { HyperliquidSignatureAdapter } from '../../infrastructure/hyperliquid/HyperliquidSignatureAdapter';
 import { HyperliquidTradingStrategyService } from './HyperliquidTradingStrategy.service';
 import { HyperliquidTokenDiscoveryService } from './HyperliquidTokenDiscovery.service';
+import { EntryTimingService } from './EntryTiming.service';
 import { PerpService } from '../perps/Perp.service';
 import { PredictorAdapter } from '../../infrastructure/predictor/PredictorAdapter';
 import { CryptoJsService } from '../../infrastructure';
@@ -109,6 +110,7 @@ describe('HyperliquidModule Integration', () => {
         // Main service
         HyperliquidService,
         // Platform services
+        EntryTimingService,
         HyperliquidTradingStrategyService,
         HyperliquidTokenDiscoveryService,
       ],

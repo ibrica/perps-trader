@@ -16,6 +16,7 @@ import {
   TokenCategory,
 } from '../../shared/models/predictor/types';
 import { PerpService } from '../perps/Perp.service';
+import { EntryTimingService } from './EntryTiming.service';
 
 @Injectable()
 export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPort {
@@ -27,6 +28,7 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
     private hyperliquidService: HyperliquidService,
     private perpService: PerpService,
     private predictorAdapter: PredictorAdapter,
+    private entryTimingService: EntryTimingService,
   ) {
     super();
   }
@@ -102,22 +104,216 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
       }
 
       if (aiPrediction) {
+        // Check confidence threshold
+        const minConfidence = this.configService.get<number>(
+          'hyperliquid.predictorMinConfidence',
+          0.6,
+        );
+
+        if (aiPrediction.confidence < minConfidence) {
+          this.logger.debug(
+            `AI confidence ${aiPrediction.confidence.toFixed(2)} below threshold ${minConfidence} for ${token}`,
+          );
+          return {
+            shouldTrade: false,
+            reason: `AI confidence ${aiPrediction.confidence.toFixed(2)} below threshold ${minConfidence}`,
+            confidence: aiPrediction.confidence,
+            recommendedAmount: 0,
+            metadata: {
+              direction:
+                aiPrediction.recommendation === Recommendation.BUY
+                  ? PositionDirection.LONG
+                  : PositionDirection.SHORT,
+              aiPrediction: {
+                recommendation: aiPrediction.recommendation,
+                predictedChange: aiPrediction.percentage_change,
+                confidence: aiPrediction.confidence,
+              },
+            },
+          };
+        }
+
         const shouldEnter = aiPrediction.recommendation !== Recommendation.HOLD;
-        const direction =
+
+        if (!shouldEnter) {
+          return {
+            shouldTrade: false,
+            reason: 'AI recommends HOLD',
+            confidence: aiPrediction.confidence,
+            recommendedAmount: 0,
+            metadata: {
+              direction: PositionDirection.LONG,
+              aiPrediction: {
+                recommendation: aiPrediction.recommendation,
+                predictedChange: aiPrediction.percentage_change,
+                confidence: aiPrediction.confidence,
+              },
+            },
+          };
+        }
+
+        const aiDirection =
           aiPrediction.recommendation === Recommendation.BUY
             ? PositionDirection.LONG
             : PositionDirection.SHORT;
 
+        // Check entry timing based on multi-timeframe trends
+        try {
+          const trends = await this.predictorAdapter.getTrendsForToken(token);
+
+          if (trends) {
+            const timingEval =
+              await this.entryTimingService.evaluateEntryTiming(token, trends);
+
+            // IMPORTANT: Check direction alignment FIRST before waiting
+            // This prevents wasting time waiting for corrections when directions conflict
+            if (timingEval.direction && timingEval.direction !== aiDirection) {
+              this.logger.warn(
+                `Direction mismatch detected early for ${token}: AI says ${aiDirection}, trends say ${timingEval.direction}. Skipping timing evaluation.`,
+              );
+              return {
+                shouldTrade: false,
+                reason: `Direction mismatch: AI says ${aiDirection}, trends say ${timingEval.direction}`,
+                confidence: aiPrediction.confidence * 0.5,
+                recommendedAmount: 0,
+                metadata: {
+                  direction: aiDirection,
+                  aiPrediction: {
+                    recommendation: aiPrediction.recommendation,
+                    predictedChange: aiPrediction.percentage_change,
+                    confidence: aiPrediction.confidence,
+                  },
+                  entryTiming: {
+                    timing: timingEval.timing,
+                    timingConfidence: timingEval.confidence,
+                    reason: timingEval.reason,
+                    ...timingEval.metadata,
+                  },
+                },
+              };
+            }
+
+            // Direction alignment is good, now check if timing says to wait
+            if (!timingEval.shouldEnterNow) {
+              this.logger.log(
+                `Entry timing: waiting for better entry on ${token}: ${timingEval.reason}`,
+              );
+              return {
+                shouldTrade: false,
+                reason: `Entry timing: ${timingEval.reason}`,
+                confidence: aiPrediction.confidence * timingEval.confidence,
+                recommendedAmount: 0,
+                metadata: {
+                  direction: aiDirection,
+                  aiPrediction: {
+                    recommendation: aiPrediction.recommendation,
+                    predictedChange: aiPrediction.percentage_change,
+                    confidence: aiPrediction.confidence,
+                  },
+                  entryTiming: {
+                    timing: timingEval.timing,
+                    timingConfidence: timingEval.confidence,
+                    reason: timingEval.reason,
+                    ...timingEval.metadata,
+                  },
+                },
+              };
+            }
+
+            // All checks passed - calculate combined confidence
+            // Use minimum of AI and timing to prevent masking weak signals
+            const minConfidence = Math.min(
+              aiPrediction.confidence,
+              timingEval.confidence,
+            );
+            const weightedAverage =
+              aiPrediction.confidence * 0.7 + timingEval.confidence * 0.3;
+
+            // Final confidence is weighted average, but capped by minimum
+            // This prevents high timing from masking weak AI (or vice versa)
+            const combinedConfidence = Math.min(weightedAverage, minConfidence);
+
+            // Additional safety: reject if AI is barely above threshold even with good timing
+            const minConfidenceThreshold = this.configService.get<number>(
+              'hyperliquid.predictorMinConfidence',
+              0.6,
+            );
+            const aiBuffer = aiPrediction.confidence - minConfidenceThreshold;
+
+            if (aiBuffer < 0.05 && timingEval.confidence > 0.75) {
+              this.logger.warn(
+                `Rejecting ${token}: AI confidence ${aiPrediction.confidence.toFixed(2)} too close to threshold ${minConfidenceThreshold} (buffer: ${aiBuffer.toFixed(2)}), despite good timing ${timingEval.confidence.toFixed(2)}`,
+              );
+              return {
+                shouldTrade: false,
+                reason: `AI confidence ${aiPrediction.confidence.toFixed(2)} too close to threshold ${minConfidenceThreshold} (need ≥0.05 buffer)`,
+                confidence: combinedConfidence,
+                recommendedAmount: 0,
+                metadata: {
+                  direction: aiDirection,
+                  aiPrediction: {
+                    recommendation: aiPrediction.recommendation,
+                    predictedChange: aiPrediction.percentage_change,
+                    confidence: aiPrediction.confidence,
+                  },
+                  entryTiming: {
+                    timing: timingEval.timing,
+                    timingConfidence: timingEval.confidence,
+                    reason: timingEval.reason,
+                    ...timingEval.metadata,
+                  },
+                },
+              };
+            }
+
+            this.logger.log(
+              `Entry approved for ${token}: AI ${aiPrediction.recommendation} (${aiPrediction.confidence.toFixed(2)}), Timing ${timingEval.timing} (${timingEval.confidence.toFixed(2)}), Combined: ${combinedConfidence.toFixed(2)} (min: ${minConfidence.toFixed(2)}, weighted: ${weightedAverage.toFixed(2)})`,
+            );
+
+            return {
+              shouldTrade: true,
+              reason: `AI: ${aiPrediction.recommendation} (${aiPrediction.confidence.toFixed(2)}), Timing: ${timingEval.reason}`,
+              confidence: combinedConfidence,
+              recommendedAmount:
+                perp.recommendedAmount || tradingParams.defaultAmountIn,
+              metadata: {
+                direction: aiDirection,
+                aiPrediction: {
+                  recommendation: aiPrediction.recommendation,
+                  predictedChange: aiPrediction.percentage_change,
+                  confidence: aiPrediction.confidence,
+                },
+                entryTiming: {
+                  timing: timingEval.timing,
+                  timingConfidence: timingEval.confidence,
+                  reason: timingEval.reason,
+                  ...timingEval.metadata,
+                },
+                leverage:
+                  perp.defaultLeverage ||
+                  tradingParams.defaultLeverage ||
+                  this.configService.get<number>(
+                    'hyperliquid.defaultLeverage',
+                    3,
+                  ),
+              },
+            };
+          }
+        } catch (error) {
+          this.logger.warn(
+            `Failed to evaluate entry timing for ${token}, proceeding with AI only: ${error.message}`,
+          );
+        }
+
+        // Fallback: if trends unavailable, use AI prediction only
         return {
-          shouldTrade: shouldEnter,
-          reason: shouldEnter
-            ? `AI recommends ${aiPrediction.recommendation} with ${aiPrediction.confidence.toFixed(2)} confidence`
-            : 'AI recommends HOLD',
+          shouldTrade: true,
+          reason: `AI recommends ${aiPrediction.recommendation} with ${aiPrediction.confidence.toFixed(2)} confidence (timing unavailable)`,
           confidence: aiPrediction.confidence,
           recommendedAmount:
             perp.recommendedAmount || tradingParams.defaultAmountIn,
           metadata: {
-            direction,
+            direction: aiDirection,
             aiPrediction: {
               recommendation: aiPrediction.recommendation,
               predictedChange: aiPrediction.percentage_change,
@@ -136,6 +332,26 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
       const markPrice = parseFloat(ticker.mark);
       const bidPrice = parseFloat(ticker.bid);
       const askPrice = parseFloat(ticker.ask);
+
+      // Validate prices to prevent division by zero or invalid calculations
+      if (
+        !markPrice ||
+        markPrice <= 0 ||
+        !bidPrice ||
+        bidPrice <= 0 ||
+        !askPrice ||
+        askPrice <= 0
+      ) {
+        this.logger.warn(
+          `Invalid ticker prices for ${token}: mark=${markPrice}, bid=${bidPrice}, ask=${askPrice}`,
+        );
+        return {
+          shouldTrade: false,
+          reason: `Invalid ticker prices (mark: ${markPrice}, bid: ${bidPrice}, ask: ${askPrice})`,
+          confidence: 0,
+          metadata: { direction: PositionDirection.LONG },
+        };
+      }
 
       // Simple momentum check
       const spread = (askPrice - bidPrice) / markPrice;
