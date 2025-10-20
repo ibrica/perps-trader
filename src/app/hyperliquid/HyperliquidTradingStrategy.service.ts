@@ -167,10 +167,7 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
 
             // IMPORTANT: Check direction alignment FIRST before waiting
             // This prevents wasting time waiting for corrections when directions conflict
-            if (
-              timingEval.direction &&
-              timingEval.direction !== aiDirection
-            ) {
+            if (timingEval.direction && timingEval.direction !== aiDirection) {
               this.logger.warn(
                 `Direction mismatch detected early for ${token}: AI says ${aiDirection}, trends say ${timingEval.direction}. Skipping timing evaluation.`,
               );
