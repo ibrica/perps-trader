@@ -6,6 +6,7 @@ import {
   isTrendDefined,
 } from '../../models/predictor/types';
 import { PositionDirection } from '../../constants/PositionDirection';
+import { ExtremeTrackingService } from './ExtremeTrackingService';
 
 export interface EntryTimingConfig {
   /** Enable/disable entry timing optimization */
@@ -16,6 +17,10 @@ export interface EntryTimingConfig {
   minCorrectionPct: number;
   /** Confidence threshold for reversal detection (default: 0.6) */
   reversalConfidence: number;
+  /** Enable real OHLCV-based extreme tracking (default: true) */
+  useRealExtremes: boolean;
+  /** Lookback period in minutes for extreme tracking (default: 60) */
+  extremeLookbackMinutes: number;
 }
 
 export interface EntryTimingEvaluation {
@@ -41,36 +46,43 @@ export interface EntryTimingEvaluation {
  * Strategy:
  * 1. Identify primary trend (1hr) for position direction
  * 2. Monitor shorter timeframes (5m, 15m) for corrective movements
- * 3. Enter when correction reverses back toward primary trend
+ * 3. Track actual price extremes (highs/lows) from OHLCV data
+ * 4. Calculate real correction depth from extremes
+ * 5. Enter when correction reverses back toward primary trend with sufficient depth
  *
  * Examples:
- * - LONG: 1hr UP → wait for 5m DOWN correction → enter when 5m turns UP
- * - SHORT: 1hr DOWN → wait for 5m UP correction → enter when 5m turns DOWN
+ * - LONG: 1hr UP → wait for price to drop from recent high → enter when 5m turns UP
+ * - SHORT: 1hr DOWN → wait for price to rise from recent low → enter when 5m turns DOWN
  *
- * ⚠️ KNOWN LIMITATIONS:
- * 1. Correction Depth Measurement (lines 190-215)
- *    - Uses current MA deviation as proxy instead of tracking actual price extremes
- *    - May trigger entries before correction fully completes
- *    - Can result in suboptimal entry prices during deeper corrections
- *    - See inline TODO for implementation of proper extreme tracking
+ * ✅ IMPROVEMENTS (v2):
+ * 1. Real Extreme Tracking
+ *    - Uses actual OHLCV highs/lows instead of MA deviation proxy
+ *    - Tracks peak/bottom prices from 1-minute candles
+ *    - Accurate correction depth measurement
  *
- * 2. No Historical State
- *    - Each evaluation is stateless (no memory of previous price action)
- *    - Cannot distinguish between "correction starting" vs "correction ending"
- *    - Relies on trend direction change to infer reversal
+ * 2. Configurable Lookback Period
+ *    - Adjustable time window for extreme detection (default: 60 minutes)
+ *    - Prevents false entries from stale extremes
  */
 @Injectable()
 export class EntryTimingService {
   private readonly logger = new Logger(EntryTimingService.name);
 
-  constructor(private readonly config: EntryTimingConfig) {}
+  constructor(
+    private readonly config: EntryTimingConfig,
+    private readonly extremeTracker?: ExtremeTrackingService,
+  ) {}
 
   /**
    * Evaluate entry timing for a token based on multi-timeframe trends
+   * @param token Token symbol
+   * @param trends Trend data from predictor
+   * @param currentPrice Current token price (required for extreme-based correction depth)
    */
   async evaluateEntryTiming(
     token: string,
     trends: TrendsResponse,
+    currentPrice?: number,
   ): Promise<EntryTimingEvaluation> {
     if (!this.config.enabled) {
       this.logger.debug(
@@ -152,7 +164,7 @@ export class EntryTimingService {
       }
 
       // Use 15m as short timeframe
-      return this.evaluateWithShortTrend(
+      return await this.evaluateWithShortTrend(
         token,
         direction,
         primaryTrend.trend,
@@ -160,10 +172,11 @@ export class EntryTimingService {
         fallbackTrend.trend,
         TrendTimeframe.FIFTEEN_MIN,
         fallbackTrend.change_pct,
+        currentPrice,
       );
     }
 
-    return this.evaluateWithShortTrend(
+    return await this.evaluateWithShortTrend(
       token,
       direction,
       primaryTrend.trend,
@@ -171,16 +184,17 @@ export class EntryTimingService {
       shortTrend.trend,
       shortTimeframe,
       shortTrend.change_pct,
+      currentPrice,
     );
   }
 
   /**
    * Evaluate timing based on primary and short timeframe trends
    *
-   * @param currentDeviationPct - Current price deviation from MA (from trend.change_pct)
-   *                               This is NOT historical correction depth, but current snapshot
+   * @param currentDeviationPct - Current price deviation from MA (fallback if real extremes unavailable)
+   * @param currentPrice - Current token price (for real extreme-based depth calculation)
    */
-  private evaluateWithShortTrend(
+  private async evaluateWithShortTrend(
     token: string,
     direction: PositionDirection,
     primaryTrend: TrendStatus,
@@ -188,61 +202,80 @@ export class EntryTimingService {
     shortTrend: TrendStatus,
     shortTimeframe: string,
     currentDeviationPct: number,
-  ): EntryTimingEvaluation {
+    currentPrice?: number,
+  ): Promise<EntryTimingEvaluation> {
     // Determine if trends are aligned (same direction)
     const trendsAligned = this.areTrendsAligned(primaryTrend, shortTrend);
 
     // Determine if there's a correction (opposite direction)
     const isCorrection = this.isCorrection(primaryTrend, shortTrend);
 
-    // ⚠️ LIMITATION: Using current MA deviation as correction depth proxy
+    // ✅ IMPROVED: Calculate correction depth from real OHLCV extremes
     // ──────────────────────────────────────────────────────────────────────
-    // CURRENT APPROACH:
-    //   - Uses trend.change_pct (current price deviation from MA)
-    //   - Example: If price is 2% above MA, we assume 2% correction depth
+    // NEW APPROACH (when useRealExtremes=true && extremeTracker available):
+    //   - Fetches 1-minute OHLCV candles from indexer
+    //   - Finds actual price extremes (highs for SHORT, lows for LONG)
+    //   - Calculates precise correction depth from peak/bottom
     //
-    // PROBLEM:
-    //   - Doesn't track actual price extremes (peak-to-trough movement)
-    //   - Can trigger entries too early during shallow pullbacks
-    //   - Example:
-    //       Price went from $100 → $110 (10% up) → $108 (2% pullback)
-    //       Current approach: Sees 2% deviation, might enter if aligned
-    //       Better approach: Sees 2% correction of a 10% move (not deep enough)
+    // FALLBACK (when disabled or unavailable):
+    //   - Uses trend.change_pct (MA deviation) as proxy
     //
-    // IMPACT:
-    //   - May enter before correction fully completes
-    //   - Could result in suboptimal entry prices
-    //   - Risk of entering during larger pullback continuation
-    //
-    // TODO: Implement proper correction depth tracking
-    //   1. Track price extremes (highs for LONG, lows for SHORT) per token/timeframe
-    //   2. Calculate: correctionDepth = (currentPrice - extremePrice) / extremePrice
-    //   3. Store extremes with timestamps, reset on trend direction change
-    //   4. Requires: New service/cache for price extreme tracking
-    //   5. Benefit: More accurate correction measurement, better entry timing
+    // EXAMPLE (LONG):
+    //   Price: $100 → $95 (low) → $98 (current)
+    //   Real extreme: 3.16% correction from $95 low
+    //   MA deviation: May show different value based on current MA
     // ──────────────────────────────────────────────────────────────────────
+    let correctionDepth: number;
+
+    if (
+      this.config.useRealExtremes &&
+      this.extremeTracker &&
+      currentPrice !== undefined
+    ) {
+      try {
+        const extremeData = await this.extremeTracker.calculateCorrectionDepth(
+          token,
+          direction,
+          currentPrice,
+          this.config.extremeLookbackMinutes,
+        );
+        correctionDepth = Math.abs(extremeData.depthPercent);
+        this.logger.debug(
+          `Using real extreme depth for ${token}: ${correctionDepth.toFixed(2)}% ` +
+            `(extreme: ${extremeData.extremePrice}, current: ${currentPrice})`,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Failed to get real extreme for ${token}, falling back to MA deviation: ${error instanceof Error ? error.message : error}`,
+        );
+        correctionDepth = Math.abs(currentDeviationPct);
+      }
+    } else {
+      // Fallback to MA deviation
+      correctionDepth = Math.abs(currentDeviationPct);
+      if (!this.config.useRealExtremes) {
+        this.logger.debug(
+          `Using MA deviation depth for ${token}: ${correctionDepth.toFixed(2)}% (real extremes disabled)`,
+        );
+      }
+    }
 
     // Case 1: Trends aligned - potential reversal from correction
     if (trendsAligned) {
-      // Current deviation from MA as proxy for correction magnitude
-      // NOTE: This is a simplification - see limitation notes above
-      const deviationFromMA = Math.abs(currentDeviationPct);
-
-      if (deviationFromMA >= this.config.minCorrectionPct) {
-        // Strong reversal signal - price deviated significantly and now aligns
-        // ⚠️ May trigger before correction truly completes (see limitation above)
+      if (correctionDepth >= this.config.minCorrectionPct) {
+        // Strong reversal signal - price moved significantly and now trends align
         return {
           shouldEnterNow: true,
           direction,
           timing: 'reversal_detected',
           confidence: 0.85,
-          reason: `Reversal detected: ${shortTimeframe} turned ${shortTrend} with ${deviationFromMA.toFixed(1)}% deviation from MA, aligning with 1hr ${primaryTrend}`,
+          reason: `Reversal detected: ${shortTimeframe} turned ${shortTrend} with ${correctionDepth.toFixed(1)}% correction depth, aligning with 1hr ${primaryTrend}`,
           metadata: {
             primaryTrend,
             primaryTimeframe,
             correctionTrend: shortTrend,
             correctionTimeframe: shortTimeframe,
-            correctionDepthPct: deviationFromMA, // Renamed for clarity in metadata
+            correctionDepthPct: correctionDepth,
             reversalDetected: true,
             trendAlignment: true,
           },
@@ -261,7 +294,7 @@ export class EntryTimingService {
           primaryTimeframe,
           correctionTrend: shortTrend,
           correctionTimeframe: shortTimeframe,
-          correctionDepthPct: Math.abs(currentDeviationPct),
+          correctionDepthPct: correctionDepth,
           reversalDetected: true,
           trendAlignment: true,
         },
@@ -270,20 +303,18 @@ export class EntryTimingService {
 
     // Case 2: Correction in progress - wait for reversal
     if (isCorrection) {
-      const deviationFromMA = Math.abs(currentDeviationPct);
-
       return {
         shouldEnterNow: false,
         direction,
         timing: 'wait_correction',
         confidence: this.config.reversalConfidence,
-        reason: `Correction in progress: ${shortTimeframe} ${shortTrend} (${deviationFromMA.toFixed(1)}% from MA) opposes 1hr ${primaryTrend}, waiting for reversal`,
+        reason: `Correction in progress: ${shortTimeframe} ${shortTrend} (${correctionDepth.toFixed(1)}% depth) opposes 1hr ${primaryTrend}, waiting for reversal`,
         metadata: {
           primaryTrend,
           primaryTimeframe,
           correctionTrend: shortTrend,
           correctionTimeframe: shortTimeframe,
-          correctionDepthPct: deviationFromMA,
+          correctionDepthPct: correctionDepth,
           reversalDetected: false,
           trendAlignment: false,
         },
@@ -303,7 +334,7 @@ export class EntryTimingService {
           primaryTimeframe,
           correctionTrend: TrendStatus.NEUTRAL,
           correctionTimeframe: shortTimeframe,
-          correctionDepthPct: Math.abs(currentDeviationPct),
+          correctionDepthPct: correctionDepth,
           reversalDetected: false,
           trendAlignment: false,
         },
@@ -322,7 +353,7 @@ export class EntryTimingService {
         primaryTimeframe,
         correctionTrend: shortTrend,
         correctionTimeframe: shortTimeframe,
-        correctionDepthPct: Math.abs(currentDeviationPct),
+        correctionDepthPct: correctionDepth,
         reversalDetected: false,
         trendAlignment: false,
       },
