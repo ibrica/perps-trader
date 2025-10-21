@@ -1,12 +1,22 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import {
   TrendsResponse,
   TrendTimeframe,
   TrendStatus,
   isTrendDefined,
-} from '../../shared/models/predictor/types';
-import { PositionDirection } from '../../shared';
+} from '../../models/predictor/types';
+import { PositionDirection } from '../../constants/PositionDirection';
+
+export interface EntryTimingConfig {
+  /** Enable/disable entry timing optimization */
+  enabled: boolean;
+  /** Short timeframe for correction detection ('5m' or '15m') */
+  shortTimeframe: '5m' | '15m';
+  /** Minimum correction depth percentage (default: 1.5) */
+  minCorrectionPct: number;
+  /** Confidence threshold for reversal detection (default: 0.6) */
+  reversalConfidence: number;
+}
 
 export interface EntryTimingEvaluation {
   shouldEnterNow: boolean;
@@ -26,7 +36,7 @@ export interface EntryTimingEvaluation {
 }
 
 /**
- * Service for evaluating optimal entry timing based on multi-timeframe trend analysis
+ * Platform-agnostic service for evaluating optimal entry timing based on multi-timeframe trend analysis
  *
  * Strategy:
  * 1. Identify primary trend (1hr) for position direction
@@ -53,7 +63,7 @@ export interface EntryTimingEvaluation {
 export class EntryTimingService {
   private readonly logger = new Logger(EntryTimingService.name);
 
-  constructor(private readonly configService: ConfigService) {}
+  constructor(private readonly config: EntryTimingConfig) {}
 
   /**
    * Evaluate entry timing for a token based on multi-timeframe trends
@@ -62,12 +72,7 @@ export class EntryTimingService {
     token: string,
     trends: TrendsResponse,
   ): Promise<EntryTimingEvaluation> {
-    const enabled = this.configService.get<boolean>(
-      'hyperliquid.entryTimingEnabled',
-      true,
-    );
-
-    if (!enabled) {
+    if (!this.config.enabled) {
       this.logger.debug(
         `Entry timing optimization disabled for ${token}, using immediate entry`,
       );
@@ -184,15 +189,6 @@ export class EntryTimingService {
     shortTimeframe: string,
     currentDeviationPct: number,
   ): EntryTimingEvaluation {
-    const minCorrectionPct = this.configService.get<number>(
-      'hyperliquid.entryTimingMinCorrectionPct',
-      1.5,
-    );
-    const reversalConfidence = this.configService.get<number>(
-      'hyperliquid.entryTimingReversalConfidence',
-      0.6,
-    );
-
     // Determine if trends are aligned (same direction)
     const trendsAligned = this.areTrendsAligned(primaryTrend, shortTrend);
 
@@ -232,7 +228,7 @@ export class EntryTimingService {
       // NOTE: This is a simplification - see limitation notes above
       const deviationFromMA = Math.abs(currentDeviationPct);
 
-      if (deviationFromMA >= minCorrectionPct) {
+      if (deviationFromMA >= this.config.minCorrectionPct) {
         // Strong reversal signal - price deviated significantly and now aligns
         // ⚠️ May trigger before correction truly completes (see limitation above)
         return {
@@ -280,7 +276,7 @@ export class EntryTimingService {
         shouldEnterNow: false,
         direction,
         timing: 'wait_correction',
-        confidence: reversalConfidence,
+        confidence: this.config.reversalConfidence,
         reason: `Correction in progress: ${shortTimeframe} ${shortTrend} (${deviationFromMA.toFixed(1)}% from MA) opposes 1hr ${primaryTrend}, waiting for reversal`,
         metadata: {
           primaryTrend,
@@ -373,19 +369,14 @@ export class EntryTimingService {
    * Get configured short timeframe for correction detection
    */
   private getShortTimeframe(): TrendTimeframe {
-    const configured = this.configService.get<string>(
-      'hyperliquid.entryTimingShortTimeframe',
-      '5m',
-    );
-
-    switch (configured) {
+    switch (this.config.shortTimeframe) {
       case '5m':
         return TrendTimeframe.FIVE_MIN;
       case '15m':
         return TrendTimeframe.FIFTEEN_MIN;
       default:
         this.logger.warn(
-          `Invalid short timeframe configuration: ${configured}, using 5m`,
+          `Invalid short timeframe configuration: ${this.config.shortTimeframe}, using 5m`,
         );
         return TrendTimeframe.FIVE_MIN;
     }

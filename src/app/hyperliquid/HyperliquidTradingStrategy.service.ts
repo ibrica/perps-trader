@@ -16,7 +16,7 @@ import {
   TokenCategory,
 } from '../../shared/models/predictor/types';
 import { PerpService } from '../perps/Perp.service';
-import { EntryTimingService } from './EntryTiming.service';
+import { EntryTimingService } from '../../shared/services/entry-timing';
 
 @Injectable()
 export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPort {
