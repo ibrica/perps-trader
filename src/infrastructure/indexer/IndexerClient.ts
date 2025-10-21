@@ -5,11 +5,13 @@
 import { Logger, Injectable } from '@nestjs/common';
 import {
   LastPriceResponse,
+  OHLCVResponse,
   HealthResponse,
   ApiClientConfig,
   ApiError,
   isErrorResponse,
   isLastPriceResponse,
+  isOHLCVResponse,
   isHealthResponse,
 } from './types';
 
@@ -111,6 +113,31 @@ export class IndexerClient {
 
     this.logger.debug(
       `Price fetched for ${tokenSymbol}: type=${response.type}, price=${response.price}, position=${response.position}`,
+    );
+    return response;
+  }
+
+  /**
+   * Get OHLCV candle data for a token
+   */
+  async getOHLCV(tokenSymbol: string, limit: number = 60): Promise<OHLCVResponse> {
+    this.logger.debug(`Fetching OHLCV data for token: ${tokenSymbol}, limit: ${limit}`);
+
+    const params = new URLSearchParams({
+      'token-symbol': tokenSymbol,
+      'limit': limit.toString(),
+    });
+
+    const response = await this.request<OHLCVResponse>(
+      `/ohlcv?${params.toString()}`,
+    );
+
+    if (!isOHLCVResponse(response)) {
+      throw new Error('Invalid response format for OHLCV data');
+    }
+
+    this.logger.debug(
+      `OHLCV data fetched for ${tokenSymbol}: ${response.candles.length} candles`,
     );
     return response;
   }
