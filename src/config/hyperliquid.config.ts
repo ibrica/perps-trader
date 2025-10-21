@@ -70,4 +70,9 @@ export const hyperliquidConfig = registerAs('hyperliquid', () => ({
   entryTimingReversalConfidence: parseFloat(
     process.env.HL_ENTRY_TIMING_REVERSAL_CONFIDENCE || '0.6',
   ), // Confidence for reversal detection
+  entryTimingUseRealExtremes:
+    process.env.HL_ENTRY_TIMING_USE_REAL_EXTREMES === 'false' ? false : true, // Default enabled
+  entryTimingExtremeLookbackMinutes: parseInt(
+    process.env.HL_ENTRY_TIMING_EXTREME_LOOKBACK_MINUTES || '60',
+  ), // Lookback period for extreme tracking (1 hour default)
 }));

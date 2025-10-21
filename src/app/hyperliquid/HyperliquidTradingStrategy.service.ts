@@ -162,8 +162,42 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
           const trends = await this.predictorAdapter.getTrendsForToken(token);
 
           if (trends) {
+            // Get current market price for extreme tracking
+            let currentPrice: number | undefined;
+            try {
+              const ticker = await this.hyperliquidService.getTicker(token);
+
+              // Validate ticker data
+              if (!ticker?.last) {
+                throw new Error(`No ticker data available for ${token}`);
+              }
+
+              currentPrice = parseFloat(ticker.last);
+
+              // Validate parsed price
+              if (isNaN(currentPrice) || currentPrice <= 0) {
+                throw new Error(
+                  `Invalid price for ${token}: ${ticker.last} (parsed as ${currentPrice})`,
+                );
+              }
+
+              this.logger.debug(
+                `Current market price for ${token}: ${currentPrice}`,
+              );
+            } catch (error) {
+              this.logger.warn(
+                `Failed to get current price for ${token}, extreme tracking will fall back to MA deviation: ${error instanceof Error ? error.message : error}`,
+              );
+              // Ensure currentPrice is undefined on failure
+              currentPrice = undefined;
+            }
+
             const timingEval =
-              await this.entryTimingService.evaluateEntryTiming(token, trends);
+              await this.entryTimingService.evaluateEntryTiming(
+                token,
+                trends,
+                currentPrice,
+              );
 
             // IMPORTANT: Check direction alignment FIRST before waiting
             // This prevents wasting time waiting for corrections when directions conflict

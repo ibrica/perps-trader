@@ -12,11 +12,12 @@ import {
 import { hyperliquidConfig } from '../../config/hyperliquid.config';
 import { PerpModule } from '../perps';
 import { PredictorModule } from '../predictor/Predictor.module';
-import { CryptoJsService } from '../../infrastructure';
+import { CryptoJsService, IndexerAdapter } from '../../infrastructure';
 import { HyperliquidPlatformService } from './HyperliquidPlatform.service';
 import {
   EntryTimingService,
   EntryTimingConfig,
+  ExtremeTrackingService,
 } from '../../shared/services/entry-timing';
 
 @Module({
@@ -91,10 +92,22 @@ import {
     HyperliquidWebSocketService,
 
     // Platform services
+    // ExtremeTrackingService - for real OHLCV-based correction depth
+    {
+      provide: ExtremeTrackingService,
+      useFactory: (indexerAdapter: IndexerAdapter): ExtremeTrackingService => {
+        return new ExtremeTrackingService(indexerAdapter);
+      },
+      inject: [IndexerAdapter],
+    },
+
     // EntryTimingService factory with platform-specific config
     {
       provide: EntryTimingService,
-      useFactory: (configService: ConfigService): EntryTimingService => {
+      useFactory: (
+        configService: ConfigService,
+        extremeTracker: ExtremeTrackingService,
+      ): EntryTimingService => {
         const config: EntryTimingConfig = {
           enabled: configService.get<boolean>(
             'hyperliquid.entryTimingEnabled',
@@ -112,10 +125,18 @@ import {
             'hyperliquid.entryTimingReversalConfidence',
             0.6,
           ),
+          useRealExtremes: configService.get<boolean>(
+            'hyperliquid.entryTimingUseRealExtremes',
+            true, // Enabled by default in production
+          ),
+          extremeLookbackMinutes: configService.get<number>(
+            'hyperliquid.entryTimingExtremeLookbackMinutes',
+            60,
+          ),
         };
-        return new EntryTimingService(config);
+        return new EntryTimingService(config, extremeTracker);
       },
-      inject: [ConfigService],
+      inject: [ConfigService, ExtremeTrackingService],
     },
     HyperliquidTradingStrategyService,
     HyperliquidTokenDiscoveryService,

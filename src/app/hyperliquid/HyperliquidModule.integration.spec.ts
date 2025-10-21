@@ -139,6 +139,14 @@ describe('HyperliquidModule Integration', () => {
                 'hyperliquid.entryTimingReversalConfidence',
                 0.6,
               ),
+              useRealExtremes: configService.get<boolean>(
+                'hyperliquid.entryTimingUseRealExtremes',
+                false, // Disabled in tests
+              ),
+              extremeLookbackMinutes: configService.get<number>(
+                'hyperliquid.entryTimingExtremeLookbackMinutes',
+                60,
+              ),
             };
             return new EntryTimingService(config);
           },

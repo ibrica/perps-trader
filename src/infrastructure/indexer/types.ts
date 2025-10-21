@@ -53,6 +53,49 @@ export interface LastPriceResponse {
 }
 
 /**
+ * Single OHLCV candle data point
+ */
+export interface OHLCVCandle {
+  /** ISO 8601 timestamp */
+  timestamp: string;
+
+  /** Open price */
+  open_price: number;
+
+  /** High price */
+  high_price: number;
+
+  /** Low price */
+  low_price: number;
+
+  /** Close price */
+  close_price: number;
+
+  /** Volume */
+  volume: number;
+
+  /** Trade count */
+  trade_count?: number;
+}
+
+/**
+ * Response for GET /ohlcv endpoint
+ */
+export interface OHLCVResponse {
+  /** Token symbol (BTC, ETH, etc.) */
+  token_symbol: string;
+
+  /** Token classification type (main or alt) */
+  type: TokenType;
+
+  /** Candle interval (always "1m" for now) */
+  interval: string;
+
+  /** Array of OHLCV candles (sorted DESC by timestamp) */
+  candles: OHLCVCandle[];
+}
+
+/**
  * Health check response for GET /health endpoint
  */
 export interface HealthResponse {
@@ -179,6 +222,7 @@ export interface ApiError {
  */
 export type ApiResponseUnion =
   | LastPriceResponse
+  | OHLCVResponse
   | HealthResponse
   | ErrorResponse;
 
@@ -200,6 +244,19 @@ export function isLastPriceResponse(
     typeof response.token_symbol === 'string' &&
     typeof response.type === 'string' &&
     typeof response.timestamp === 'string'
+  );
+}
+
+/**
+ * Type guard to check if response is an OHLCVResponse
+ */
+export function isOHLCVResponse(response: any): response is OHLCVResponse {
+  return (
+    response &&
+    typeof response.token_symbol === 'string' &&
+    typeof response.type === 'string' &&
+    typeof response.interval === 'string' &&
+    Array.isArray(response.candles)
   );
 }
 
@@ -250,5 +307,6 @@ export interface ApiClientExample {
 export default {
   isErrorResponse,
   isLastPriceResponse,
+  isOHLCVResponse,
   isHealthResponse,
 };

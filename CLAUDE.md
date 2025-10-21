@@ -380,10 +380,21 @@ Recent improvements to entry logic:
    - Prevents entering at local tops/bottoms
    - Config: `HL_ENTRY_TIMING_ENABLED=true` (default)
    - Files:
-     - [EntryTiming.service.ts](src/app/hyperliquid/EntryTiming.service.ts) - Core timing logic
+     - [EntryTiming.service.ts](src/shared/services/entry-timing/EntryTimingService.ts) - Core timing logic
      - [HyperliquidTradingStrategy.service.ts:160-286](src/app/hyperliquid/HyperliquidTradingStrategy.service.ts#L160-L286) - Integration
 
-3. **Combined Confidence Scoring**
+3. **Real Extreme Tracking** (v2024.2 - NEW)
+   - **What**: Uses actual OHLCV high/low prices instead of MA deviation proxy
+   - **How**: Fetches 1-minute candles from indexer, finds real peaks/bottoms
+   - **Why**: Accurate correction depth measurement for optimal entry timing
+   - **Data Quality**: Comprehensive validation (integrity, sufficiency, freshness)
+   - Config: `HL_ENTRY_TIMING_USE_REAL_EXTREMES=true` (default)
+   - Files:
+     - [ExtremeTrackingService.ts](src/shared/services/entry-timing/ExtremeTrackingService.ts) - Extreme tracking logic
+     - [EntryTimingService.ts](src/shared/services/entry-timing/EntryTimingService.ts) - Integration with timing
+   - See: [docs/extreme-tracking-feature.md](docs/extreme-tracking-feature.md) for details
+
+4. **Combined Confidence Scoring**
    - Final score = 70% AI confidence + 30% timing confidence
    - Both signals must align for entry approval
 
@@ -397,6 +408,10 @@ HL_ENTRY_TIMING_ENABLED=true
 HL_ENTRY_TIMING_SHORT_TF=5m
 HL_ENTRY_TIMING_MIN_CORRECTION_PCT=1.5
 HL_ENTRY_TIMING_REVERSAL_CONFIDENCE=0.6
+
+# Real Extreme Tracking (NEW - v2024.2)
+HL_ENTRY_TIMING_USE_REAL_EXTREMES=true
+HL_ENTRY_TIMING_EXTREME_LOOKBACK_MINUTES=60
 
 # Trailing Stops
 HL_TRAILING_ACTIVATION_RATIO=0.8
