@@ -56,7 +56,10 @@ export class ExtremeTrackingService {
 
     try {
       // Fetch OHLCV data from indexer (1-minute candles)
-      const ohlcvData = await this.indexerAdapter.getOHLCV(token, lookbackMinutes);
+      const ohlcvData = await this.indexerAdapter.getOHLCV(
+        token,
+        lookbackMinutes,
+      );
 
       if (!ohlcvData.candles || ohlcvData.candles.length === 0) {
         throw new Error(`No OHLCV data available for ${token}`);
@@ -68,7 +71,7 @@ export class ExtremeTrackingService {
       if (direction === PositionDirection.LONG) {
         // For LONG, find the LOWEST price (bottom)
         extreme = ohlcvData.candles.reduce((lowest, candle) =>
-          candle.low_price < lowest.low_price ? candle : lowest
+          candle.low_price < lowest.low_price ? candle : lowest,
         );
 
         this.logger.debug(
@@ -83,7 +86,7 @@ export class ExtremeTrackingService {
       } else {
         // For SHORT, find the HIGHEST price (peak)
         extreme = ohlcvData.candles.reduce((highest, candle) =>
-          candle.high_price > highest.high_price ? candle : highest
+          candle.high_price > highest.high_price ? candle : highest,
         );
 
         this.logger.debug(

@@ -120,12 +120,17 @@ export class IndexerClient {
   /**
    * Get OHLCV candle data for a token
    */
-  async getOHLCV(tokenSymbol: string, limit: number = 60): Promise<OHLCVResponse> {
-    this.logger.debug(`Fetching OHLCV data for token: ${tokenSymbol}, limit: ${limit}`);
+  async getOHLCV(
+    tokenSymbol: string,
+    limit: number = 60,
+  ): Promise<OHLCVResponse> {
+    this.logger.debug(
+      `Fetching OHLCV data for token: ${tokenSymbol}, limit: ${limit}`,
+    );
 
     const params = new URLSearchParams({
       'token-symbol': tokenSymbol,
-      'limit': limit.toString(),
+      limit: limit.toString(),
     });
 
     const response = await this.request<OHLCVResponse>(
