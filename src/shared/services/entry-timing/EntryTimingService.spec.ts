@@ -75,6 +75,8 @@ describe('EntryTimingService', () => {
       shortTimeframe: '5m',
       minCorrectionPct: 1.5,
       reversalConfidence: 0.6,
+      useRealExtremes: false, // Disabled for tests (no external dependency)
+      extremeLookbackMinutes: 60,
     };
     service = new EntryTimingService(config);
   });
