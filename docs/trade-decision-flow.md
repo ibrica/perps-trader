@@ -294,14 +294,17 @@ if (aiPrediction.confidence < minConfidence) {
 
 ### 2.3 Entry Timing Optimization
 
-**File**: `EntryTimingService.evaluateEntryTiming()`
+**Files**:
+- `EntryTimingService.evaluateEntryTiming()` - Main timing evaluation
+- `ExtremeTrackingService` - Real OHLCV-based correction depth tracking
 
-Uses multi-timeframe trend analysis to wait for optimal entry points.
+Uses multi-timeframe trend analysis combined with **real price extremes** to wait for optimal entry points.
 
 **Strategy**:
 - **Primary Trend (1hr)**: Determines position direction
 - **Short Trend (5m/15m)**: Detects corrections and reversals
-- **Entry Signal**: When short timeframe reverses back toward primary trend
+- **Real Extreme Tracking**: Uses actual OHLCV high/low prices to measure correction depth
+- **Entry Signal**: When short timeframe reverses back toward primary trend with sufficient correction depth
 
 **Examples**:
 
@@ -339,18 +342,63 @@ Uses multi-timeframe trend analysis to wait for optimal entry points.
 }
 ```
 
-**Configuration**:
-```bash
-HL_ENTRY_TIMING_ENABLED=true                # Enable/disable (default: true)
-HL_ENTRY_TIMING_SHORT_TF=5m                 # 5m or 15m for corrections
-HL_ENTRY_TIMING_MIN_CORRECTION_PCT=1.5      # Minimum correction depth %
-HL_ENTRY_TIMING_REVERSAL_CONFIDENCE=0.6     # Confidence for reversals
+#### 2.3.1 Real Extreme Tracking (NEW - v2024.2)
+
+**What Changed**: Instead of using MA deviation as a proxy for correction depth, the system now fetches actual 1-minute OHLCV candles from the indexer and tracks real price extremes.
+
+**How It Works**:
+
+**For LONG positions** (waiting for price to rise from bottom):
+```
+1. Fetch last 60 minutes of 1m candles from indexer
+2. Find LOWEST low_price across all candles (e.g., $49,000)
+3. Current price: $50,470
+4. Correction depth = (50,470 - 49,000) / 49,000 × 100 = 3.0%
+5. If depth ≥ 1.5% threshold → Correction is deep enough
+6. Wait for 5m trend to turn UP → ENTER LONG ✅
 ```
 
+**For SHORT positions** (waiting for price to drop from peak):
+```
+1. Fetch last 60 minutes of 1m candles from indexer
+2. Find HIGHEST high_price across all candles (e.g., $51,000)
+3. Current price: $49,980
+4. Correction depth = (51,000 - 49,980) / 51,000 × 100 = 2.0%
+5. If depth ≥ 1.5% threshold → Correction is deep enough
+6. Wait for 5m trend to turn DOWN → ENTER SHORT ✅
+```
+
+**Data Quality Validation**:
+- ✅ Validates OHLCV integrity (high ≥ low, open/close within range)
+- ✅ Checks minimum candle count (at least 50% of requested)
+- ✅ Warns if data is stale (>5 minutes old)
+- ✅ All prices must be positive
+- ✅ Throws errors on corrupted data to prevent bad trades
+
 **Fallback Behavior**:
-- If timing service is disabled: Enter immediately on AI signal
-- If trends unavailable: Enter immediately on AI signal
-- If timing service fails: Log warning and proceed with AI only
+- If extreme tracking fails: Falls back to MA deviation
+- If indexer unavailable: Uses MA deviation as proxy
+- Always logs which method is being used
+
+**Configuration**:
+```bash
+# Entry Timing
+HL_ENTRY_TIMING_ENABLED=true                        # Enable/disable (default: true)
+HL_ENTRY_TIMING_SHORT_TF=5m                         # 5m or 15m for corrections
+HL_ENTRY_TIMING_MIN_CORRECTION_PCT=1.5              # Minimum correction depth %
+HL_ENTRY_TIMING_REVERSAL_CONFIDENCE=0.6             # Confidence for reversals
+
+# Real Extreme Tracking (NEW)
+HL_ENTRY_TIMING_USE_REAL_EXTREMES=true              # Enable OHLCV-based tracking (default: true)
+HL_ENTRY_TIMING_EXTREME_LOOKBACK_MINUTES=60         # Lookback period for extremes (default: 60 = 1 hour)
+```
+
+**Service Integration**:
+- **ExtremeTrackingService**: Fetches OHLCV from indexer, calculates extremes
+- **IndexerAdapter**: Provides `/ohlcv` API endpoint for 1-minute candles
+- **EntryTimingService**: Integrates extreme tracking into timing evaluation
+
+**See**: [docs/extreme-tracking-feature.md](extreme-tracking-feature.md) for complete implementation details.
 
 ### 2.4 Direction Validation
 
@@ -819,13 +867,17 @@ Exit Flow:
 
 ```bash
 # AI Prediction
-HL_PREDICTOR_MIN_CONFIDENCE=0.6              # Minimum AI confidence (0.0-1.0)
+HL_PREDICTOR_MIN_CONFIDENCE=0.6                      # Minimum AI confidence (0.0-1.0)
 
 # Entry Timing
-HL_ENTRY_TIMING_ENABLED=true                 # Enable timing optimization
-HL_ENTRY_TIMING_SHORT_TF=5m                  # Short timeframe (5m or 15m)
-HL_ENTRY_TIMING_MIN_CORRECTION_PCT=1.5       # Min correction depth %
-HL_ENTRY_TIMING_REVERSAL_CONFIDENCE=0.6      # Reversal confidence threshold
+HL_ENTRY_TIMING_ENABLED=true                         # Enable timing optimization
+HL_ENTRY_TIMING_SHORT_TF=5m                          # Short timeframe (5m or 15m)
+HL_ENTRY_TIMING_MIN_CORRECTION_PCT=1.5               # Min correction depth %
+HL_ENTRY_TIMING_REVERSAL_CONFIDENCE=0.6              # Reversal confidence threshold
+
+# Real Extreme Tracking (NEW - v2024.2)
+HL_ENTRY_TIMING_USE_REAL_EXTREMES=true               # Use OHLCV-based extremes (default: true)
+HL_ENTRY_TIMING_EXTREME_LOOKBACK_MINUTES=60          # Lookback period for extremes (default: 60m)
 ```
 
 ### Position Management

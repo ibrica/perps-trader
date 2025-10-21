@@ -78,11 +78,18 @@ curl http://localhost:7777/health
 - `HL_DEFAULT_LEVERAGE=3` - Default trading leverage
 - `HL_MAX_OPEN_POSITIONS=1` - Maximum concurrent positions
 
-#### External Services (Optional)
+#### External Services
 
-- `PREDICTOR_URL=http://trader-ai` - AI predictor service URL
-- `INDEXER_HOST=sol-indexer` - Price indexer service host
-- `DD_API_KEY` - Datadog API key for monitoring
+- `PREDICTOR_URL=http://trader-ai` - AI predictor service URL (optional)
+- `INDEXER_HOST=sol-indexer` - Price indexer service host (required for OHLCV data)
+- `INDEXER_API_PORT=7071` - Indexer API port
+- `DD_API_KEY` - Datadog API key for monitoring (optional)
+
+#### Entry Timing & Extreme Tracking (NEW)
+
+- `HL_ENTRY_TIMING_ENABLED=true` - Enable multi-timeframe entry timing
+- `HL_ENTRY_TIMING_USE_REAL_EXTREMES=true` - Use OHLCV-based extreme tracking
+- `HL_ENTRY_TIMING_EXTREME_LOOKBACK_MINUTES=60` - Lookback period for extremes
 
 See `.env.example` for complete configuration options.
 
@@ -90,8 +97,9 @@ See `.env.example` for complete configuration options.
 
 ### Automated Trading
 
-- **AI-Driven Decisions**: Integrates with external AI predictions
-- **Risk Management**: Configurable stop-loss and take-profit levels
+- **AI-Driven Decisions**: Integrates with external AI predictions with confidence thresholds
+- **Entry Timing Optimization**: Multi-timeframe trend analysis with real OHLCV extreme tracking
+- **Risk Management**: Configurable stop-loss, take-profit, and trailing stops
 - **Position Monitoring**: Real-time position tracking and management
 - **Multi-Asset Support**: Trade multiple perpetual futures
 
