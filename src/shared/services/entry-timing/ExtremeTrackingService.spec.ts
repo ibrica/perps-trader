@@ -340,10 +340,10 @@ describe('ExtremeTrackingService', () => {
         const candles = [
           {
             timestamp: '2025-10-21T12:00:00Z',
-            open_price: 50000,
+            open_price: 49800,
             high_price: 50000, // Previous high
             low_price: 49500,
-            close_price: 50200,
+            close_price: 49900,
             volume: 1000,
             trade_count: 100,
           },
@@ -568,6 +568,299 @@ describe('ExtremeTrackingService', () => {
 
       const isDeepEnough = service.isCorrectionDeepEnough(depth, 1.5);
       expect(isDeepEnough).toBe(true); // Should enter SHORT
+    });
+  });
+
+  describe('OHLCV data validation', () => {
+    describe('insufficient candle count', () => {
+      it('should warn when fewer than 50% of expected candles received', async () => {
+        const candles = createMockCandles(20); // Only 20 out of 60 requested
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(candles),
+        );
+
+        const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+        await service.getExtreme('BTC', PositionDirection.LONG, 60);
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringContaining(
+            'Insufficient OHLCV data for BTC: got 20 candles, expected at least 30',
+          ),
+        );
+      });
+
+      it('should not warn when candle count is sufficient', async () => {
+        const candles = createMockCandles(50); // 50 out of 60 = 83%
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(candles),
+        );
+
+        const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+        await service.getExtreme('BTC', PositionDirection.LONG, 60);
+
+        expect(warnSpy).not.toHaveBeenCalledWith(
+          expect.stringContaining('Insufficient OHLCV data'),
+        );
+      });
+    });
+
+    describe('price integrity validation', () => {
+      it('should throw error when high < low', async () => {
+        const invalidCandles = [
+          {
+            timestamp: '2025-10-21T12:00:00Z',
+            open_price: 50000,
+            high_price: 49000, // HIGH LOWER THAN LOW - INVALID!
+            low_price: 50000,
+            close_price: 49500,
+            volume: 1000,
+            trade_count: 100,
+          },
+        ];
+
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(invalidCandles),
+        );
+
+        await expect(
+          service.getExtreme('BTC', PositionDirection.LONG),
+        ).rejects.toThrow(/Invalid OHLCV data.*high.*49000.*<.*low.*50000/);
+      });
+
+      it('should throw error when open price outside [low, high] range', async () => {
+        const invalidCandles = [
+          {
+            timestamp: '2025-10-21T12:00:00Z',
+            open_price: 51000, // OPEN ABOVE HIGH - INVALID!
+            high_price: 50500,
+            low_price: 49500,
+            close_price: 50000,
+            volume: 1000,
+            trade_count: 100,
+          },
+        ];
+
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(invalidCandles),
+        );
+
+        await expect(
+          service.getExtreme('BTC', PositionDirection.LONG),
+        ).rejects.toThrow(/Invalid OHLCV data.*open.*51000.*outside/);
+      });
+
+      it('should throw error when close price outside [low, high] range', async () => {
+        const invalidCandles = [
+          {
+            timestamp: '2025-10-21T12:00:00Z',
+            open_price: 50000,
+            high_price: 50500,
+            low_price: 49500,
+            close_price: 49000, // CLOSE BELOW LOW - INVALID!
+            volume: 1000,
+            trade_count: 100,
+          },
+        ];
+
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(invalidCandles),
+        );
+
+        await expect(
+          service.getExtreme('BTC', PositionDirection.LONG),
+        ).rejects.toThrow(/Invalid OHLCV data.*close.*49000.*outside/);
+      });
+
+      it('should throw error when prices are non-positive', async () => {
+        const invalidCandles = [
+          {
+            timestamp: '2025-10-21T12:00:00Z',
+            open_price: 50000,
+            high_price: 50500,
+            low_price: 0, // ZERO PRICE - INVALID!
+            close_price: 50000,
+            volume: 1000,
+            trade_count: 100,
+          },
+        ];
+
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(invalidCandles),
+        );
+
+        await expect(
+          service.getExtreme('BTC', PositionDirection.LONG),
+        ).rejects.toThrow(/Invalid OHLCV data.*contains non-positive prices/);
+      });
+
+      it('should report multiple validation errors (up to 3)', async () => {
+        const invalidCandles = [
+          {
+            timestamp: '2025-10-21T12:00:00Z',
+            open_price: 60000, // Outside range
+            high_price: 49000, // Less than low
+            low_price: 50000,
+            close_price: 45000, // Outside range
+            volume: 1000,
+            trade_count: 100,
+          },
+          {
+            timestamp: '2025-10-21T12:01:00Z',
+            open_price: 50000,
+            high_price: 50000,
+            low_price: -100, // Negative price
+            close_price: 50000,
+            volume: 1000,
+            trade_count: 100,
+          },
+        ];
+
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(invalidCandles),
+        );
+
+        await expect(
+          service.getExtreme('BTC', PositionDirection.LONG),
+        ).rejects.toThrow(/Invalid OHLCV data for BTC:.*(high|open|close)/);
+      });
+
+      it('should accept valid OHLCV data', async () => {
+        const validCandles = [
+          {
+            timestamp: '2025-10-21T12:00:00Z',
+            open_price: 50000,
+            high_price: 50500,
+            low_price: 49500,
+            close_price: 50200,
+            volume: 1000,
+            trade_count: 100,
+          },
+          {
+            timestamp: '2025-10-21T12:01:00Z',
+            open_price: 50200,
+            high_price: 50600,
+            low_price: 50000,
+            close_price: 50400,
+            volume: 1100,
+            trade_count: 110,
+          },
+        ];
+
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(validCandles),
+        );
+
+        // Should not throw
+        const result = await service.getExtreme('BTC', PositionDirection.LONG);
+        expect(result).toBeDefined();
+        expect(result.price).toBe(49500); // Lowest low
+      });
+    });
+
+    describe('timestamp freshness validation', () => {
+      it('should warn when most recent candle is older than 5 minutes', async () => {
+        const staleTime = new Date(Date.now() - 10 * 60000); // 10 minutes ago
+        const staleCandles = [
+          {
+            timestamp: staleTime.toISOString(),
+            open_price: 50000,
+            high_price: 50500,
+            low_price: 49500,
+            close_price: 50200,
+            volume: 1000,
+            trade_count: 100,
+          },
+        ];
+
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(staleCandles),
+        );
+
+        const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+        await service.getExtreme('BTC', PositionDirection.LONG);
+
+        expect(warnSpy).toHaveBeenCalledWith(
+          expect.stringMatching(
+            /OHLCV data for BTC may be stale.*10\.\d minutes old/,
+          ),
+        );
+      });
+
+      it('should not warn when data is fresh (within 5 minutes)', async () => {
+        const recentTime = new Date(Date.now() - 2 * 60000); // 2 minutes ago
+        const freshCandles = [
+          {
+            timestamp: recentTime.toISOString(),
+            open_price: 50000,
+            high_price: 50500,
+            low_price: 49500,
+            close_price: 50200,
+            volume: 1000,
+            trade_count: 100,
+          },
+        ];
+
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(freshCandles),
+        );
+
+        const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+        await service.getExtreme('BTC', PositionDirection.LONG);
+
+        expect(warnSpy).not.toHaveBeenCalledWith(
+          expect.stringContaining('may be stale'),
+        );
+      });
+
+      it('should find most recent candle from unsorted data', async () => {
+        const now = Date.now();
+        const candles = [
+          {
+            timestamp: new Date(now - 10 * 60000).toISOString(), // 10m ago
+            open_price: 50000,
+            high_price: 50500,
+            low_price: 49500,
+            close_price: 50200,
+            volume: 1000,
+            trade_count: 100,
+          },
+          {
+            timestamp: new Date(now - 1 * 60000).toISOString(), // 1m ago (most recent)
+            open_price: 50200,
+            high_price: 50600,
+            low_price: 50000,
+            close_price: 50400,
+            volume: 1100,
+            trade_count: 110,
+          },
+          {
+            timestamp: new Date(now - 5 * 60000).toISOString(), // 5m ago
+            open_price: 50100,
+            high_price: 50550,
+            low_price: 49900,
+            close_price: 50300,
+            volume: 1050,
+            trade_count: 105,
+          },
+        ];
+
+        indexerAdapter.getOHLCV.mockResolvedValue(
+          createMockOHLCVResponse(candles),
+        );
+
+        const warnSpy = jest.spyOn(service['logger'], 'warn');
+
+        await service.getExtreme('BTC', PositionDirection.LONG);
+
+        // Should not warn because most recent is only 1 minute old
+        expect(warnSpy).not.toHaveBeenCalledWith(
+          expect.stringContaining('may be stale'),
+        );
+      });
     });
   });
 });

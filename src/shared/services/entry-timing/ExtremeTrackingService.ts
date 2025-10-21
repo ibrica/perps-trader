@@ -61,9 +61,13 @@ export class ExtremeTrackingService {
         lookbackMinutes,
       );
 
+      // Validate data availability
       if (!ohlcvData.candles || ohlcvData.candles.length === 0) {
         throw new Error(`No OHLCV data available for ${token}`);
       }
+
+      // Validate data quality and sufficiency
+      this.validateOHLCVData(token, ohlcvData.candles, lookbackMinutes);
 
       // Calculate extreme based on direction
       let extreme: OHLCVCandle;
@@ -162,5 +166,94 @@ export class ExtremeTrackingService {
     minDepthPercent: number,
   ): boolean {
     return Math.abs(correctionDepth.depthPercent) >= minDepthPercent;
+  }
+
+  /**
+   * Validate OHLCV data quality and sufficiency
+   *
+   * @param token Token symbol
+   * @param candles Array of OHLCV candles
+   * @param lookbackMinutes Expected lookback period
+   * @throws Error if data quality is insufficient
+   */
+  private validateOHLCVData(
+    token: string,
+    candles: OHLCVCandle[],
+    lookbackMinutes: number,
+  ): void {
+    // 1. Check minimum candle count (at least 50% of requested)
+    const minExpectedCandles = Math.floor(lookbackMinutes * 0.5);
+    if (candles.length < minExpectedCandles) {
+      this.logger.warn(
+        `Insufficient OHLCV data for ${token}: got ${candles.length} candles, expected at least ${minExpectedCandles} (50% of ${lookbackMinutes})`,
+      );
+    }
+
+    // 2. Validate OHLCV integrity for each candle
+    const invalidCandles: string[] = [];
+    for (const candle of candles) {
+      // High must be >= Low
+      if (candle.high_price < candle.low_price) {
+        invalidCandles.push(
+          `${candle.timestamp}: high(${candle.high_price}) < low(${candle.low_price})`,
+        );
+      }
+
+      // Open and Close should be within [Low, High] range
+      if (
+        candle.open_price < candle.low_price ||
+        candle.open_price > candle.high_price
+      ) {
+        invalidCandles.push(
+          `${candle.timestamp}: open(${candle.open_price}) outside [${candle.low_price}, ${candle.high_price}]`,
+        );
+      }
+
+      if (
+        candle.close_price < candle.low_price ||
+        candle.close_price > candle.high_price
+      ) {
+        invalidCandles.push(
+          `${candle.timestamp}: close(${candle.close_price}) outside [${candle.low_price}, ${candle.high_price}]`,
+        );
+      }
+
+      // Prices should be positive
+      if (
+        candle.high_price <= 0 ||
+        candle.low_price <= 0 ||
+        candle.open_price <= 0 ||
+        candle.close_price <= 0
+      ) {
+        invalidCandles.push(
+          `${candle.timestamp}: contains non-positive prices`,
+        );
+      }
+    }
+
+    if (invalidCandles.length > 0) {
+      const errorMsg = `Invalid OHLCV data for ${token}: ${invalidCandles.slice(0, 3).join(', ')}${invalidCandles.length > 3 ? ` (+${invalidCandles.length - 3} more)` : ''}`;
+      this.logger.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+
+    // 3. Check timestamp freshness (most recent candle should be within last 5 minutes)
+    const mostRecentCandle = candles.reduce((latest, candle) =>
+      new Date(candle.timestamp) > new Date(latest.timestamp) ? candle : latest,
+    );
+
+    const mostRecentTime = new Date(mostRecentCandle.timestamp);
+    const now = new Date();
+    const ageMinutes = (now.getTime() - mostRecentTime.getTime()) / 60000;
+
+    if (ageMinutes > 5) {
+      this.logger.warn(
+        `OHLCV data for ${token} may be stale: most recent candle is ${ageMinutes.toFixed(1)} minutes old (${mostRecentCandle.timestamp})`,
+      );
+    }
+
+    this.logger.debug(
+      `OHLCV validation passed for ${token}: ${candles.length} candles, most recent at ${mostRecentCandle.timestamp} (${ageMinutes.toFixed(1)}m old)`,
+    );
   }
 }
