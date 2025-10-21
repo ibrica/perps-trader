@@ -501,6 +501,198 @@ describe('HyperliquidTradingStrategyService', () => {
       expect(result.confidence).toBeLessThanOrEqual(0.7);
       expect(result.confidence).toBeGreaterThan(0.65);
     });
+
+    describe('ticker validation for extreme tracking', () => {
+      const setupTest = () => {
+        mockPerpService.findByToken.mockResolvedValue({
+          token: 'BTC',
+          currency: Currency.USDC,
+          perpSymbol: 'BTC-USDC',
+        } as any);
+        mockPredictorAdapter.predictToken.mockResolvedValue(
+          createMockPrediction(Recommendation.BUY),
+        );
+        mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
+          token: 'BTC',
+          timestamp: new Date().toISOString(),
+          trends: {} as any,
+        });
+        mockEntryTimingService.evaluateEntryTiming.mockResolvedValue({
+          shouldEnterNow: true,
+          direction: PositionDirection.LONG,
+          timing: 'reversal_detected',
+          confidence: 0.85,
+          reason: 'Reversal detected',
+          metadata: {
+            primaryTrend: TrendStatus.UP,
+            primaryTimeframe: '1h',
+            correctionTrend: TrendStatus.UP,
+            correctionTimeframe: '5m',
+            reversalDetected: true,
+            trendAlignment: true,
+          },
+        });
+        mockConfigService.get.mockImplementation((key: string) => {
+          if (key === 'hyperliquid.enabled') return true;
+          if (key === 'hyperliquid.predictorMinConfidence') return 0.6;
+          if (key === 'hyperliquid.defaultLeverage') return 3;
+          return undefined;
+        });
+      };
+
+      it('should handle null ticker gracefully', async () => {
+        setupTest();
+        mockHyperliquidService.getTicker.mockResolvedValue(null as any);
+
+        const result = await service.shouldEnterPosition(
+          'BTC',
+          mockTradingParams,
+        );
+
+        // Should still work, falling back to MA deviation
+        expect(result.shouldTrade).toBe(true);
+        expect(mockEntryTimingService.evaluateEntryTiming).toHaveBeenCalledWith(
+          'BTC',
+          expect.anything(),
+          undefined, // No current price passed
+        );
+      });
+
+      it('should handle ticker with undefined last price', async () => {
+        setupTest();
+        mockHyperliquidService.getTicker.mockResolvedValue({
+          coin: 'BTC',
+          mark: '50000',
+          bid: '49999',
+          ask: '50001',
+          last: undefined as any, // Undefined last price
+          volume24h: '1000000',
+          openInterest: '500000',
+          fundingRate: '0.0001',
+        });
+
+        const result = await service.shouldEnterPosition(
+          'BTC',
+          mockTradingParams,
+        );
+
+        // Should still work, falling back to MA deviation
+        expect(result.shouldTrade).toBe(true);
+        expect(mockEntryTimingService.evaluateEntryTiming).toHaveBeenCalledWith(
+          'BTC',
+          expect.anything(),
+          undefined, // No current price passed
+        );
+      });
+
+      it('should handle NaN from parseFloat', async () => {
+        setupTest();
+        mockHyperliquidService.getTicker.mockResolvedValue({
+          coin: 'BTC',
+          mark: '50000',
+          bid: '49999',
+          ask: '50001',
+          last: 'invalid-number', // Will parse to NaN
+          volume24h: '1000000',
+          openInterest: '500000',
+          fundingRate: '0.0001',
+        });
+
+        const result = await service.shouldEnterPosition(
+          'BTC',
+          mockTradingParams,
+        );
+
+        // Should still work, falling back to MA deviation
+        expect(result.shouldTrade).toBe(true);
+        expect(mockEntryTimingService.evaluateEntryTiming).toHaveBeenCalledWith(
+          'BTC',
+          expect.anything(),
+          undefined, // No current price passed
+        );
+      });
+
+      it('should handle negative price', async () => {
+        setupTest();
+        mockHyperliquidService.getTicker.mockResolvedValue({
+          coin: 'BTC',
+          mark: '50000',
+          bid: '49999',
+          ask: '50001',
+          last: '-50000', // Negative price (invalid)
+          volume24h: '1000000',
+          openInterest: '500000',
+          fundingRate: '0.0001',
+        });
+
+        const result = await service.shouldEnterPosition(
+          'BTC',
+          mockTradingParams,
+        );
+
+        // Should still work, falling back to MA deviation
+        expect(result.shouldTrade).toBe(true);
+        expect(mockEntryTimingService.evaluateEntryTiming).toHaveBeenCalledWith(
+          'BTC',
+          expect.anything(),
+          undefined, // No current price passed
+        );
+      });
+
+      it('should handle zero price', async () => {
+        setupTest();
+        mockHyperliquidService.getTicker.mockResolvedValue({
+          coin: 'BTC',
+          mark: '50000',
+          bid: '49999',
+          ask: '50001',
+          last: '0', // Zero price (invalid)
+          volume24h: '1000000',
+          openInterest: '500000',
+          fundingRate: '0.0001',
+        });
+
+        const result = await service.shouldEnterPosition(
+          'BTC',
+          mockTradingParams,
+        );
+
+        // Should still work, falling back to MA deviation
+        expect(result.shouldTrade).toBe(true);
+        expect(mockEntryTimingService.evaluateEntryTiming).toHaveBeenCalledWith(
+          'BTC',
+          expect.anything(),
+          undefined, // No current price passed
+        );
+      });
+
+      it('should pass valid price to entry timing', async () => {
+        setupTest();
+        mockHyperliquidService.getTicker.mockResolvedValue({
+          coin: 'BTC',
+          mark: '50000',
+          bid: '49999',
+          ask: '50001',
+          last: '50000', // Valid price
+          volume24h: '1000000',
+          openInterest: '500000',
+          fundingRate: '0.0001',
+        });
+
+        const result = await service.shouldEnterPosition(
+          'BTC',
+          mockTradingParams,
+        );
+
+        // Should work with valid current price
+        expect(result.shouldTrade).toBe(true);
+        expect(mockEntryTimingService.evaluateEntryTiming).toHaveBeenCalledWith(
+          'BTC',
+          expect.anything(),
+          50000, // Valid price passed
+        );
+      });
+    });
   });
 
   describe('shouldExitPosition', () => {
