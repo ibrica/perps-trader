@@ -1,14 +1,11 @@
-import {
-  EntryTimingService,
-  EntryTimingConfig,
-} from '../../shared/services/entry-timing';
+import { EntryTimingService, EntryTimingConfig } from './EntryTimingService';
 import {
   TrendsResponse,
   TrendTimeframe,
   TrendStatus,
   TrendInfo,
-} from '../../shared/models/predictor/types';
-import { PositionDirection } from '../../shared';
+} from '../../models/predictor/types';
+import { PositionDirection } from '../../constants/PositionDirection';
 
 describe('EntryTimingService', () => {
   let service: EntryTimingService;
