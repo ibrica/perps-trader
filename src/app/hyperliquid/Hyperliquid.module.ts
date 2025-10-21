@@ -12,7 +12,7 @@ import {
 import { hyperliquidConfig } from '../../config/hyperliquid.config';
 import { PerpModule } from '../perps';
 import { PredictorModule } from '../predictor/Predictor.module';
-import { CryptoJsService } from '../../infrastructure';
+import { CryptoJsService, IndexerAdapter } from '../../infrastructure';
 import { HyperliquidPlatformService } from './HyperliquidPlatform.service';
 import {
   EntryTimingService,
@@ -93,7 +93,13 @@ import {
 
     // Platform services
     // ExtremeTrackingService - for real OHLCV-based correction depth
-    ExtremeTrackingService,
+    {
+      provide: ExtremeTrackingService,
+      useFactory: (indexerAdapter: IndexerAdapter): ExtremeTrackingService => {
+        return new ExtremeTrackingService(indexerAdapter);
+      },
+      inject: [IndexerAdapter],
+    },
 
     // EntryTimingService factory with platform-specific config
     {
