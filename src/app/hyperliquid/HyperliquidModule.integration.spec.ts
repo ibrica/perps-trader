@@ -5,7 +5,10 @@ import { HyperliquidClient } from '../../infrastructure/hyperliquid/HyperliquidC
 import { HyperliquidSignatureAdapter } from '../../infrastructure/hyperliquid/HyperliquidSignatureAdapter';
 import { HyperliquidTradingStrategyService } from './HyperliquidTradingStrategy.service';
 import { HyperliquidTokenDiscoveryService } from './HyperliquidTokenDiscovery.service';
-import { EntryTimingService } from './EntryTiming.service';
+import {
+  EntryTimingService,
+  EntryTimingConfig,
+} from '../../shared/services/entry-timing';
 import { PerpService } from '../perps/Perp.service';
 import { PredictorAdapter } from '../../infrastructure/predictor/PredictorAdapter';
 import { CryptoJsService } from '../../infrastructure';
@@ -27,6 +30,11 @@ describe('HyperliquidModule Integration', () => {
       timeoutMs: 30000,
       retryMaxAttempts: 3,
       retryBaseDelayMs: 1000,
+      // Entry timing config
+      entryTimingEnabled: true,
+      entryTimingShortTimeframe: '5m',
+      entryTimingMinCorrectionPct: 1.5,
+      entryTimingReversalConfidence: 0.6,
     },
   };
 
@@ -110,7 +118,32 @@ describe('HyperliquidModule Integration', () => {
         // Main service
         HyperliquidService,
         // Platform services
-        EntryTimingService,
+        // EntryTimingService factory with platform-specific config
+        {
+          provide: EntryTimingService,
+          useFactory: (configService: ConfigService): EntryTimingService => {
+            const config: EntryTimingConfig = {
+              enabled: configService.get<boolean>(
+                'hyperliquid.entryTimingEnabled',
+                true,
+              ),
+              shortTimeframe: configService.get<'5m' | '15m'>(
+                'hyperliquid.entryTimingShortTimeframe',
+                '5m',
+              ),
+              minCorrectionPct: configService.get<number>(
+                'hyperliquid.entryTimingMinCorrectionPct',
+                1.5,
+              ),
+              reversalConfidence: configService.get<number>(
+                'hyperliquid.entryTimingReversalConfidence',
+                0.6,
+              ),
+            };
+            return new EntryTimingService(config);
+          },
+          inject: [ConfigService],
+        },
         HyperliquidTradingStrategyService,
         HyperliquidTokenDiscoveryService,
       ],

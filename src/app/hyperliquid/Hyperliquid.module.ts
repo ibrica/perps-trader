@@ -14,7 +14,10 @@ import { PerpModule } from '../perps';
 import { PredictorModule } from '../predictor/Predictor.module';
 import { CryptoJsService } from '../../infrastructure';
 import { HyperliquidPlatformService } from './HyperliquidPlatform.service';
-import { EntryTimingService } from './EntryTiming.service';
+import {
+  EntryTimingService,
+  EntryTimingConfig,
+} from '../../shared/services/entry-timing';
 
 @Module({
   imports: [
@@ -88,7 +91,32 @@ import { EntryTimingService } from './EntryTiming.service';
     HyperliquidWebSocketService,
 
     // Platform services
-    EntryTimingService,
+    // EntryTimingService factory with platform-specific config
+    {
+      provide: EntryTimingService,
+      useFactory: (configService: ConfigService): EntryTimingService => {
+        const config: EntryTimingConfig = {
+          enabled: configService.get<boolean>(
+            'hyperliquid.entryTimingEnabled',
+            true,
+          ),
+          shortTimeframe: configService.get<'5m' | '15m'>(
+            'hyperliquid.entryTimingShortTimeframe',
+            '5m',
+          ),
+          minCorrectionPct: configService.get<number>(
+            'hyperliquid.entryTimingMinCorrectionPct',
+            1.5,
+          ),
+          reversalConfidence: configService.get<number>(
+            'hyperliquid.entryTimingReversalConfidence',
+            0.6,
+          ),
+        };
+        return new EntryTimingService(config);
+      },
+      inject: [ConfigService],
+    },
     HyperliquidTradingStrategyService,
     HyperliquidTokenDiscoveryService,
     HyperliquidPlatformService,
