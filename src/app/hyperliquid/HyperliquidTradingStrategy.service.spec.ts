@@ -13,7 +13,7 @@ import {
   TrendStatus,
 } from '../../shared/models/predictor/types';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
-import { EntryTimingService } from './EntryTiming.service';
+import { EntryTimingService } from '../../shared/services/entry-timing';
 
 describe('HyperliquidTradingStrategyService', () => {
   let service: HyperliquidTradingStrategyService;

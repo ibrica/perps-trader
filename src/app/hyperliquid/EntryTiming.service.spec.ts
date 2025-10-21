@@ -1,6 +1,7 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { ConfigService } from '@nestjs/config';
-import { EntryTimingService } from './EntryTiming.service';
+import {
+  EntryTimingService,
+  EntryTimingConfig,
+} from '../../shared/services/entry-timing';
 import {
   TrendsResponse,
   TrendTimeframe,
@@ -11,7 +12,7 @@ import { PositionDirection } from '../../shared';
 
 describe('EntryTimingService', () => {
   let service: EntryTimingService;
-  let mockConfigService: jest.Mocked<ConfigService>;
+  let config: EntryTimingConfig;
 
   // Helper to create trend info
   const createTrendInfo = (
@@ -70,38 +71,19 @@ describe('EntryTimingService', () => {
     },
   });
 
-  beforeEach(async () => {
-    mockConfigService = {
-      get: jest.fn(),
-    } as any;
-
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        EntryTimingService,
-        {
-          provide: ConfigService,
-          useValue: mockConfigService,
-        },
-      ],
-    }).compile();
-
-    service = module.get<EntryTimingService>(EntryTimingService);
-  });
-
-  afterEach(() => {
-    jest.clearAllMocks();
+  beforeEach(() => {
+    // Default config for tests
+    config = {
+      enabled: true,
+      shortTimeframe: '5m',
+      minCorrectionPct: 1.5,
+      reversalConfidence: 0.6,
+    };
+    service = new EntryTimingService(config);
   });
 
   describe('evaluateEntryTiming - LONG scenarios', () => {
     it('should detect reversal for LONG entry (1hr UP, 5m UP after correction)', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '5m';
-        if (key === 'hyperliquid.entryTimingMinCorrectionPct') return 1.5;
-        if (key === 'hyperliquid.entryTimingReversalConfidence') return 0.6;
-        return undefined;
-      });
-
       const trends = createTrendsResponse(
         TrendStatus.UP,
         TrendStatus.UP,
@@ -122,14 +104,6 @@ describe('EntryTimingService', () => {
     });
 
     it('should wait during correction for LONG entry (1hr UP, 5m DOWN)', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '5m';
-        if (key === 'hyperliquid.entryTimingMinCorrectionPct') return 1.5;
-        if (key === 'hyperliquid.entryTimingReversalConfidence') return 0.6;
-        return undefined;
-      });
-
       const trends = createTrendsResponse(
         TrendStatus.UP,
         TrendStatus.DOWN,
@@ -150,12 +124,6 @@ describe('EntryTimingService', () => {
     });
 
     it('should enter on NEUTRAL short term for LONG (1hr UP, 5m NEUTRAL)', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '5m';
-        return undefined;
-      });
-
       const trends = createTrendsResponse(
         TrendStatus.UP,
         TrendStatus.NEUTRAL,
@@ -176,13 +144,6 @@ describe('EntryTimingService', () => {
 
   describe('evaluateEntryTiming - SHORT scenarios', () => {
     it('should detect reversal for SHORT entry (1hr DOWN, 5m DOWN after correction)', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '5m';
-        if (key === 'hyperliquid.entryTimingMinCorrectionPct') return 1.5;
-        return undefined;
-      });
-
       const trends = createTrendsResponse(
         TrendStatus.DOWN,
         TrendStatus.DOWN,
@@ -201,14 +162,6 @@ describe('EntryTimingService', () => {
     });
 
     it('should wait during correction for SHORT entry (1hr DOWN, 5m UP)', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '5m';
-        if (key === 'hyperliquid.entryTimingMinCorrectionPct') return 1.5;
-        if (key === 'hyperliquid.entryTimingReversalConfidence') return 0.6;
-        return undefined;
-      });
-
       const trends = createTrendsResponse(
         TrendStatus.DOWN,
         TrendStatus.UP,
@@ -228,8 +181,6 @@ describe('EntryTimingService', () => {
 
   describe('evaluateEntryTiming - Edge cases', () => {
     it('should reject when 1hr trend is UNDEFINED', async () => {
-      mockConfigService.get.mockReturnValue(true);
-
       const trends = createTrendsResponse(
         TrendStatus.UNDEFINED,
         TrendStatus.UP,
@@ -246,8 +197,6 @@ describe('EntryTimingService', () => {
     });
 
     it('should reject when 1hr trend is NEUTRAL', async () => {
-      mockConfigService.get.mockReturnValue(true);
-
       const trends = createTrendsResponse(
         TrendStatus.NEUTRAL,
         TrendStatus.UP,
@@ -263,13 +212,6 @@ describe('EntryTimingService', () => {
     });
 
     it('should fallback to 15m when 5m is UNDEFINED', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '5m';
-        if (key === 'hyperliquid.entryTimingMinCorrectionPct') return 1.5;
-        return undefined;
-      });
-
       const trends = createTrendsResponse(
         TrendStatus.UP,
         TrendStatus.UNDEFINED,
@@ -286,12 +228,6 @@ describe('EntryTimingService', () => {
     });
 
     it('should enter immediately when both 5m and 15m are UNDEFINED', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '5m';
-        return undefined;
-      });
-
       const trends = createTrendsResponse(
         TrendStatus.UP,
         TrendStatus.UNDEFINED,
@@ -310,10 +246,8 @@ describe('EntryTimingService', () => {
 
   describe('evaluateEntryTiming - Configuration', () => {
     it('should use immediate entry when timing optimization is disabled', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return false;
-        return undefined;
-      });
+      config.enabled = false;
+      service = new EntryTimingService(config);
 
       const trends = createTrendsResponse(
         TrendStatus.UP,
@@ -330,12 +264,8 @@ describe('EntryTimingService', () => {
     });
 
     it('should use 15m when configured as short timeframe', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '15m';
-        if (key === 'hyperliquid.entryTimingMinCorrectionPct') return 1.5;
-        return undefined;
-      });
+      config.shortTimeframe = '15m';
+      service = new EntryTimingService(config);
 
       const trends = createTrendsResponse(
         TrendStatus.UP,
@@ -353,12 +283,8 @@ describe('EntryTimingService', () => {
     });
 
     it('should respect custom minimum correction percentage', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '5m';
-        if (key === 'hyperliquid.entryTimingMinCorrectionPct') return 3.0; // High threshold
-        return undefined;
-      });
+      config.minCorrectionPct = 3.0; // High threshold
+      service = new EntryTimingService(config);
 
       const trends = createTrendsResponse(
         TrendStatus.UP,
@@ -379,13 +305,6 @@ describe('EntryTimingService', () => {
 
   describe('evaluateEntryTiming - Confidence scoring', () => {
     it('should give high confidence for strong reversal after deep correction', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '5m';
-        if (key === 'hyperliquid.entryTimingMinCorrectionPct') return 1.5;
-        return undefined;
-      });
-
       const trends = createTrendsResponse(
         TrendStatus.UP,
         TrendStatus.UP,
@@ -402,13 +321,6 @@ describe('EntryTimingService', () => {
     });
 
     it('should give medium confidence for alignment without deep correction', async () => {
-      mockConfigService.get.mockImplementation((key: string) => {
-        if (key === 'hyperliquid.entryTimingEnabled') return true;
-        if (key === 'hyperliquid.entryTimingShortTimeframe') return '5m';
-        if (key === 'hyperliquid.entryTimingMinCorrectionPct') return 1.5;
-        return undefined;
-      });
-
       const trends = createTrendsResponse(
         TrendStatus.UP,
         TrendStatus.UP,
