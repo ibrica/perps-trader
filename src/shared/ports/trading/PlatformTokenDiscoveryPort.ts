@@ -5,6 +5,4 @@ export abstract class PlatformTokenDiscoveryPort {
   abstract readonly platform: Platform;
 
   abstract getTokensToTrade(): Promise<string[]>;
-
-  abstract isTokenTradeable(token: string): Promise<boolean>;
 }

@@ -84,43 +84,6 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
   }
 
   /**
-   * Check if a specific token is tradeable
-   */
-  async isTokenTradeable(tokenSymbol: string): Promise<boolean> {
-    try {
-      // Check if Hyperliquid is enabled
-      const isEnabled = this.configService.get<boolean>('hyperliquid.enabled');
-      if (!isEnabled) {
-        return false;
-      }
-
-      // Check if we have a perp definition
-      const perp = await this.perpService.findByToken(tokenSymbol);
-      if (!perp) {
-        return false;
-      }
-
-      // Check if the market exists on Hyperliquid
-      const markets = await this.hyperliquidService.getMarkets();
-      const marketName = this.constructMarketName(tokenSymbol);
-      const market = markets.find((m) => m.name === marketName);
-
-      if (!market) {
-        return false;
-      }
-
-      // Check if the market is active
-      return await this.isMarketActive(marketName);
-    } catch (error) {
-      this.logger.error(
-        `Failed to check if token ${tokenSymbol} is tradeable`,
-        error,
-      );
-      return false;
-    }
-  }
-
-  /**
    * Extract base symbol from Hyperliquid market name
    * e.g., "SOL-USD" -> "SOL"
    */
@@ -197,42 +160,6 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
       this.logger.debug(`Market ${marketName} appears inactive:`, error);
       return false;
     }
-  }
-
-  /**
-   * Get preferred trading symbols for Hyperliquid
-   * These are typically high-volume, well-established tokens
-   */
-  getPreferredSymbols(): string[] {
-    return [
-      'BTC',
-      'ETH',
-      'SOL',
-      'DOGE',
-      'AVAX',
-      'MATIC',
-      'ATOM',
-      'DOT',
-      'UNI',
-      'LINK',
-    ];
-  }
-
-  /**
-   * Check if any of the preferred symbols are available
-   */
-  async getAvailablePreferredSymbols(): Promise<string[]> {
-    const preferred = this.getPreferredSymbols();
-    const available: string[] = [];
-
-    for (const symbol of preferred) {
-      const isAvailable = await this.isTokenTradeable(symbol);
-      if (isAvailable) {
-        available.push(symbol);
-      }
-    }
-
-    return available;
   }
 
   /**
