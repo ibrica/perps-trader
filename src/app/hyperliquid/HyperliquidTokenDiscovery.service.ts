@@ -52,28 +52,41 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
         Platform.HYPERLIQUID,
       );
 
+      this.logger.log(`Found ${perpsToTrade.length} perps to trade`);
+
       for (const perp of perpsToTrade) {
         try {
           // Check if we have a perp definition for this market
           const symbol = perp.token;
+          this.logger.log(`Checking perp ${perp.name} with symbol ${symbol}`);
           const market = markets.find(
             (m) => m.name === this.constructMarketName(symbol),
           );
 
+          this.logger.log(`Found market ${market?.name} for perp ${perp.name}`);
           if (market) {
             const isActive = await this.isMarketActive(market.name);
             if (isActive) {
+              this.logger.log(
+                `Market ${market.name} is active for perp ${perp.name}`,
+              );
               availableSymbols.push(symbol);
+            } else {
+              this.logger.log(
+                `Market ${market.name} is not active for perp ${perp.name}`,
+              );
             }
+          } else {
+            this.logger.log(`No market found for perp ${perp.name}`);
           }
         } catch (error) {
-          this.logger.debug(
-            `Error checking perp for trading: ${perp.name}:`,
-            error,
-          );
+          this.logger.error(`Error checking perp ${perp.name}:`, error);
           continue;
         }
       }
+      this.logger.log(
+        `Found ${availableSymbols.length} active symbols to trade`,
+      );
 
       // Update cache
       this.marketsCache = availableSymbols;
