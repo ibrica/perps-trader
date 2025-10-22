@@ -42,9 +42,6 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
         return this.marketsCache;
       }
 
-      // Fetch markets from Hyperliquid
-      const markets = await this.hyperliquidService.getMarkets();
-
       // Extract symbols that are available for trading
       const availableSymbols: string[] = [];
 
@@ -52,19 +49,28 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
         Platform.HYPERLIQUID,
       );
 
+      const markets = await this.hyperliquidService.getMarkets();
+
       for (const perp of perpsToTrade) {
         try {
           // Check if we have a perp definition for this market
           const symbol = perp.token;
+
+          const constructedMarketName = this.constructMarketName(symbol);
           const market = markets.find(
-            (m) => m.name === this.constructMarketName(symbol),
+            (m) => m.name === perp.name || m.name === constructedMarketName,
           );
 
-          if (market) {
-            const isActive = await this.isMarketActive(market.name);
-            if (isActive) {
-              availableSymbols.push(symbol);
-            }
+          if (!market) {
+            this.logger.warn(
+              `Market not found for perp ${perp.name}: ${constructedMarketName}`,
+            );
+            continue;
+          }
+
+          const isActive = await this.isMarketActive(market.name);
+          if (isActive) {
+            availableSymbols.push(symbol);
           }
         } catch (error) {
           this.logger.debug(
@@ -91,45 +97,8 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
   }
 
   /**
-   * Check if a specific token is tradeable
-   */
-  async isTokenTradeable(tokenSymbol: string): Promise<boolean> {
-    try {
-      // Check if Hyperliquid is enabled
-      const isEnabled = this.configService.get<boolean>('hyperliquid.enabled');
-      if (!isEnabled) {
-        return false;
-      }
-
-      // Check if we have a perp definition
-      const perp = await this.perpService.findByToken(tokenSymbol);
-      if (!perp) {
-        return false;
-      }
-
-      // Check if the market exists on Hyperliquid
-      const markets = await this.hyperliquidService.getMarkets();
-      const marketName = this.constructMarketName(tokenSymbol);
-      const market = markets.find((m) => m.name === marketName);
-
-      if (!market) {
-        return false;
-      }
-
-      // Check if the market is active
-      return await this.isMarketActive(marketName);
-    } catch (error) {
-      this.logger.error(
-        `Failed to check if token ${tokenSymbol} is tradeable`,
-        error,
-      );
-      return false;
-    }
-  }
-
-  /**
    * Extract base symbol from Hyperliquid market name
-   * e.g., "SOL-USD" -> "SOL"
+   * e.g., "SOL-PERP" -> "SOL"
    */
   private extractBaseSymbol(marketName: string): string {
     // Handle different naming conventions
@@ -151,8 +120,8 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
    * Construct Hyperliquid market name from symbol
    */
   private constructMarketName(symbol: string): string {
-    // Most Hyperliquid perpetuals follow the pattern SYMBOL-USD
-    return `${symbol.toUpperCase()}-USD`;
+    // Most Hyperliquid perpetuals follow the pattern SYMBOL-PERP
+    return `${symbol.toUpperCase()}-PERP`;
   }
 
   /**
@@ -187,42 +156,6 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
       this.logger.debug(`Market ${marketName} appears inactive:`, error);
       return false;
     }
-  }
-
-  /**
-   * Get preferred trading symbols for Hyperliquid
-   * These are typically high-volume, well-established tokens
-   */
-  getPreferredSymbols(): string[] {
-    return [
-      'BTC',
-      'ETH',
-      'SOL',
-      'DOGE',
-      'AVAX',
-      'MATIC',
-      'ATOM',
-      'DOT',
-      'UNI',
-      'LINK',
-    ];
-  }
-
-  /**
-   * Check if any of the preferred symbols are available
-   */
-  async getAvailablePreferredSymbols(): Promise<string[]> {
-    const preferred = this.getPreferredSymbols();
-    const available: string[] = [];
-
-    for (const symbol of preferred) {
-      const isAvailable = await this.isTokenTradeable(symbol);
-      if (isAvailable) {
-        available.push(symbol);
-      }
-    }
-
-    return available;
   }
 
   /**

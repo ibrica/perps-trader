@@ -70,10 +70,9 @@ Tokens are defined in the `perps` collection with the following structure:
 
 ```typescript
 {
-  name: "Bitcoin",              // Display name
+  name: "BTC-PERP",             // Exchange symbol (market name)
   token: "BTC",                 // Symbol (primary key)
   currency: "USD",              // Quote currency
-  perpSymbol: "BTC-USD",        // Exchange symbol
   platform: "HYPERLIQUID",      // Trading platform
   buyFlag: true,                // ⭐ ELIGIBILITY GATE
   isActive: true,               // Active/inactive toggle

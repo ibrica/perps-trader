@@ -7,7 +7,6 @@ export interface CreatePerpDto {
   name: string;
   token: string;
   currency: Currency;
-  perpSymbol: string;
   platform: Platform;
   buyFlag?: boolean;
   marketDirection?: MarketDirection;

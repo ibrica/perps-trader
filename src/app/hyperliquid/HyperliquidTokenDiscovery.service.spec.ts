@@ -13,7 +13,7 @@ describe('HyperliquidTokenDiscoveryService', () => {
 
   const mockMarkets = [
     {
-      name: 'BTC-USD',
+      name: 'BTC-PERP',
       szDecimals: 3,
       pxDecimals: 8,
       minSize: 0.00001,
@@ -21,7 +21,7 @@ describe('HyperliquidTokenDiscoveryService', () => {
       onlyIsolated: false,
     },
     {
-      name: 'ETH-USD',
+      name: 'ETH-PERP',
       szDecimals: 3,
       pxDecimals: 8,
       minSize: 0.00001,
@@ -29,7 +29,7 @@ describe('HyperliquidTokenDiscoveryService', () => {
       onlyIsolated: false,
     },
     {
-      name: 'SOL-USD',
+      name: 'SOL-PERP',
       szDecimals: 2,
       pxDecimals: 8,
       minSize: 0.00001,
@@ -40,17 +40,17 @@ describe('HyperliquidTokenDiscoveryService', () => {
 
   const mockPerps = [
     {
-      name: 'Bitcoin',
+      name: 'BTC-PERP',
       token: 'BTC',
       platform: Platform.HYPERLIQUID,
     },
     {
-      name: 'Ethereum',
+      name: 'ETH-PERP',
       token: 'ETH',
       platform: Platform.HYPERLIQUID,
     },
     {
-      name: 'Solana',
+      name: 'SOL-PERP',
       token: 'SOL',
       platform: Platform.HYPERLIQUID,
     },
@@ -238,7 +238,7 @@ describe('HyperliquidTokenDiscoveryService', () => {
       const perpsWithMissing = [
         ...mockPerps,
         {
-          name: 'Cardano',
+          name: 'ADA-PERP',
           token: 'ADA',
           platform: Platform.HYPERLIQUID,
         },
@@ -292,101 +292,59 @@ describe('HyperliquidTokenDiscoveryService', () => {
 
       expect(result).toEqual(['BTC', 'SOL']);
     });
-  });
 
-  describe('isTokenTradeable', () => {
-    it('should return true for tradeable token', async () => {
-      mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
-      mockPerpService.findByToken.mockResolvedValue({ token: 'BTC' } as any);
-      mockHyperliquidService.getTicker.mockResolvedValue(mockTickers.BTC);
+    it('should handle perps with descriptional names by constructing market name from symbol', async () => {
+      const perpsWithDescriptionalNames = [
+        {
+          name: 'Bitcoin Perpetual', // Descriptional name
+          token: 'BTC',
+          platform: Platform.HYPERLIQUID,
+        },
+        {
+          name: 'Cardano', // Descriptional name
+          token: 'ADA',
+          platform: Platform.HYPERLIQUID,
+        },
+      ];
 
-      const result = await service.isTokenTradeable('BTC');
+      const marketsWithAda = [
+        ...mockMarkets,
+        {
+          name: 'ADA-PERP',
+          szDecimals: 2,
+          pxDecimals: 8,
+          minSize: 0.00001,
+          maxLeverage: 10,
+          onlyIsolated: false,
+        },
+      ];
 
-      expect(result).toBe(true);
-    });
-
-    it('should return false when disabled', async () => {
-      mockConfigService.get.mockReturnValue(false);
-
-      const result = await service.isTokenTradeable('BTC');
-
-      expect(result).toBe(false);
-    });
-
-    it('should return false for token without perp definition', async () => {
-      mockPerpService.findByToken.mockResolvedValue(null);
-
-      const result = await service.isTokenTradeable('INVALID');
-
-      expect(result).toBe(false);
-    });
-
-    it('should return false for token not on Hyperliquid', async () => {
-      mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
-      mockPerpService.findByToken.mockResolvedValue({ token: 'ADA' } as any);
-
-      const result = await service.isTokenTradeable('ADA');
-
-      expect(result).toBe(false);
-    });
-
-    it('should handle ticker fetch errors', async () => {
-      mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
-      mockPerpService.findByToken.mockResolvedValue({ token: 'BTC' } as any);
-      mockHyperliquidService.getTicker.mockRejectedValue(
-        new Error('Ticker not found'),
+      mockPerpService.getPerpsForTrading.mockResolvedValue(
+        perpsWithDescriptionalNames as any,
       );
-
-      const result = await service.isTokenTradeable('BTC');
-
-      expect(result).toBe(false);
-    });
-  });
-
-  describe('getPreferredSymbols', () => {
-    it('should return preferred trading symbols', () => {
-      const result = service.getPreferredSymbols();
-
-      expect(result).toEqual([
-        'BTC',
-        'ETH',
-        'SOL',
-        'DOGE',
-        'AVAX',
-        'MATIC',
-        'ATOM',
-        'DOT',
-        'UNI',
-        'LINK',
-      ]);
-    });
-  });
-
-  describe('getAvailablePreferredSymbols', () => {
-    it('should return available preferred symbols', async () => {
-      mockHyperliquidService.getMarkets.mockResolvedValue(mockMarkets);
-
-      // Mock for all preferred symbols
-      mockPerpService.findByToken
-        .mockResolvedValueOnce({ token: 'BTC' } as any) // BTC
-        .mockResolvedValueOnce({ token: 'ETH' } as any) // ETH
-        .mockResolvedValueOnce({ token: 'SOL' } as any) // SOL
-        .mockResolvedValueOnce(null) // DOGE
-        .mockResolvedValueOnce(null) // AVAX
-        .mockResolvedValueOnce(null) // MATIC
-        .mockResolvedValueOnce(null) // ATOM
-        .mockResolvedValueOnce(null) // DOT
-        .mockResolvedValueOnce(null) // UNI
-        .mockResolvedValueOnce(null); // LINK
-
+      mockHyperliquidService.getMarkets.mockResolvedValue(marketsWithAda);
       mockHyperliquidService.getTicker
-        .mockResolvedValueOnce(mockTickers.BTC)
-        .mockResolvedValueOnce(mockTickers.ETH)
-        .mockResolvedValueOnce(mockTickers.SOL);
+        .mockResolvedValueOnce(mockTickers.BTC) // For BTC
+        .mockResolvedValueOnce({
+          // For ADA
+          coin: 'ADA',
+          bid: '0.50',
+          ask: '0.51',
+          last: '0.505',
+          mark: '0.505',
+          volume24h: '50000',
+          openInterest: '25000',
+          fundingRate: '0.0001',
+        });
 
-      const result = await service.getAvailablePreferredSymbols();
+      const result = await service.getTokensToTrade();
 
-      expect(result).toEqual(['BTC', 'ETH', 'SOL']);
+      // Both should be found even though the perp names don't match market names
+      // The service should construct the market name from symbols: BTC-PERP and ADA-PERP
+      expect(result).toEqual(['BTC', 'ADA']);
+      expect(mockHyperliquidService.getMarkets).toHaveBeenCalled();
+      expect(mockHyperliquidService.getTicker).toHaveBeenCalledWith('BTC');
+      expect(mockHyperliquidService.getTicker).toHaveBeenCalledWith('ADA');
     });
   });
 

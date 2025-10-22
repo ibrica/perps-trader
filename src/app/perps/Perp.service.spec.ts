@@ -17,10 +17,9 @@ import {
 const createTestPerpDto = (
   options?: Partial<CreatePerpDto>,
 ): CreatePerpDto => ({
-  name: options?.name || 'SOL-USDC Perpetual',
+  name: options?.name || 'SOL-PERP Perpetual',
   token: options?.token || 'SOL',
   currency: options?.currency || Currency.USDC,
-  perpSymbol: options?.perpSymbol || 'SOL-USDC',
   platform: options?.platform || Platform.HYPERLIQUID,
   buyFlag: options?.buyFlag ?? false,
   marketDirection: options?.marketDirection ?? MarketDirection.NEUTRAL,
@@ -66,23 +65,21 @@ describe('PerpService', () => {
       const perp = await service.create(createDto);
 
       expect(perp).toBeDefined();
-      expect(perp.name).toBe('SOL-USDC Perpetual');
+      expect(perp.name).toBe('SOL-PERP Perpetual');
       expect(perp.platform).toBe(Platform.HYPERLIQUID);
       expect(perp.buyFlag).toBe(false);
       expect(perp.marketDirection).toBe(MarketDirection.NEUTRAL);
       expect(perp.isActive).toBe(true);
       expect(perp.token).toBe('SOL');
       expect(perp.currency).toBe(Currency.USDC);
-      expect(perp.perpSymbol).toBe('SOL-USDC');
       expect(perp.defaultLeverage).toBe(1);
     });
 
     it('should create a perp with custom values', async () => {
       const createDto = createTestPerpDto({
-        name: 'BTC-USDT Perpetual',
+        name: 'BTC-PERP Perpetual',
         token: 'BTC',
         currency: Currency.USDT,
-        perpSymbol: 'BTC-USDT',
         buyFlag: true,
         marketDirection: MarketDirection.UP,
         isActive: false,
@@ -92,10 +89,9 @@ describe('PerpService', () => {
 
       const perp = await service.create(createDto);
 
-      expect(perp.name).toBe('BTC-USDT Perpetual');
+      expect(perp.name).toBe('BTC-PERP Perpetual');
       expect(perp.token).toBe('BTC');
       expect(perp.currency).toBe(Currency.USDT);
-      expect(perp.perpSymbol).toBe('BTC-USDT');
       expect(perp.buyFlag).toBe(true);
       expect(perp.marketDirection).toBe(MarketDirection.UP);
       expect(perp.isActive).toBe(false);
@@ -108,23 +104,22 @@ describe('PerpService', () => {
     it('should return all perps', async () => {
       await service.create(
         createTestPerpDto({
-          name: 'SOL-USDC Perpetual',
+          name: 'SOL-PERP Perpetual',
           token: 'SOL',
         }),
       );
       await service.create(
         createTestPerpDto({
-          name: 'BTC-USDC Perpetual',
+          name: 'BTC-PERP Perpetual',
           token: 'BTC',
-          perpSymbol: 'BTC-USDC',
         }),
       );
 
       const perps = await service.findAll();
 
       expect(perps).toHaveLength(2);
-      expect(perps.map((p) => p.name)).toContain('SOL-USDC Perpetual');
-      expect(perps.map((p) => p.name)).toContain('BTC-USDC Perpetual');
+      expect(perps.map((p) => p.name)).toContain('SOL-PERP Perpetual');
+      expect(perps.map((p) => p.name)).toContain('BTC-PERP Perpetual');
     });
 
     it('should return empty array when no perps exist', async () => {
@@ -167,7 +162,6 @@ describe('PerpService', () => {
       const perp = await service.create(
         createTestPerpDto({
           token: 'ETH',
-          perpSymbol: 'ETH-USDC',
         }),
       );
 
@@ -189,7 +183,6 @@ describe('PerpService', () => {
         createTestPerpDto({
           currency: Currency.SOL,
           token: 'SOL',
-          perpSymbol: 'SOL-USD',
         }),
       );
 
@@ -279,14 +272,14 @@ describe('PerpService', () => {
         createTestPerpDto({
           platform: Platform.HYPERLIQUID,
           buyFlag: true,
-          name: 'SOL-USDC Trading',
+          name: 'SOL-PERP Trading',
         }),
       );
       await service.create(
         createTestPerpDto({
           platform: Platform.HYPERLIQUID,
           buyFlag: false,
-          name: 'BTC-USDC No Trading',
+          name: 'BTC-PERP No Trading',
         }),
       );
 
@@ -295,7 +288,7 @@ describe('PerpService', () => {
       );
 
       expect(hyperliquidTradingPerps).toHaveLength(1);
-      expect(hyperliquidTradingPerps[0].name).toBe('SOL-USDC Trading');
+      expect(hyperliquidTradingPerps[0].name).toBe('SOL-PERP Trading');
       expect(hyperliquidTradingPerps[0].buyFlag).toBe(true);
     });
 
@@ -321,7 +314,7 @@ describe('PerpService', () => {
           platform: Platform.HYPERLIQUID,
           buyFlag: true,
           isActive: true,
-          name: 'SOL-USDC Trading',
+          name: 'SOL-PERP Trading',
         }),
       );
       await service.create(
@@ -329,7 +322,7 @@ describe('PerpService', () => {
           platform: Platform.HYPERLIQUID,
           buyFlag: false,
           isActive: true,
-          name: 'BTC-USDC No Trading',
+          name: 'BTC-PERP No Trading',
         }),
       );
       await service.create(
@@ -337,7 +330,7 @@ describe('PerpService', () => {
           platform: Platform.HYPERLIQUID,
           buyFlag: true,
           isActive: true,
-          name: 'ETH-USDC Trading',
+          name: 'ETH-PERP Trading',
         }),
       );
       await service.create(
@@ -345,7 +338,7 @@ describe('PerpService', () => {
           platform: Platform.HYPERLIQUID,
           buyFlag: true,
           isActive: false,
-          name: 'AVAX-USDC Inactive',
+          name: 'AVAX-PERP Inactive',
         }),
       );
 
@@ -353,8 +346,8 @@ describe('PerpService', () => {
 
       expect(allTradingPerps).toHaveLength(2); // Only buyFlag: true and isActive: true perps
       const names = allTradingPerps.map((p) => p.name);
-      expect(names).toContain('SOL-USDC Trading');
-      expect(names).toContain('ETH-USDC Trading');
+      expect(names).toContain('SOL-PERP Trading');
+      expect(names).toContain('ETH-PERP Trading');
       expect(names).not.toContain('BTC-USDC No Trading'); // buyFlag: false
       expect(names).not.toContain('AVAX-USDC Inactive'); // isActive: false
     });

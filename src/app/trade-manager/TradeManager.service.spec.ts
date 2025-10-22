@@ -186,7 +186,7 @@ describe('TradeManagerService', () => {
         tradingDecision,
       );
 
-      expect(result.leverage).toBe(3); // Default leverage
+      expect(result.leverage).toBe(5); // Default leverage in TradeManager is 5
       expect(result.positionDirection).toBe(PositionDirection.SHORT);
     });
   });

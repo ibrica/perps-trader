@@ -25,9 +25,6 @@ export class Perp {
   @Prop({ type: String, enum: Currency, required: true })
   currency: Currency;
 
-  @Prop({ type: String, required: true })
-  perpSymbol: string;
-
   @Prop({ type: String, enum: Platform, required: true })
   platform: Platform;
 
