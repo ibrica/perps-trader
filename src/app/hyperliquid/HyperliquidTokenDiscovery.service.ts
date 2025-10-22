@@ -151,8 +151,8 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
    * Construct Hyperliquid market name from symbol
    */
   private constructMarketName(symbol: string): string {
-    // Most Hyperliquid perpetuals follow the pattern SYMBOL-USD
-    return `${symbol.toUpperCase()}-USD`;
+    // Most Hyperliquid perpetuals follow the pattern SYMBOL-PERP
+    return `${symbol.toUpperCase()}-PERP`;
   }
 
   /**
