@@ -53,7 +53,19 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
         try {
           // Check if we have a perp definition for this market
           const symbol = perp.token;
-          const market = await this.findMarket(perp.name, symbol);
+          const markets = await this.hyperliquidService.getMarkets();
+          const market = markets.find(
+            (m) =>
+              m.name === perp.name ||
+              m.name === this.constructMarketName(symbol),
+          );
+
+          if (!market) {
+            this.logger.warn(
+              `Market not found for perp ${perp.name}: ${symbol}`,
+            );
+            continue;
+          }
 
           const isActive = await this.isMarketActive(market.name);
           if (isActive) {
@@ -85,7 +97,7 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
 
   /**
    * Extract base symbol from Hyperliquid market name
-   * e.g., "SOL-USD" -> "SOL"
+   * e.g., "SOL-PERP" -> "SOL"
    */
   private extractBaseSymbol(marketName: string): string {
     // Handle different naming conventions
@@ -101,23 +113,6 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
 
     // Fallback: assume the market name is the symbol
     return marketName;
-  }
-
-  /**
-   * Find a market by name or symbol
-   */
-  private async findMarket(name: string, symbol: string): Promise<HLMarket> {
-    const markets = await this.hyperliquidService.getMarkets();
-    const constructedName = this.constructMarketName(symbol);
-
-    const market = markets.find(
-      (m) => m.name === name || m.name === constructedName,
-    );
-
-    if (!market) {
-      throw new Error(`Market not found: ${name} or ${constructedName}`);
-    }
-    return market;
   }
 
   /**
