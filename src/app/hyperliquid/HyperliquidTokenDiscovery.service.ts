@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Platform, MarketStats, HLMarket } from '../../shared';
+import { Platform, MarketStats } from '../../shared';
 import { PlatformTokenDiscoveryPort } from '../../shared/ports/trading/PlatformTokenDiscoveryPort';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { PerpService } from '../perps/Perp.service';
@@ -49,20 +49,21 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
         Platform.HYPERLIQUID,
       );
 
+      const markets = await this.hyperliquidService.getMarkets();
+
       for (const perp of perpsToTrade) {
         try {
           // Check if we have a perp definition for this market
           const symbol = perp.token;
-          const markets = await this.hyperliquidService.getMarkets();
+
+          const constructedMarketName = this.constructMarketName(symbol);
           const market = markets.find(
-            (m) =>
-              m.name === perp.name ||
-              m.name === this.constructMarketName(symbol),
+            (m) => m.name === perp.name || m.name === constructedMarketName,
           );
 
           if (!market) {
             this.logger.warn(
-              `Market not found for perp ${perp.name}: ${symbol}`,
+              `Market not found for perp ${perp.name}: ${constructedMarketName}`,
             );
             continue;
           }
