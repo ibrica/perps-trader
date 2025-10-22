@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Platform, MarketStats } from '../../shared';
+import { Platform, MarketStats, HLMarket } from '../../shared';
 import { PlatformTokenDiscoveryPort } from '../../shared/ports/trading/PlatformTokenDiscoveryPort';
 import { HyperliquidService } from '../../infrastructure/hyperliquid/HyperliquidService';
 import { PerpService } from '../perps/Perp.service';
@@ -42,9 +42,6 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
         return this.marketsCache;
       }
 
-      // Fetch markets from Hyperliquid
-      const markets = await this.hyperliquidService.getMarkets();
-
       // Extract symbols that are available for trading
       const availableSymbols: string[] = [];
 
@@ -56,15 +53,11 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
         try {
           // Check if we have a perp definition for this market
           const symbol = perp.token;
-          const market = markets.find(
-            (m) => m.name === this.constructMarketName(symbol),
-          );
+          const market = await this.findMarket(perp.name, symbol);
 
-          if (market) {
-            const isActive = await this.isMarketActive(market.name);
-            if (isActive) {
-              availableSymbols.push(symbol);
-            }
+          const isActive = await this.isMarketActive(market.name);
+          if (isActive) {
+            availableSymbols.push(symbol);
           }
         } catch (error) {
           this.logger.debug(
@@ -145,6 +138,23 @@ export class HyperliquidTokenDiscoveryService extends PlatformTokenDiscoveryPort
 
     // Fallback: assume the market name is the symbol
     return marketName;
+  }
+
+  /**
+   * Find a market by name or symbol
+   */
+  private async findMarket(name: string, symbol: string): Promise<HLMarket> {
+    const markets = await this.hyperliquidService.getMarkets();
+    const constructedName = this.constructMarketName(symbol);
+
+    const market = markets.find(
+      (m) => m.name === name || m.name === constructedName,
+    );
+
+    if (!market) {
+      throw new Error(`Market not found: ${name} or ${constructedName}`);
+    }
+    return market;
   }
 
   /**
