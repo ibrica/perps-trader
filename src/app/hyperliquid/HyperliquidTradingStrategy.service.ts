@@ -328,7 +328,7 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
                   tradingParams.defaultLeverage ||
                   this.configService.get<number>(
                     'hyperliquid.defaultLeverage',
-                    3,
+                    5,
                   ),
               },
             };
