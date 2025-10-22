@@ -8,6 +8,7 @@ import appConfig from './config/app.config';
 import ddConfig from './config/dd-config';
 import predictorConfig from './config/predictor.config';
 import indexerConfig from './config/indexer.config';
+import authConfig from './config/auth.config';
 import { hyperliquidConfig } from './config/hyperliquid.config';
 import { HyperliquidModule } from './app/hyperliquid/Hyperliquid.module';
 import { PerpModule } from './app/perps/Perp.module';
@@ -19,6 +20,7 @@ import { PredictorModule } from './app/predictor/Predictor.module';
 import { JobsModule } from './app/jobs/Jobs.module';
 import { SettingsModule } from './app/settings/Settings.module';
 import { DashboardModule } from './app/dashboard/Dashboard.module';
+import { AuthModule } from './app/auth/Auth.module';
 
 @Module({
   imports: [
@@ -28,6 +30,7 @@ import { DashboardModule } from './app/dashboard/Dashboard.module';
         ddConfig,
         predictorConfig,
         indexerConfig,
+        authConfig,
         hyperliquidConfig,
       ],
       isGlobal: true,
@@ -48,6 +51,7 @@ import { DashboardModule } from './app/dashboard/Dashboard.module';
     PredictorModule,
     JobsModule,
     SettingsModule,
+    AuthModule,
     DashboardModule,
   ],
   controllers: [AppController],

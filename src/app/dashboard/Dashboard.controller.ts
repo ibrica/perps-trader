@@ -7,6 +7,7 @@ import {
   Query,
   NotFoundException,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import { DashboardService } from './Dashboard.service';
 import {
@@ -19,8 +20,10 @@ import {
 import { PerpDocument } from '../perps/Perp.schema';
 import { UpdatePerpDto } from '../perps/Perp.service';
 import { SettingsDocument } from '../settings/Settings.schema';
+import { JwtAuthGuard } from '../auth/guards/Jwt-auth.guard';
 
 @Controller('api/dashboard')
+@UseGuards(JwtAuthGuard)
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
