@@ -485,8 +485,8 @@ export class TradeManagerService implements OnApplicationBootstrap {
         positionType: PositionType.PERPETUAL,
         positionDirection:
           tradingDecision.metadata?.direction || PositionDirection.LONG,
-        leverage: tradingDecision.metadata?.leverage || 3,
-        positionSize: tradingDecision.recommendedAmount || 100, // Default 100 USDC
+        leverage: tradingDecision.metadata?.leverage || 5,
+        positionSize: tradingDecision.recommendedAmount || 1, // Default 1 USDC
         // Entry price will be set by WebSocket handler when order fills
         token,
         // Store SL/TP prices - orders will be created by WebSocket handler after fill
