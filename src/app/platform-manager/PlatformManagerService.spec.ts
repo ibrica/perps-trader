@@ -19,7 +19,6 @@ describe('PlatformManagerService', () => {
   const mockTokenDiscovery: jest.Mocked<PlatformTokenDiscoveryPort> = {
     platform: Platform.HYPERLIQUID,
     getTokensToTrade: jest.fn(),
-    isTokenTradeable: jest.fn(),
   };
 
   const mockTradingStrategy: jest.Mocked<PlatformTradingStrategyPort> = {

@@ -418,13 +418,7 @@ describe('HyperliquidModule Integration', () => {
     });
 
     it('should have all required methods in TokenDiscoveryService', () => {
-      const methods = [
-        'getTokensToTrade',
-        'isTokenTradeable',
-        'getPreferredSymbols',
-        'getAvailablePreferredSymbols',
-        'getMarketStats',
-      ];
+      const methods = ['getTokensToTrade', 'getMarketStats'];
 
       methods.forEach((method) => {
         expect(typeof tokenDiscoveryService[method]).toBe('function');
