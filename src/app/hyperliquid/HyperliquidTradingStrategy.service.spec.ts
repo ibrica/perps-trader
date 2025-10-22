@@ -188,7 +188,6 @@ describe('HyperliquidTradingStrategyService', () => {
       mockPerpService.findByToken.mockResolvedValue({
         token: 'BTC',
         currency: Currency.USDC,
-        perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
       mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
@@ -267,7 +266,6 @@ describe('HyperliquidTradingStrategyService', () => {
       mockPerpService.findByToken.mockResolvedValue({
         token: 'BTC',
         currency: Currency.USDC,
-        perpSymbol: 'BTC-USDC',
       } as any);
       mockConfigService.get.mockReturnValue(false);
 
@@ -287,7 +285,6 @@ describe('HyperliquidTradingStrategyService', () => {
       mockPerpService.findByToken.mockResolvedValue({
         token: 'BTC',
         currency: Currency.USDC,
-        perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
       mockConfigService.get.mockImplementation((key: string) => {
@@ -315,7 +312,6 @@ describe('HyperliquidTradingStrategyService', () => {
       mockPerpService.findByToken.mockResolvedValue({
         token: 'BTC',
         currency: Currency.USDC,
-        perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
       mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
@@ -363,7 +359,6 @@ describe('HyperliquidTradingStrategyService', () => {
       mockPerpService.findByToken.mockResolvedValue({
         token: 'BTC',
         currency: Currency.USDC,
-        perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
       mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
@@ -411,7 +406,6 @@ describe('HyperliquidTradingStrategyService', () => {
       mockPerpService.findByToken.mockResolvedValue({
         token: 'BTC',
         currency: Currency.USDC,
-        perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
       mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
@@ -461,7 +455,6 @@ describe('HyperliquidTradingStrategyService', () => {
       mockPerpService.findByToken.mockResolvedValue({
         token: 'BTC',
         currency: Currency.USDC,
-        perpSymbol: 'BTC-USDC',
       } as any);
       mockPredictorAdapter.predictToken.mockResolvedValue(mockPrediction);
       mockPredictorAdapter.getTrendsForToken.mockResolvedValue({
@@ -507,8 +500,7 @@ describe('HyperliquidTradingStrategyService', () => {
         mockPerpService.findByToken.mockResolvedValue({
           token: 'BTC',
           currency: Currency.USDC,
-          perpSymbol: 'BTC-USDC',
-        } as any);
+          } as any);
         mockPredictorAdapter.predictToken.mockResolvedValue(
           createMockPrediction(Recommendation.BUY),
         );

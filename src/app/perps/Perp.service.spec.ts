@@ -20,7 +20,6 @@ const createTestPerpDto = (
   name: options?.name || 'SOL-USDC Perpetual',
   token: options?.token || 'SOL',
   currency: options?.currency || Currency.USDC,
-  perpSymbol: options?.perpSymbol || 'SOL-USDC',
   platform: options?.platform || Platform.HYPERLIQUID,
   buyFlag: options?.buyFlag ?? false,
   marketDirection: options?.marketDirection ?? MarketDirection.NEUTRAL,
@@ -73,7 +72,6 @@ describe('PerpService', () => {
       expect(perp.isActive).toBe(true);
       expect(perp.token).toBe('SOL');
       expect(perp.currency).toBe(Currency.USDC);
-      expect(perp.perpSymbol).toBe('SOL-USDC');
       expect(perp.defaultLeverage).toBe(1);
     });
 
@@ -82,7 +80,6 @@ describe('PerpService', () => {
         name: 'BTC-USDT Perpetual',
         token: 'BTC',
         currency: Currency.USDT,
-        perpSymbol: 'BTC-USDT',
         buyFlag: true,
         marketDirection: MarketDirection.UP,
         isActive: false,
@@ -95,7 +92,6 @@ describe('PerpService', () => {
       expect(perp.name).toBe('BTC-USDT Perpetual');
       expect(perp.token).toBe('BTC');
       expect(perp.currency).toBe(Currency.USDT);
-      expect(perp.perpSymbol).toBe('BTC-USDT');
       expect(perp.buyFlag).toBe(true);
       expect(perp.marketDirection).toBe(MarketDirection.UP);
       expect(perp.isActive).toBe(false);
@@ -116,7 +112,6 @@ describe('PerpService', () => {
         createTestPerpDto({
           name: 'BTC-USDC Perpetual',
           token: 'BTC',
-          perpSymbol: 'BTC-USDC',
         }),
       );
 
@@ -167,7 +162,6 @@ describe('PerpService', () => {
       const perp = await service.create(
         createTestPerpDto({
           token: 'ETH',
-          perpSymbol: 'ETH-USDC',
         }),
       );
 
@@ -189,7 +183,6 @@ describe('PerpService', () => {
         createTestPerpDto({
           currency: Currency.SOL,
           token: 'SOL',
-          perpSymbol: 'SOL-USD',
         }),
       );
 
