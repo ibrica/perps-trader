@@ -18,6 +18,7 @@ import { IndexerModule } from './app/indexer/Indexer.module';
 import { PredictorModule } from './app/predictor/Predictor.module';
 import { JobsModule } from './app/jobs/Jobs.module';
 import { SettingsModule } from './app/settings/Settings.module';
+import { DashboardModule } from './app/dashboard/Dashboard.module';
 
 @Module({
   imports: [
@@ -47,6 +48,7 @@ import { SettingsModule } from './app/settings/Settings.module';
     PredictorModule,
     JobsModule,
     SettingsModule,
+    DashboardModule,
   ],
   controllers: [AppController],
   providers: [AppService],

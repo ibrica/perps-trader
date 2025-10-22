@@ -12,7 +12,7 @@ import { TradePositionRepository } from './TradePosition.repository';
     ]),
   ],
   providers: [TradePositionService, TradePositionRepository],
-  exports: [TradePositionService],
+  exports: [TradePositionService, TradePositionRepository],
 })
 export class TradePositionModule {
   static register(): DynamicModule {
