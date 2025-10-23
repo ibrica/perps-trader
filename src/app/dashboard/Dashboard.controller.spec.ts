@@ -1,10 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TestingModule, Test } from '@nestjs/testing';
-import {
-  NotFoundException,
-  BadRequestException,
-  ValidationPipe,
-} from '@nestjs/common';
+import { TestingModule } from '@nestjs/testing';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DashboardController } from './Dashboard.controller';
 import { DashboardService } from './Dashboard.service';
 import {
@@ -13,11 +9,7 @@ import {
 } from '../../shared';
 import { TimePeriod } from './Dashboard.dto';
 import { plainToInstance } from 'class-transformer';
-import { validate } from 'class-validator';
-import {
-  UpdatePositionExitFlagDto,
-  UpdateSettingsDto,
-} from './dto';
+import { UpdatePositionExitFlagDto, UpdateSettingsDto } from './dto';
 
 describe('DashboardController', () => {
   let controller: DashboardController;
@@ -205,7 +197,7 @@ describe('DashboardController', () => {
 
       // Test DTO validation directly
       expect(() => {
-        const dto = plainToInstance(UpdatePositionExitFlagDto, body);
+        plainToInstance(UpdatePositionExitFlagDto, body);
       }).toThrow(BadRequestException);
     });
 
@@ -290,7 +282,7 @@ describe('DashboardController', () => {
 
       // Test DTO validation directly
       expect(() => {
-        const dto = plainToInstance(UpdateSettingsDto, body);
+        plainToInstance(UpdateSettingsDto, body);
       }).toThrow(BadRequestException);
     });
 

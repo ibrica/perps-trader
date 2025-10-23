@@ -52,7 +52,7 @@ export class DashboardService {
     const positions = await this.tradePositionRepository.getAll({ filter });
 
     const overview = this.calculateOverview(positions);
-    const timeSeries = this.calculateTimeSeries(positions, dateRange);
+    const timeSeries = this.calculateTimeSeries(positions);
     const tokenBreakdown = this.calculateTokenBreakdown(positions);
 
     return {
@@ -219,7 +219,6 @@ export class DashboardService {
 
   private calculateTimeSeries(
     positions: TradePositionDocument[],
-    dateRange: { start: Date; end: Date },
   ): TimeSeriesDataPoint[] {
     const dailyPnl = new Map<string, number>();
 

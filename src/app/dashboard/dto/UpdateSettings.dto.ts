@@ -9,9 +9,7 @@ export class UpdateSettingsDto {
     }
     if (value === 'true') return true;
     if (value === 'false') return false;
-    throw new BadRequestException(
-      'closeAllPositions must be a boolean value',
-    );
+    throw new BadRequestException('closeAllPositions must be a boolean value');
   })
   @IsBoolean({ message: 'closeAllPositions must be a boolean value' })
   closeAllPositions: boolean;
