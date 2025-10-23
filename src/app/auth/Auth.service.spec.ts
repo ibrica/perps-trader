@@ -131,7 +131,10 @@ describe('AuthService', () => {
       const result = await service.generateTokens(user);
 
       expect(result.expiresIn).toBe('30d');
-      expect(mockConfigService.get).toHaveBeenCalledWith('auth.jwtExpiresIn', '7d');
+      expect(mockConfigService.get).toHaveBeenCalledWith(
+        'auth.jwtExpiresIn',
+        '7d',
+      );
     });
   });
 

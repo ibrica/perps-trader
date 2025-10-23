@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestingModule } from '@nestjs/testing';
 import { DashboardService } from './Dashboard.service';
-import { createTestingModuleWithProviders, TradePositionStatus } from '../../shared';
+import {
+  createTestingModuleWithProviders,
+  TradePositionStatus,
+} from '../../shared';
 import { TradePositionRepository } from '../trade-position/TradePosition.repository';
 import { PerpRepository } from '../perps/Perp.repository';
 import { SettingsRepository } from '../settings/Settings.repository';
@@ -137,7 +140,12 @@ describe('DashboardService', () => {
     });
 
     it('should filter by token when provided', async () => {
-      await service.getAnalytics(TimePeriod.LAST_30_DAYS, undefined, undefined, 'BTC');
+      await service.getAnalytics(
+        TimePeriod.LAST_30_DAYS,
+        undefined,
+        undefined,
+        'BTC',
+      );
 
       expect(mockTradePositionRepository.getAll).toHaveBeenCalledWith({
         filter: expect.objectContaining({
@@ -162,7 +170,11 @@ describe('DashboardService', () => {
 
   describe('getPositions', () => {
     it('should return paginated positions', async () => {
-      const result = await service.getPositions(TradePositionStatus.OPEN, 50, 0);
+      const result = await service.getPositions(
+        TradePositionStatus.OPEN,
+        50,
+        0,
+      );
 
       expect(result).toBeDefined();
       expect(result.positions).toHaveLength(2);
@@ -195,9 +207,14 @@ describe('DashboardService', () => {
   describe('updatePositionExitFlag', () => {
     it('should update position exitFlag to true', async () => {
       const updatedPosition = { ...mockPosition, exitFlag: true };
-      mockTradePositionRepository.updateById.mockResolvedValue(updatedPosition as any);
+      mockTradePositionRepository.updateById.mockResolvedValue(
+        updatedPosition as any,
+      );
 
-      const result = await service.updatePositionExitFlag('507f1f77bcf86cd799439011', true);
+      const result = await service.updatePositionExitFlag(
+        '507f1f77bcf86cd799439011',
+        true,
+      );
 
       expect(result).toBeDefined();
       expect(result?.exitFlag).toBe(true);
@@ -233,7 +250,10 @@ describe('DashboardService', () => {
       const updatedPerp = { ...mockPerp, ...updates };
       mockPerpRepository.updateById.mockResolvedValue(updatedPerp as any);
 
-      const result = await service.updatePerp('507f1f77bcf86cd799439013', updates);
+      const result = await service.updatePerp(
+        '507f1f77bcf86cd799439013',
+        updates,
+      );
 
       expect(result).toBeDefined();
       expect(result?.recommendedAmount).toBe(200);
@@ -266,7 +286,9 @@ describe('DashboardService', () => {
   describe('updateSettings', () => {
     it('should update existing settings', async () => {
       const updatedSettings = { ...mockSettings, closeAllPositions: true };
-      mockSettingsRepository.updateById.mockResolvedValue(updatedSettings as any);
+      mockSettingsRepository.updateById.mockResolvedValue(
+        updatedSettings as any,
+      );
 
       const result = await service.updateSettings(true);
 

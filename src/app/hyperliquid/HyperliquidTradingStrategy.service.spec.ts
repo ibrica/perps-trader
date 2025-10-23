@@ -500,7 +500,7 @@ describe('HyperliquidTradingStrategyService', () => {
         mockPerpService.findByToken.mockResolvedValue({
           token: 'BTC',
           currency: Currency.USDC,
-          } as any);
+        } as any);
         mockPredictorAdapter.predictToken.mockResolvedValue(
           createMockPrediction(Recommendation.BUY),
         );

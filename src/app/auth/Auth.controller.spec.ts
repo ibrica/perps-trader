@@ -95,7 +95,9 @@ describe('AuthController', () => {
 
       await controller.googleAuthRedirect(mockReq, mockRes);
 
-      expect(mockAuthService.validateGoogleUser).toHaveBeenCalledWith(mockGoogleProfile);
+      expect(mockAuthService.validateGoogleUser).toHaveBeenCalledWith(
+        mockGoogleProfile,
+      );
       expect(mockAuthService.generateTokens).toHaveBeenCalledWith(mockAuthUser);
       expect(mockRes.redirect).toHaveBeenCalledWith(
         'http://localhost:3000/auth/callback?token=jwt-token',

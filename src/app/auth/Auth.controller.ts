@@ -15,7 +15,8 @@ export class AuthController {
 
   @Get('google')
   @UseGuards(GoogleAuthGuard)
-  async googleAuth(@Req() req: Request): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  async googleAuth(@Req() _req: Request): Promise<void> {
     // Initiates the Google OAuth flow
     // Guard redirects to Google
   }
@@ -44,6 +45,7 @@ export class AuthController {
 
   @Get('me')
   @UseGuards(JwtAuthGuard)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async getProfile(@Req() req: Request): Promise<any> {
     return req.user;
   }

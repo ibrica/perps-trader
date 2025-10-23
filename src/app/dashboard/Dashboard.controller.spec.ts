@@ -3,7 +3,10 @@ import { TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { DashboardController } from './Dashboard.controller';
 import { DashboardService } from './Dashboard.service';
-import { createTestingModuleWithProviders, TradePositionStatus } from '../../shared';
+import {
+  createTestingModuleWithProviders,
+  TradePositionStatus,
+} from '../../shared';
 import { TimePeriod } from './Dashboard.dto';
 
 describe('DashboardController', () => {
@@ -175,7 +178,10 @@ describe('DashboardController', () => {
   describe('updatePosition', () => {
     it('should update position exitFlag', async () => {
       const body = { exitFlag: true };
-      const result = await controller.updatePosition('507f1f77bcf86cd799439011', body);
+      const result = await controller.updatePosition(
+        '507f1f77bcf86cd799439011',
+        body,
+      );
 
       expect(result).toEqual(mockPosition);
       expect(mockDashboardService.updatePositionExitFlag).toHaveBeenCalledWith(
@@ -217,7 +223,10 @@ describe('DashboardController', () => {
       const updatedPerp = { ...mockPerp, ...body };
       mockDashboardService.updatePerp.mockResolvedValue(updatedPerp as any);
 
-      const result = await controller.updatePerp('507f1f77bcf86cd799439013', body);
+      const result = await controller.updatePerp(
+        '507f1f77bcf86cd799439013',
+        body,
+      );
 
       expect(result).toEqual(updatedPerp);
       expect(mockDashboardService.updatePerp).toHaveBeenCalledWith(
@@ -255,7 +264,9 @@ describe('DashboardController', () => {
     it('should update settings', async () => {
       const body = { closeAllPositions: true };
       const updatedSettings = { ...mockSettings, closeAllPositions: true };
-      mockDashboardService.updateSettings.mockResolvedValue(updatedSettings as any);
+      mockDashboardService.updateSettings.mockResolvedValue(
+        updatedSettings as any,
+      );
 
       const result = await controller.updateSettings(body);
 

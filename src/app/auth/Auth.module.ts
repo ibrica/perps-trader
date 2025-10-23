@@ -13,10 +13,12 @@ import { JwtStrategy } from './strategies/Jwt.strategy';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
-        const expiresIn = configService.get<string>('auth.jwtExpiresIn') || '7d';
+        const expiresIn =
+          configService.get<string>('auth.jwtExpiresIn') || '7d';
         return {
           secret: configService.get<string>('auth.jwtSecret'),
           signOptions: {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             expiresIn: expiresIn as any, // Type assertion for JWT module compatibility
           },
         };

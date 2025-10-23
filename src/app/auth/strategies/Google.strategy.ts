@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/explicit-module-boundary-types */
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -38,7 +39,8 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     }
 
     const email = emails[0].value;
-    const allowedEmails = this.configService.get<string[]>('auth.allowedEmails');
+    const allowedEmails =
+      this.configService.get<string[]>('auth.allowedEmails');
 
     // Check if user email is in the allowed list
     if (allowedEmails.length > 0 && !allowedEmails.includes(email)) {

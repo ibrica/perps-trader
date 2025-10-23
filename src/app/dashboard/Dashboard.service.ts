@@ -12,10 +12,14 @@ import {
   PaginatedPositionsResponse,
 } from './Dashboard.dto';
 import { TradePositionStatus } from '../../shared';
-import { TradePositionDocument } from '../trade-position/TradePosition.schema';
+import {
+  TradePosition,
+  TradePositionDocument,
+} from '../trade-position/TradePosition.schema';
 import { PerpDocument } from '../perps/Perp.schema';
 import { UpdatePerpDto } from '../perps/Perp.service';
 import { SettingsDocument } from '../settings/Settings.schema';
+import { FilterQuery } from 'mongoose';
 
 @Injectable()
 export class DashboardService {
@@ -34,7 +38,7 @@ export class DashboardService {
     token?: string,
   ): Promise<DashboardAnalytics> {
     const dateRange = this.getDateRange(period, startDate, endDate);
-    const filter: any = {
+    const filter: FilterQuery<TradePosition> = {
       timeOpened: {
         $gte: dateRange.start,
         $lte: dateRange.end,
@@ -63,7 +67,7 @@ export class DashboardService {
     limit: number = 50,
     offset: number = 0,
   ): Promise<PaginatedPositionsResponse> {
-    const filter: any = {};
+    const filter: FilterQuery<TradePosition> = {};
     if (status) {
       filter.status = status;
     }
