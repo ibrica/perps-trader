@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
-import { Logger } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 
 // Import Datadog tracing (must be before any other imports)
@@ -12,6 +12,18 @@ async function bootstrap(): Promise<void> {
   try {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
+
+    // Enable global validation pipe for DTO validation
+    app.useGlobalPipes(
+      new ValidationPipe({
+        whitelist: true, // Strip properties that don't have decorators
+        forbidNonWhitelisted: true, // Throw error if non-whitelisted properties are present
+        transform: true, // Transform payloads to DTO instances
+        transformOptions: {
+          enableImplicitConversion: true, // Enable implicit type conversion
+        },
+      }),
+    );
 
     // Enable CORS for dashboard
     app.enableCors({

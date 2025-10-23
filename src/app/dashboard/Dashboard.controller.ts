@@ -6,7 +6,6 @@ import {
   Param,
   Query,
   NotFoundException,
-  BadRequestException,
   UseGuards,
 } from '@nestjs/common';
 import { DashboardService } from './Dashboard.service';
@@ -18,9 +17,13 @@ import {
   PositionResponse,
 } from './Dashboard.dto';
 import { PerpDocument } from '../perps/Perp.schema';
-import { UpdatePerpDto } from '../perps/Perp.service';
 import { SettingsDocument } from '../settings/Settings.schema';
 import { JwtAuthGuard } from '../auth/guards/Jwt-auth.guard';
+import {
+  UpdatePerpDto,
+  UpdateSettingsDto,
+  UpdatePositionExitFlagDto,
+} from './dto';
 
 @Controller('api/dashboard')
 @UseGuards(JwtAuthGuard)
@@ -53,12 +56,8 @@ export class DashboardController {
   @Patch('positions/:id')
   async updatePosition(
     @Param('id') id: string,
-    @Body() body: { exitFlag: boolean },
+    @Body() body: UpdatePositionExitFlagDto,
   ): Promise<PositionResponse> {
-    if (typeof body.exitFlag !== 'boolean') {
-      throw new BadRequestException('exitFlag must be a boolean');
-    }
-
     const position = await this.dashboardService.updatePositionExitFlag(
       id,
       body.exitFlag,
@@ -103,12 +102,8 @@ export class DashboardController {
 
   @Patch('settings')
   async updateSettings(
-    @Body() body: { closeAllPositions: boolean },
+    @Body() body: UpdateSettingsDto,
   ): Promise<SettingsDocument> {
-    if (typeof body.closeAllPositions !== 'boolean') {
-      throw new BadRequestException('closeAllPositions must be a boolean');
-    }
-
     const settings = await this.dashboardService.updateSettings(
       body.closeAllPositions,
     );

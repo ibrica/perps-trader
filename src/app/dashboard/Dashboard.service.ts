@@ -223,15 +223,8 @@ export class DashboardService {
   ): TimeSeriesDataPoint[] {
     const dailyPnl = new Map<string, number>();
 
-    // Initialize all days in range with 0
-    const currentDate = new Date(dateRange.start);
-    while (currentDate <= dateRange.end) {
-      const dateKey = currentDate.toISOString().split('T')[0];
-      dailyPnl.set(dateKey, 0);
-      currentDate.setDate(currentDate.getDate() + 1);
-    }
-
-    // Aggregate PnL by day
+    // Only create entries for dates that have data (optimization)
+    // This avoids creating 365+ Date objects for large date ranges
     for (const position of positions) {
       if (position.timeClosed) {
         const dateKey = position.timeClosed.toISOString().split('T')[0];
@@ -242,6 +235,7 @@ export class DashboardService {
     }
 
     // Convert to array and sort by date
+    // Frontend charts can handle sparse data (gaps are fine)
     return Array.from(dailyPnl.entries())
       .map(([date, pnl]) => ({ date, pnl }))
       .sort((a, b) => a.date.localeCompare(b.date));

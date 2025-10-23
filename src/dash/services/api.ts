@@ -41,9 +41,19 @@ async function fetchApi<T>(
   });
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
+    let errorData: any;
+    try {
+      errorData = await response.json();
+    } catch {
+      // If response body is not JSON, create a generic error
+      errorData = {
+        message: `HTTP ${response.status}: ${response.statusText}`,
+        statusCode: response.status,
+      };
+    }
+
     throw new ApiError(
-      errorData.message || 'API request failed',
+      errorData.message || `Request failed with status ${response.status}`,
       response.status,
       errorData,
     );
