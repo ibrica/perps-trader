@@ -23,6 +23,11 @@ describe('AuthService', () => {
   beforeEach(async () => {
     mockJwtService = {
       sign: jest.fn().mockReturnValue('jwt-token'),
+      decode: jest.fn().mockReturnValue({
+        email: 'test@example.com',
+        sub: 'test@example.com',
+        exp: Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60, // 7 days from now
+      }),
     } as any;
 
     mockConfigService = {

@@ -30,12 +30,14 @@ describe('AuthController', () => {
   const mockTokens = {
     accessToken: 'jwt-token',
     expiresIn: '7d',
+    expiresAt: Date.now() + 7 * 24 * 60 * 60 * 1000, // 7 days from now
   };
 
   beforeEach(async () => {
     mockAuthService = {
       validateGoogleUser: jest.fn().mockResolvedValue(mockAuthUser),
       generateTokens: jest.fn().mockResolvedValue(mockTokens),
+      generateCsrfToken: jest.fn().mockReturnValue('csrf-token'),
     } as any;
 
     mockConfigService = {
@@ -91,6 +93,7 @@ describe('AuthController', () => {
 
       const mockRes = {
         redirect: jest.fn(),
+        cookie: jest.fn(),
       } as any;
 
       await controller.googleAuthRedirect(mockReq, mockRes);
@@ -99,8 +102,10 @@ describe('AuthController', () => {
         mockGoogleProfile,
       );
       expect(mockAuthService.generateTokens).toHaveBeenCalledWith(mockAuthUser);
+      expect(mockAuthService.generateCsrfToken).toHaveBeenCalled();
+      expect(mockRes.cookie).toHaveBeenCalledTimes(2); // auth cookie and csrf cookie
       expect(mockRes.redirect).toHaveBeenCalledWith(
-        'http://localhost:3000/auth/callback?token=jwt-token',
+        'http://localhost:3000/auth/callback',
       );
     });
 
@@ -113,12 +118,13 @@ describe('AuthController', () => {
 
       const mockRes = {
         redirect: jest.fn(),
+        cookie: jest.fn(),
       } as any;
 
       await controller.googleAuthRedirect(mockReq, mockRes);
 
       expect(mockRes.redirect).toHaveBeenCalledWith(
-        'https://dashboard.example.com/auth/callback?token=jwt-token',
+        'https://dashboard.example.com/auth/callback',
       );
     });
   });
@@ -144,10 +150,12 @@ describe('AuthController', () => {
     it('should return logout success message', async () => {
       const mockRes = {
         json: jest.fn(),
+        clearCookie: jest.fn(),
       } as any;
 
       await controller.logout(mockRes);
 
+      expect(mockRes.clearCookie).toHaveBeenCalledTimes(2); // auth and csrf cookies
       expect(mockRes.json).toHaveBeenCalledWith({
         message: 'Logged out successfully',
       });

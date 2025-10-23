@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { TestingModule } from '@nestjs/testing';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { DashboardController } from './Dashboard.controller';
 import { DashboardService } from './Dashboard.service';
 import {
@@ -14,6 +15,7 @@ import { UpdatePositionExitFlagDto, UpdateSettingsDto } from './dto';
 describe('DashboardController', () => {
   let controller: DashboardController;
   let mockDashboardService: jest.Mocked<DashboardService>;
+  let mockConfigService: jest.Mocked<ConfigService>;
   let module: TestingModule;
 
   const mockAnalytics = {
@@ -96,12 +98,24 @@ describe('DashboardController', () => {
       updateSettings: jest.fn().mockResolvedValue(mockSettings),
     } as any;
 
+    mockConfigService = {
+      get: jest.fn().mockImplementation((key: string) => {
+        if (key === 'auth.csrfHeaderName') return 'x-csrf-token';
+        if (key === 'auth.csrfCookieName') return 'perps_trader_dashboard_csrf';
+        return undefined;
+      }),
+    } as any;
+
     module = await createTestingModuleWithProviders({
       providers: [
         DashboardController,
         {
           provide: DashboardService,
           useValue: mockDashboardService,
+        },
+        {
+          provide: ConfigService,
+          useValue: mockConfigService,
         },
       ],
     }).compile();
