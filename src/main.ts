@@ -13,6 +13,15 @@ async function bootstrap(): Promise<void> {
     const app = await NestFactory.create(AppModule);
     const configService = app.get(ConfigService);
 
+    // Enable CORS for dashboard
+    app.enableCors({
+      origin: [
+        'http://localhost:3000',
+        configService.get<string>('auth.dashboardUrl', 'http://localhost:3000'),
+      ],
+      credentials: true,
+    });
+
     const port = configService.get<number>('app.port', 7777);
     const host = configService.get<string>('app.host', '0.0.0.0');
 
