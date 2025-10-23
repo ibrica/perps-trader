@@ -82,9 +82,7 @@ export default function Dashboard() {
 
   const handleLogout = () => {
     clearAuthToken();
-    const backendUrl =
-      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7777';
-    window.location.href = `${backendUrl}/api/auth/google`;
+    router.push('/logout');
   };
 
   if (loading) {

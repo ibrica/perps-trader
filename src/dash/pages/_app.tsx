@@ -9,7 +9,7 @@ export default function App({ Component, pageProps }: AppProps) {
 
   useEffect(() => {
     const token = getAuthToken();
-    const publicPaths = ['/auth/callback', '/login'];
+    const publicPaths = ['/auth/callback', '/login', '/logout'];
     const isPublicPath = publicPaths.includes(router.pathname);
 
     if (!token && !isPublicPath) {
