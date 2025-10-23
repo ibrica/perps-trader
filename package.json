@@ -198,7 +198,8 @@
       "project": "./tsconfig.json"
     },
     "ignorePatterns": [
-      "**/dist"
+      "**/dist",
+      "src/dash/**"
     ],
     "overrides": [
       {
