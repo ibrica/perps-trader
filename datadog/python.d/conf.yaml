@@ -1,0 +1,15 @@
+logs:
+  - type: docker
+    service: trader-ai
+    source: python
+    # Parse JSON logs
+    log_processing_rules:
+      # Extract status from JSON 'level' field
+      - type: status_remapper
+        name: level
+      # Extract message from JSON
+      - type: message_remapper
+        sources: [message]
+      # Extract timestamp from JSON
+      - type: date_remapper
+        sources: [timestamp]

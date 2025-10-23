@@ -113,6 +113,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      # Datadog log configuration
+      com.datadoghq.ad.logs: '[{"source": "python", "service": "trader-ai", "log_processing_rules": [{"type": "multi_line", "name": "log_start_with_date", "pattern": "^\\{\"timestamp\""}]}]'
     logging:
       driver: 'json-file'
       options:
