@@ -6,7 +6,13 @@ export default registerAs('auth', () => ({
   googleCallbackUrl:
     process.env.GOOGLE_CALLBACK_URL ||
     'http://localhost:7777/api/auth/google/callback',
-  jwtSecret: process.env.JWT_SECRET || 'your-super-secret-jwt-key-change-this',
+  jwtSecret: ((): string => {
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      throw new Error('JWT_SECRET environment variable is required');
+    }
+    return secret;
+  })(),
   jwtExpiresIn: process.env.JWT_EXPIRATION || '7d',
   allowedEmails: process.env.ALLOWED_EMAILS
     ? process.env.ALLOWED_EMAILS.split(',').map((email) => email.trim())
