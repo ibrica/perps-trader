@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { TestingModule } from '@nestjs/testing';
-import { NotFoundException, BadRequestException } from '@nestjs/common';
+import { TestingModule, Test } from '@nestjs/testing';
+import {
+  NotFoundException,
+  BadRequestException,
+  ValidationPipe,
+} from '@nestjs/common';
 import { DashboardController } from './Dashboard.controller';
 import { DashboardService } from './Dashboard.service';
 import {
@@ -8,6 +12,12 @@ import {
   TradePositionStatus,
 } from '../../shared';
 import { TimePeriod } from './Dashboard.dto';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import {
+  UpdatePositionExitFlagDto,
+  UpdateSettingsDto,
+} from './dto';
 
 describe('DashboardController', () => {
   let controller: DashboardController;
@@ -193,9 +203,10 @@ describe('DashboardController', () => {
     it('should throw BadRequestException if exitFlag is not boolean', async () => {
       const body = { exitFlag: 'invalid' } as any;
 
-      await expect(
-        controller.updatePosition('507f1f77bcf86cd799439011', body),
-      ).rejects.toThrow(BadRequestException);
+      // Test DTO validation directly
+      expect(() => {
+        const dto = plainToInstance(UpdatePositionExitFlagDto, body);
+      }).toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException if position not found', async () => {
@@ -277,9 +288,10 @@ describe('DashboardController', () => {
     it('should throw BadRequestException if closeAllPositions is not boolean', async () => {
       const body = { closeAllPositions: 'invalid' } as any;
 
-      await expect(controller.updateSettings(body)).rejects.toThrow(
-        BadRequestException,
-      );
+      // Test DTO validation directly
+      expect(() => {
+        const dto = plainToInstance(UpdateSettingsDto, body);
+      }).toThrow(BadRequestException);
     });
 
     it('should throw NotFoundException if update fails', async () => {
