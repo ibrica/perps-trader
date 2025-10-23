@@ -32,6 +32,9 @@ export default function Dashboard() {
   const router = useRouter();
   const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [positionsTotal, setPositionsTotal] = useState(0);
+  const [positionsPage, setPositionsPage] = useState(1);
+  const [positionsLimit] = useState(50);
   const [perps, setPerps] = useState<Perp[]>([]);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,16 +52,19 @@ export default function Dashboard() {
       setLoading(true);
       setError(null);
 
+      const offset = (positionsPage - 1) * positionsLimit;
+
       const [analyticsData, positionsData, perpsData, settingsData] =
         await Promise.all([
           getDashboardAnalytics({ period }),
-          getPositions(positionStatus, 100, 0),
+          getPositions(positionStatus, positionsLimit, offset),
           getPerps(),
           getSettings(),
         ]);
 
       setAnalytics(analyticsData);
       setPositions(positionsData.positions);
+      setPositionsTotal(positionsData.total);
       setPerps(perpsData);
       setSettings(settingsData);
     } catch (err: any) {
@@ -78,7 +84,7 @@ export default function Dashboard() {
 
   useEffect(() => {
     fetchData();
-  }, [period, positionStatus]);
+  }, [period, positionStatus, positionsPage]);
 
   const handleLogout = () => {
     clearAuthToken();
@@ -277,13 +283,14 @@ export default function Dashboard() {
             <h3 className="text-xl font-semibold">Positions</h3>
             <select
               value={positionStatus || ''}
-              onChange={(e) =>
+              onChange={(e) => {
                 setPositionStatus(
                   e.target.value
                     ? (e.target.value as TradePositionStatus)
                     : undefined,
-                )
-              }
+                );
+                setPositionsPage(1); // Reset to first page when filter changes
+              }}
               style={{ padding: '0.5rem' }}
             >
               <option value="">All Statuses</option>
@@ -292,7 +299,17 @@ export default function Dashboard() {
               <option value={TradePositionStatus.FAILED}>Failed</option>
             </select>
           </div>
-          <PositionsTable positions={positions} onUpdate={fetchData} />
+          <PositionsTable
+            positions={positions}
+            onUpdate={fetchData}
+            pagination={{
+              currentPage: positionsPage,
+              totalPages: Math.ceil(positionsTotal / positionsLimit),
+              totalItems: positionsTotal,
+              itemsPerPage: positionsLimit,
+              onPageChange: setPositionsPage,
+            }}
+          />
         </div>
       )}
 
