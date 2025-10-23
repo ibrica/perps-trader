@@ -114,8 +114,18 @@ services:
       retries: 3
       start_period: 40s
     labels:
-      # Datadog log configuration
-      com.datadoghq.ad.logs: '[{"source": "python", "service": "trader-ai", "log_processing_rules": [{"type": "multi_line", "name": "log_start_with_date", "pattern": "^\\{\"timestamp\""}]}]'
+      # Datadog log configuration via autodiscovery (Docker labels)
+      # All JSON logs from this container are automatically parsed by Datadog
+      com.datadoghq.ad.logs: >-
+        [{
+          "source": "python",
+          "service": "trader-ai",
+          "log_processing_rules": [{
+            "type": "multi_line",
+            "name": "json_log_entry",
+            "pattern": "^\\{\"timestamp\""
+          }]
+        }]
     logging:
       driver: 'json-file'
       options:
