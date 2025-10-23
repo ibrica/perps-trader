@@ -1,10 +1,34 @@
 import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Request, Response } from 'express';
+import { Request, Response, CookieOptions } from 'express';
 import { AuthService } from './Auth.service';
 import { GoogleAuthGuard } from './guards/Google-auth.guard';
 import { JwtAuthGuard } from './guards/Jwt-auth.guard';
 import { GoogleProfile } from './strategies/Google.strategy';
+
+const MILLISECONDS_PER_UNIT: Record<string, number> = {
+  s: 1000,
+  m: 60 * 1000,
+  h: 60 * 60 * 1000,
+  d: 24 * 60 * 60 * 1000,
+};
+
+function resolveMaxAge(expiresAt: number | null, expiresIn: string): number {
+  if (expiresAt && expiresAt > Date.now()) {
+    return expiresAt - Date.now();
+  }
+
+  const match = expiresIn.match(/^(\d+)([smhd])$/i);
+  if (!match) {
+    return 7 * 24 * 60 * 60 * 1000; // default 7d
+  }
+
+  const amount = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase();
+  const multiplier = MILLISECONDS_PER_UNIT[unit] || MILLISECONDS_PER_UNIT.d;
+
+  return amount * multiplier;
+}
 
 @Controller('api/auth')
 export class AuthController {
@@ -35,12 +59,50 @@ export class AuthController {
 
     // Generate JWT tokens
     const tokens = await this.authService.generateTokens(user);
+    const csrfToken = this.authService.generateCsrfToken();
 
-    // Redirect to frontend dashboard with token
     const dashboardUrl = this.configService.get<string>('auth.dashboardUrl');
-    const redirectUrl = `${dashboardUrl}/auth/callback?token=${tokens.accessToken}`;
+    const cookieDomain = this.configService.get<string | undefined>(
+      'auth.cookieDomain',
+    );
+    const cookieSecure = this.configService.get<boolean>(
+      'auth.cookieSecure',
+      false,
+    );
+    const sameSite = this.configService.get<'lax' | 'strict' | 'none'>(
+      'auth.cookieSameSite',
+      'lax',
+    );
+    const authCookieName = this.configService.get<string>(
+      'auth.authCookieName',
+      'perps_trader_dashboard_auth',
+    );
+    const csrfCookieName = this.configService.get<string>(
+      'auth.csrfCookieName',
+      'perps_trader_dashboard_csrf',
+    );
+    const maxAge = resolveMaxAge(tokens.expiresAt, tokens.expiresIn);
 
-    res.redirect(redirectUrl);
+    const baseCookieOptions: CookieOptions = {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite,
+      maxAge,
+      path: '/',
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
+    };
+
+    res.cookie(authCookieName, tokens.accessToken, baseCookieOptions);
+    res.cookie(
+      csrfCookieName,
+      csrfToken,
+      {
+        ...baseCookieOptions,
+        httpOnly: false,
+      },
+    );
+
+    res.redirect(`${dashboardUrl}/auth/callback`);
   }
 
   @Get('me')
@@ -53,8 +115,37 @@ export class AuthController {
   @Get('logout')
   @UseGuards(JwtAuthGuard)
   async logout(@Res() res: Response): Promise<void> {
-    // Client-side should remove the token
-    // Server doesn't need to do anything for JWT-based auth
+    const cookieDomain = this.configService.get<string | undefined>(
+      'auth.cookieDomain',
+    );
+    const cookieSecure = this.configService.get<boolean>(
+      'auth.cookieSecure',
+      false,
+    );
+    const sameSite = this.configService.get<'lax' | 'strict' | 'none'>(
+      'auth.cookieSameSite',
+      'lax',
+    );
+    const authCookieName = this.configService.get<string>(
+      'auth.authCookieName',
+      'perps_trader_dashboard_auth',
+    );
+    const csrfCookieName = this.configService.get<string>(
+      'auth.csrfCookieName',
+      'perps_trader_dashboard_csrf',
+    );
+
+    const clearOptions: CookieOptions = {
+      httpOnly: true,
+      secure: cookieSecure,
+      sameSite,
+      path: '/',
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
+    };
+
+    res.clearCookie(authCookieName, clearOptions);
+    res.clearCookie(csrfCookieName, { ...clearOptions, httpOnly: false });
+
     res.json({ message: 'Logged out successfully' });
   }
 }

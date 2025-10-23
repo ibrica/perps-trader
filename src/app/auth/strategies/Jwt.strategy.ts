@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { getCookieValue, RequestWithCookies } from '../utils/cookies';
 
 export interface JwtPayload {
   email: string;
@@ -13,8 +14,16 @@ export interface JwtPayload {
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   constructor(private configService: ConfigService) {
+    const authCookieName = configService.get<string>(
+      'auth.authCookieName',
+      'perps_trader_dashboard_auth',
+    );
     super({
-      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      jwtFromRequest: ExtractJwt.fromExtractors([
+        (request: RequestWithCookies): string | null =>
+          getCookieValue(request, authCookieName),
+        ExtractJwt.fromAuthHeaderAsBearerToken(),
+      ]),
       ignoreExpiration: false,
       secretOrKey: configService.get<string>('auth.jwtSecret'),
     });

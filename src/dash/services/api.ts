@@ -10,6 +10,42 @@ import {
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7777';
+const CSRF_COOKIE_NAME =
+  process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME ||
+  'perps_trader_dashboard_csrf';
+const CSRF_HEADER_NAME =
+  process.env.NEXT_PUBLIC_CSRF_HEADER_NAME?.toLowerCase() ||
+  'x-csrf-token';
+const CSRF_PROTECTED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+function getCookieValue(name: string): string | null {
+  if (typeof document === 'undefined') {
+    return null;
+  }
+
+  const cookieString = document.cookie;
+  if (!cookieString) {
+    return null;
+  }
+
+  const cookies = cookieString.split(';');
+  for (const rawCookie of cookies) {
+    const [cookieName, ...rest] = rawCookie.split('=');
+    if (!cookieName || rest.length === 0) {
+      continue;
+    }
+
+    if (cookieName.trim() === name) {
+      return decodeURIComponent(rest.join('=').trim());
+    }
+  }
+
+  return null;
+}
+
+export function hasAuthSession(): boolean {
+  return getCookieValue(CSRF_COOKIE_NAME) !== null;
+}
 
 export class ApiError extends Error {
   constructor(
@@ -26,18 +62,42 @@ async function fetchApi<T>(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<T> {
-  const token =
-    typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const method = (options.method || 'GET').toString().toUpperCase();
+  const headers: Record<string, string> = {};
 
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
-    ...options.headers,
-  };
+  if (options.headers) {
+    if (
+      typeof Headers !== 'undefined' &&
+      options.headers instanceof Headers
+    ) {
+      options.headers.forEach((value, key) => {
+        headers[key] = value;
+      });
+    } else if (Array.isArray(options.headers)) {
+      for (const [key, value] of options.headers) {
+        headers[key] = value;
+      }
+    } else {
+      Object.assign(headers, options.headers as Record<string, string>);
+    }
+  }
+
+  if (!headers['Content-Type']) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  if (CSRF_PROTECTED_METHODS.has(method)) {
+    const csrfToken = getCookieValue(CSRF_COOKIE_NAME);
+    if (csrfToken) {
+      headers[CSRF_HEADER_NAME] = csrfToken;
+    }
+  }
 
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
+    method,
     headers,
+    credentials: 'include',
   });
 
   if (!response.ok) {
@@ -129,23 +189,4 @@ export async function updateSettings(
     method: 'PATCH',
     body: JSON.stringify({ closeAllPositions }),
   });
-}
-
-export function setAuthToken(token: string): void {
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('token', token);
-  }
-}
-
-export function getAuthToken(): string | null {
-  if (typeof window !== 'undefined') {
-    return localStorage.getItem('token');
-  }
-  return null;
-}
-
-export function clearAuthToken(): void {
-  if (typeof window !== 'undefined') {
-    localStorage.removeItem('token');
-  }
 }

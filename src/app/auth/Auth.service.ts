@@ -1,12 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { randomBytes } from 'crypto';
 import { GoogleProfile } from './strategies/Google.strategy';
 import { JwtPayload } from './strategies/Jwt.strategy';
 
 export interface AuthTokens {
   accessToken: string;
   expiresIn: string;
+  expiresAt: number | null;
 }
 
 export interface AuthUser {
@@ -41,10 +43,15 @@ export class AuthService {
 
     const accessToken = this.jwtService.sign(payload);
     const expiresIn = this.configService.get<string>('auth.jwtExpiresIn', '7d');
+    const decoded = this.jwtService.decode(accessToken) as
+      | (JwtPayload & { exp?: number })
+      | null;
+    const expiresAt = decoded && decoded.exp ? decoded.exp * 1000 : null;
 
     return {
       accessToken,
       expiresIn,
+      expiresAt,
     };
   }
 
@@ -57,5 +64,9 @@ export class AuthService {
       lastName: '',
       picture: '',
     };
+  }
+
+  generateCsrfToken(): string {
+    return randomBytes(32).toString('hex');
   }
 }

@@ -6,6 +6,19 @@ export default registerAs('auth', () => ({
   googleCallbackUrl:
     process.env.GOOGLE_CALLBACK_URL ||
     'http://localhost:7777/api/auth/google/callback',
+  authCookieName: process.env.AUTH_COOKIE_NAME || 'perps_trader_dashboard_auth',
+  csrfCookieName: process.env.CSRF_COOKIE_NAME || 'perps_trader_dashboard_csrf',
+  csrfHeaderName: (
+    process.env.CSRF_HEADER_NAME || 'x-csrf-token'
+  ).toLowerCase(),
+  cookieDomain: process.env.AUTH_COOKIE_DOMAIN || undefined,
+  cookieSecure: process.env.AUTH_COOKIE_SECURE === 'true',
+  cookieSameSite:
+    (process.env.AUTH_COOKIE_SAMESITE as
+      | 'lax'
+      | 'strict'
+      | 'none'
+      | undefined) || 'lax',
   jwtSecret: ((): string => {
     const secret = process.env.JWT_SECRET;
     if (!secret) {

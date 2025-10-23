@@ -24,6 +24,7 @@ import {
   UpdateSettingsDto,
   UpdatePositionExitFlagDto,
 } from './dto';
+import { CsrfGuard } from '../auth/guards/Csrf.guard';
 
 @Controller('api/dashboard')
 @UseGuards(JwtAuthGuard)
@@ -54,6 +55,7 @@ export class DashboardController {
   }
 
   @Patch('positions/:id')
+  @UseGuards(CsrfGuard)
   async updatePosition(
     @Param('id') id: string,
     @Body() body: UpdatePositionExitFlagDto,
@@ -76,6 +78,7 @@ export class DashboardController {
   }
 
   @Patch('perps/:id')
+  @UseGuards(CsrfGuard)
   async updatePerp(
     @Param('id') id: string,
     @Body() body: UpdatePerpDto,
@@ -101,6 +104,7 @@ export class DashboardController {
   }
 
   @Patch('settings')
+  @UseGuards(CsrfGuard)
   async updateSettings(
     @Body() body: UpdateSettingsDto,
   ): Promise<SettingsDocument> {

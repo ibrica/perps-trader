@@ -1,15 +1,11 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { setAuthToken } from '../../services/api';
 
 export default function AuthCallback() {
   const router = useRouter();
 
   useEffect(() => {
-    const { token } = router.query;
-
-    if (token && typeof token === 'string') {
-      setAuthToken(token);
+    if (router.isReady) {
       router.replace('/');
     }
   }, [router]);

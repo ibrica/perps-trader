@@ -1,13 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { clearAuthToken } from '../services/api';
 
 export default function Logout() {
   const [showInstructions, setShowInstructions] = useState(false);
 
   useEffect(() => {
-    // Clear token from localStorage using the correct function
-    clearAuthToken();
-
     // Also call the backend logout endpoint
     const backendUrl =
       process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7777';

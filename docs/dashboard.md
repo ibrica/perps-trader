@@ -21,12 +21,12 @@ The dashboard provides a complete interface for:
 - **Charts**: Recharts for data visualization
 - **Icons**: Lucide React for UI icons
 - **Styling**: Custom CSS with responsive grid system
-- **Authentication**: OAuth 2.0 flow with JWT token storage
+- **Authentication**: OAuth 2.0 flow with cookie-based JWT session management
 
 ### Backend Integration
 
 - **API Client**: Type-safe REST API client with auth headers
-- **Authentication**: JWT Bearer tokens via localStorage
+- **Authentication**: JWT Bearer tokens via HTTP-only cookies
 - **Error Handling**: Automatic re-authentication on 401 errors
 - **Real-time Updates**: Manual refresh with loading states
 
@@ -43,10 +43,10 @@ The dashboard provides a complete interface for:
 4. User authorizes with their Google account
 5. Google redirects to backend callback with auth code
 6. Backend validates email against whitelist (ALLOWED_EMAILS)
-7. Backend generates JWT token
-8. Backend redirects to frontend with token in query param
-9. Frontend stores token in localStorage
-10. Dashboard loads with authenticated API access
+7. Backend generates JWT token and CSRF secret
+8. Backend sets HTTP-only auth cookie + CSRF cookie, then redirects to frontend callback
+9. Frontend callback confirms session and redirects to dashboard
+10. Dashboard loads with authenticated API access using cookies
 ```
 
 **Email Whitelist**
