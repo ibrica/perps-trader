@@ -15,7 +15,7 @@ const MILLISECONDS_PER_UNIT: Record<string, number> = {
 
 function resolveMaxAge(expiresAt: number | null, expiresIn: string): number {
   if (expiresAt && expiresAt > Date.now()) {
-    return expiresAt - Date.now();
+    return Math.max(expiresAt - Date.now(), 0);
   }
 
   const match = expiresIn.match(/^(\d+)([smhd])$/i);
@@ -27,7 +27,7 @@ function resolveMaxAge(expiresAt: number | null, expiresIn: string): number {
   const unit = match[2].toLowerCase();
   const multiplier = MILLISECONDS_PER_UNIT[unit] || MILLISECONDS_PER_UNIT.d;
 
-  return amount * multiplier;
+  return Math.max(amount * multiplier, 0);
 }
 
 @Controller('api/auth')

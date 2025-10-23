@@ -371,11 +371,11 @@ ALLOWED_EMAILS=ceo@company.com,cto@company.com,head-trader@company.com
 
 **Security Considerations**:
 
-- JWT tokens stored in localStorage (client-side)
+- JWT tokens stored in HTTP-only cookies with CSRF protection
 - Tokens expire based on JWT_EXPIRATION setting
-- All API requests require valid JWT token
+- All API requests require valid JWT session cookie
 - Backend validates email on every OAuth login
-- Use HTTPS in production for secure token transmission
+- Use HTTPS in production for secure cookie transmission
 
 ### 4. Docker Deployment
 
@@ -502,7 +502,7 @@ All grid layouts collapse to single column on mobile (<768px).
 
 **Token expired or invalid**
 
-- Clear localStorage in browser DevTools
+- Clear dashboard cookies in browser DevTools
 - Navigate to dashboard to re-authenticate
 - Check JWT_SECRET matches between backend config and generated tokens
 
@@ -510,7 +510,7 @@ All grid layouts collapse to single column on mobile (<768px).
 
 **401 Unauthorized**
 
-- Token missing or invalid
+- Session cookie missing or invalid
 - Dashboard will auto-redirect to OAuth flow
 - Check browser console for error details
 
