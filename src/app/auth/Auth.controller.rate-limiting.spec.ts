@@ -95,10 +95,6 @@ describe('AuthController Rate Limiting', () => {
   describe('Rate Limiting Behavior', () => {
     it('should allow requests within rate limit', async () => {
       const mockReq = {} as any;
-      const mockRes = {
-        redirect: jest.fn(),
-        cookie: jest.fn(),
-      } as any;
 
       // Simulate multiple requests within rate limit
       for (let i = 0; i < 5; i++) {
@@ -110,12 +106,6 @@ describe('AuthController Rate Limiting', () => {
     });
 
     it('should handle rate limit exceeded scenario', async () => {
-      const mockReq = {} as any;
-      const mockRes = {
-        redirect: jest.fn(),
-        cookie: jest.fn(),
-      } as any;
-
       // Mock the throttler guard to simulate rate limit exceeded
       const throttlerGuard = module.get<ThrottlerGuard>(ThrottlerGuard);
       throttlerGuard.canActivate = jest.fn().mockImplementation(() => {

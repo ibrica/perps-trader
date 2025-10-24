@@ -12,8 +12,6 @@ describe('Auth Security Integration Tests', () => {
   let app: INestApplication;
   let authService: AuthService;
   let jwtBlacklistService: JwtBlacklistService;
-  let googleStrategy: GoogleStrategy;
-  let csrfGuard: CsrfGuard;
   let module: TestingModule;
 
   beforeEach(async () => {
@@ -61,8 +59,6 @@ describe('Auth Security Integration Tests', () => {
     app = module.createNestApplication();
     authService = module.get<AuthService>(AuthService);
     jwtBlacklistService = module.get<JwtBlacklistService>(JwtBlacklistService);
-    googleStrategy = module.get<GoogleStrategy>(GoogleStrategy);
-    csrfGuard = module.get<CsrfGuard>(CsrfGuard);
   });
 
   afterEach(async () => {

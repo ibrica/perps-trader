@@ -123,7 +123,6 @@ describe('AuthController Cookie Security', () => {
   describe('Cookie Security in Production', () => {
     beforeEach(() => {
       // Mock production environment
-      const originalEnv = process.env.NODE_ENV;
       process.env.NODE_ENV = 'production';
 
       // Override the config service to return production values
