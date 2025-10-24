@@ -234,7 +234,7 @@ export class TrailingService {
     direction: PositionDirection,
   ): Promise<{ shouldContinue: boolean; reason: string }> {
     try {
-      const tokenCategory = this.determineCoinCategory(token);
+      const coinCategory = this.determineCoinCategory(token);
       const minConfidence = this.configService.get<number>(
         'hyperliquid.predictorMinConfidence',
         0.6,
@@ -242,7 +242,7 @@ export class TrailingService {
 
       const prediction = await this.predictorAdapter.predictToken(
         token,
-        tokenCategory,
+        coinCategory,
         PredictionHorizon.ONE_HOUR,
         true,
       );

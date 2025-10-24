@@ -77,11 +77,11 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         };
       }
 
-      const tokenCategory = this.determineCoinCategory(token);
+      const coinCategory = this.determineCoinCategory(token);
 
       const aiPrediction = await this.predictorAdapter.predictToken(
         token,
-        tokenCategory,
+        coinCategory,
         PredictionHorizon.ONE_HOUR,
         true,
       );
@@ -486,11 +486,11 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
 
       // Try to get AI prediction for exit decision
       try {
-        const tokenCategory = this.determineCoinCategory(token);
+        const coinCategory = this.determineCoinCategory(token);
 
         const aiPrediction = await this.predictorAdapter.predictToken(
           token,
-          tokenCategory,
+          coinCategory,
           PredictionHorizon.ONE_HOUR,
           true,
         );
