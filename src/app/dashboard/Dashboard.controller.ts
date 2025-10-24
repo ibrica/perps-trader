@@ -23,7 +23,7 @@ import {
   UpdatePerpDto,
   UpdateSettingsDto,
   UpdatePositionExitFlagDto,
-} from './dto';
+} from '../../shared';
 import { CsrfGuard } from '../auth/guards/Csrf.guard';
 
 @Controller('api/dashboard')
