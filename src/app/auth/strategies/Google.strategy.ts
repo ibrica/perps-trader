@@ -20,6 +20,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: configService.get<string>('auth.googleClientSecret'),
       callbackURL: configService.get<string>('auth.googleCallbackUrl'),
       scope: ['email', 'profile'],
+      // Note: store and state options are handled by passport-google-oauth20 internally
     });
   }
 
@@ -43,11 +44,15 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       this.configService.get<string[]>('auth.allowedEmails');
 
     // Check if user email is in the allowed list
-    if (allowedEmails.length > 0 && !allowedEmails.includes(email)) {
+    if (!allowedEmails || allowedEmails.length === 0) {
       return done(
-        new UnauthorizedException(
-          'Access denied. Your email is not in the allowed list.',
-        ),
+        new UnauthorizedException('No allowed emails configured'),
+        null,
+      );
+    }
+    if (!allowedEmails.includes(email)) {
+      return done(
+        new UnauthorizedException(`Email ${email} is not authorized`),
         null,
       );
     }

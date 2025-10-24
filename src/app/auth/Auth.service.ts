@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { randomBytes } from 'crypto';
 import { GoogleProfile } from './strategies/Google.strategy';
 import { JwtPayload } from './strategies/Jwt.strategy';
+import { JwtBlacklistService } from './JwtBlacklist.service';
 
 export interface AuthTokens {
   accessToken: string;
@@ -23,6 +24,7 @@ export class AuthService {
   constructor(
     private jwtService: JwtService,
     private configService: ConfigService,
+    private jwtBlacklistService: JwtBlacklistService,
   ) {}
 
   async validateGoogleUser(googleProfile: GoogleProfile): Promise<AuthUser> {
@@ -56,6 +58,11 @@ export class AuthService {
   }
 
   async validateUser(payload: JwtPayload): Promise<AuthUser | null> {
+    // Check if token is blacklisted
+    if (this.jwtBlacklistService.isBlacklisted(payload.sub)) {
+      return null;
+    }
+
     // In a real application, you would fetch the user from the database
     // For now, we just return the user info from the JWT payload
     return {
@@ -66,7 +73,26 @@ export class AuthService {
     };
   }
 
+  blacklistToken(token: string): void {
+    this.jwtBlacklistService.addToBlacklist(token);
+  }
+
   generateCsrfToken(): string {
-    return randomBytes(32).toString('hex');
+    const timestamp = Date.now().toString(16);
+    const randomPart = randomBytes(24).toString('hex');
+    return `${timestamp}:${randomPart}`;
+  }
+
+  validateCsrfToken(token: string): boolean {
+    if (!token || !token.includes(':')) {
+      return false;
+    }
+
+    const [timestampStr] = token.split(':');
+    const timestamp = parseInt(timestampStr, 16);
+    const now = Date.now();
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+    return now - timestamp <= maxAge;
   }
 }

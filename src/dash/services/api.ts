@@ -8,14 +8,11 @@ import {
   TradePositionStatus,
 } from '../types/dashboard';
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7777';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:7777';
 const CSRF_COOKIE_NAME =
-  process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME ||
-  'perps_trader_dashboard_csrf';
+  process.env.NEXT_PUBLIC_CSRF_COOKIE_NAME || 'perps_trader_dashboard_csrf';
 const CSRF_HEADER_NAME =
-  process.env.NEXT_PUBLIC_CSRF_HEADER_NAME?.toLowerCase() ||
-  'x-csrf-token';
+  process.env.NEXT_PUBLIC_CSRF_HEADER_NAME?.toLowerCase() || 'x-csrf-token';
 const CSRF_PROTECTED_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
 
 function getCookieValue(name: string): string | null {
@@ -66,10 +63,7 @@ async function fetchApi<T>(
   const headers: Record<string, string> = {};
 
   if (options.headers) {
-    if (
-      typeof Headers !== 'undefined' &&
-      options.headers instanceof Headers
-    ) {
+    if (typeof Headers !== 'undefined' && options.headers instanceof Headers) {
       options.headers.forEach((value, key) => {
         headers[key] = value;
       });
@@ -189,4 +183,9 @@ export async function updateSettings(
     method: 'PATCH',
     body: JSON.stringify({ closeAllPositions }),
   });
+}
+
+export function clearAuthToken(): void {
+  // Cookie-based auth - no client-side action needed
+  // Actual logout happens via /api/auth/logout endpoint
 }

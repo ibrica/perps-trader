@@ -1,4 +1,11 @@
-import { IsEnum, IsOptional, IsDateString, IsNumber } from 'class-validator';
+import {
+  IsEnum,
+  IsOptional,
+  IsDateString,
+  IsNumber,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { TradePositionStatus } from '../../shared';
 
@@ -36,11 +43,15 @@ export class GetPositionsQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(1)
+  @Max(1000) // ✅ Prevent DoS with reasonable limit
   limit?: number = 50;
 
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
+  @Min(0)
+  @Max(100000) // ✅ Prevent DoS with reasonable limit
   offset?: number = 0;
 }
 

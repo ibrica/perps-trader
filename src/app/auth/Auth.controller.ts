@@ -1,6 +1,7 @@
 import { Controller, Get, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response, CookieOptions } from 'express';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './Auth.service';
 import { GoogleAuthGuard } from './guards/Google-auth.guard';
 import { JwtAuthGuard } from './guards/Jwt-auth.guard';
@@ -38,6 +39,7 @@ export class AuthController {
   ) {}
 
   @Get('google')
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // ✅ 5 attempts per minute
   @UseGuards(GoogleAuthGuard)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   async googleAuth(@Req() _req: Request): Promise<void> {
@@ -46,6 +48,7 @@ export class AuthController {
   }
 
   @Get('google/callback')
+  @Throttle({ default: { limit: 10, ttl: 60000 } }) // ✅ 10 attempts per minute
   @UseGuards(GoogleAuthGuard)
   async googleAuthRedirect(
     @Req() req: Request,
@@ -67,11 +70,11 @@ export class AuthController {
     );
     const cookieSecure = this.configService.get<boolean>(
       'auth.cookieSecure',
-      false,
+      process.env.NODE_ENV === 'production', // ✅ Force true in production
     );
     const sameSite = this.configService.get<'lax' | 'strict' | 'none'>(
       'auth.cookieSameSite',
-      'lax',
+      process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // ✅ Strict in prod
     );
     const authCookieName = this.configService.get<string>(
       'auth.authCookieName',
@@ -93,14 +96,10 @@ export class AuthController {
     };
 
     res.cookie(authCookieName, tokens.accessToken, baseCookieOptions);
-    res.cookie(
-      csrfCookieName,
-      csrfToken,
-      {
-        ...baseCookieOptions,
-        httpOnly: false,
-      },
-    );
+    res.cookie(csrfCookieName, csrfToken, {
+      ...baseCookieOptions,
+      httpOnly: false,
+    });
 
     res.redirect(`${dashboardUrl}/auth/callback`);
   }
@@ -114,17 +113,22 @@ export class AuthController {
 
   @Get('logout')
   @UseGuards(JwtAuthGuard)
-  async logout(@Res() res: Response): Promise<void> {
+  async logout(@Req() req: Request, @Res() res: Response): Promise<void> {
+    // ✅ Blacklist the JWT token
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (token) {
+      this.authService.blacklistToken(token);
+    }
     const cookieDomain = this.configService.get<string | undefined>(
       'auth.cookieDomain',
     );
     const cookieSecure = this.configService.get<boolean>(
       'auth.cookieSecure',
-      false,
+      process.env.NODE_ENV === 'production', // ✅ Force true in production
     );
     const sameSite = this.configService.get<'lax' | 'strict' | 'none'>(
       'auth.cookieSameSite',
-      'lax',
+      process.env.NODE_ENV === 'production' ? 'strict' : 'lax', // ✅ Strict in prod
     );
     const authCookieName = this.configService.get<string>(
       'auth.authCookieName',
