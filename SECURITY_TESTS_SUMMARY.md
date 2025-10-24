@@ -68,10 +68,11 @@ This document outlines the comprehensive security tests that have been implement
 | CSRF Protection   | 6 tests      | ✅ Passing         |
 | JWT Blacklist     | 12 tests     | ✅ Passing         |
 | Email Whitelist   | 8 tests      | ✅ Passing         |
-| Rate Limiting     | 5 tests      | ✅ Passing         |
+| Rate Limiting     | 7 tests      | ✅ Passing         |
 | Cookie Security   | 7 tests      | ✅ Passing         |
 | Pagination Limits | 18 tests     | ✅ Passing         |
-| **Total**         | **56 tests** | **✅ All Passing** |
+| Integration Tests | 10 tests     | ✅ Passing         |
+| **Total**         | **68 tests** | **✅ All Passing** |
 
 ## **Security Test Categories**
 

@@ -38,6 +38,7 @@ describe('AuthController', () => {
       validateGoogleUser: jest.fn().mockResolvedValue(mockAuthUser),
       generateTokens: jest.fn().mockResolvedValue(mockTokens),
       generateCsrfToken: jest.fn().mockReturnValue('csrf-token'),
+      blacklistToken: jest.fn(),
     } as any;
 
     mockConfigService = {
@@ -148,6 +149,13 @@ describe('AuthController', () => {
 
   describe('logout', () => {
     it('should return logout success message', async () => {
+      const mockReq = {
+        user: { email: 'test@example.com' },
+        headers: {
+          authorization: 'Bearer jwt-token',
+        },
+      } as any;
+
       const mockRes = {
         json: jest.fn(),
         clearCookie: jest.fn(),
