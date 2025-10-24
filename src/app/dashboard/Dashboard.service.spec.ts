@@ -147,11 +147,14 @@ describe('DashboardService', () => {
         'BTC',
       );
 
-      expect(mockTradePositionRepository.getAll).toHaveBeenCalledWith({
-        filter: expect.objectContaining({
-          token: 'BTC',
+      expect(mockTradePositionRepository.getAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: expect.objectContaining({
+            token: 'BTC',
+          }),
+          queryOptions: expect.any(Object),
         }),
-      });
+      );
     });
 
     it('should use custom date range when period is CUSTOM', async () => {
@@ -160,11 +163,14 @@ describe('DashboardService', () => {
 
       await service.getAnalytics(TimePeriod.CUSTOM, startDate, endDate);
 
-      expect(mockTradePositionRepository.getAll).toHaveBeenCalledWith({
-        filter: expect.objectContaining({
-          timeOpened: expect.any(Object),
+      expect(mockTradePositionRepository.getAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          filter: expect.objectContaining({
+            timeOpened: expect.any(Object),
+          }),
+          queryOptions: expect.any(Object),
         }),
-      });
+      );
     });
   });
 

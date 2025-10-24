@@ -11,11 +11,13 @@ import {
 import { TimePeriod } from './Dashboard.dto';
 import { plainToInstance } from 'class-transformer';
 import { UpdatePositionExitFlagDto, UpdateSettingsDto } from './dto';
+import { AuthService } from '../auth/Auth.service';
 
 describe('DashboardController', () => {
   let controller: DashboardController;
   let mockDashboardService: jest.Mocked<DashboardService>;
   let mockConfigService: jest.Mocked<ConfigService>;
+  let mockAuthService: jest.Mocked<AuthService>;
   let module: TestingModule;
 
   const mockAnalytics = {
@@ -106,6 +108,11 @@ describe('DashboardController', () => {
       }),
     } as any;
 
+    mockAuthService = {
+      validateCsrfToken: jest.fn().mockReturnValue(true),
+      generateCsrfToken: jest.fn().mockReturnValue('mock-csrf-token'),
+    } as any;
+
     module = await createTestingModuleWithProviders({
       providers: [
         DashboardController,
@@ -116,6 +123,10 @@ describe('DashboardController', () => {
         {
           provide: ConfigService,
           useValue: mockConfigService,
+        },
+        {
+          provide: AuthService,
+          useValue: mockAuthService,
         },
       ],
     }).compile();
