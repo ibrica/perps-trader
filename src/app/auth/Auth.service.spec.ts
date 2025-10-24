@@ -3,6 +3,7 @@ import { TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { AuthService } from './Auth.service';
+import { JwtBlacklistService } from './JwtBlacklist.service';
 import { createTestingModuleWithProviders } from '../../shared';
 import { GoogleProfile } from './strategies/Google.strategy';
 
@@ -10,6 +11,7 @@ describe('AuthService', () => {
   let service: AuthService;
   let mockJwtService: jest.Mocked<JwtService>;
   let mockConfigService: jest.Mocked<ConfigService>;
+  let mockJwtBlacklistService: jest.Mocked<JwtBlacklistService>;
   let module: TestingModule;
 
   const mockGoogleProfile: GoogleProfile = {
@@ -37,6 +39,14 @@ describe('AuthService', () => {
       }),
     } as any;
 
+    mockJwtBlacklistService = {
+      isBlacklisted: jest.fn().mockReturnValue(false),
+      addToBlacklist: jest.fn(),
+      removeFromBlacklist: jest.fn(),
+      cleanupExpiredTokens: jest.fn(),
+      getBlacklistSize: jest.fn().mockReturnValue(0),
+    } as any;
+
     module = await createTestingModuleWithProviders({
       providers: [
         AuthService,
@@ -47,6 +57,10 @@ describe('AuthService', () => {
         {
           provide: ConfigService,
           useValue: mockConfigService,
+        },
+        {
+          provide: JwtBlacklistService,
+          useValue: mockJwtBlacklistService,
         },
       ],
     }).compile();

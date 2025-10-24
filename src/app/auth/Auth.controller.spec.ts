@@ -153,7 +153,7 @@ describe('AuthController', () => {
         clearCookie: jest.fn(),
       } as any;
 
-      await controller.logout(mockRes);
+      await controller.logout(mockReq, mockRes);
 
       expect(mockRes.clearCookie).toHaveBeenCalledTimes(2); // auth and csrf cookies
       expect(mockRes.json).toHaveBeenCalledWith({
