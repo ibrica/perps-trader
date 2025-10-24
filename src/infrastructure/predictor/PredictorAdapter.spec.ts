@@ -6,7 +6,7 @@ import {
   Recommendation,
   MarketSentiment,
   PredictionHorizon,
-  TokenCategory,
+  CoinCategory,
   TrendsResponse,
   TrendStatus,
 } from '../../shared';
@@ -23,7 +23,7 @@ describe('PredictorAdapter', () => {
 
   const mockPredictionResponse: PredictionResponse = {
     token_address: 'AWcvL1GSNX8VDLm1nFWzB9u2o4guAmXM341imLaHpump',
-    category: TokenCategory.MEME_TOKENS,
+    category: CoinCategory.MEME_TOKENS,
     recommendation: Recommendation.BUY,
     confidence: 0.78,
     predicted_curve_position_change: '+12.3% curve position (over 5m)',
@@ -91,7 +91,7 @@ describe('PredictorAdapter', () => {
         `${testUrl}:${testPort}/predict`,
         {
           token_address: testTokenMint,
-          category: TokenCategory.MEME_TOKENS,
+          category: CoinCategory.MEME_TOKENS,
           prediction_horizon: PredictionHorizon.THIRTY_MIN,
           include_reasoning: true,
         },
@@ -117,7 +117,7 @@ describe('PredictorAdapter', () => {
       // Act
       const result = await adapter.predictToken(
         testTokenMint,
-        TokenCategory.MEME_TOKENS,
+        CoinCategory.MEME_TOKENS,
         '2h',
         false,
       );
@@ -127,7 +127,7 @@ describe('PredictorAdapter', () => {
         `${testUrl}:${testPort}/predict`,
         {
           token_address: testTokenMint,
-          category: TokenCategory.MEME_TOKENS,
+          category: CoinCategory.MEME_TOKENS,
           prediction_horizon: '2h',
           include_reasoning: false,
         },
@@ -240,7 +240,7 @@ describe('PredictorAdapter', () => {
         `${testUrl}:${testPort}/predict`,
         {
           token_address: testTokenMint,
-          category: TokenCategory.MEME_TOKENS,
+          category: CoinCategory.MEME_TOKENS,
           prediction_horizon: PredictionHorizon.THIRTY_MIN,
           include_reasoning: true,
         },
@@ -274,7 +274,7 @@ describe('PredictorAdapter', () => {
         `${testUrl}:${testPort}/predict`,
         {
           token_address: differentTokenMint,
-          category: TokenCategory.MEME_TOKENS,
+          category: CoinCategory.MEME_TOKENS,
           prediction_horizon: PredictionHorizon.THIRTY_MIN,
           include_reasoning: true,
         },

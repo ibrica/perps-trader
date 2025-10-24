@@ -13,7 +13,7 @@ import { PredictorAdapter } from '../../infrastructure/predictor/PredictorAdapte
 import {
   PredictionHorizon,
   Recommendation,
-  TokenCategory,
+  CoinCategory,
 } from '../../shared/models/predictor/types';
 import { PerpService } from '../perps/Perp.service';
 import { EntryTimingService } from '../../shared/services/entry-timing';
@@ -34,16 +34,16 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
   }
 
   /**
-   * Determine token category for prediction
+   * Determine coin category for prediction
    */
-  private determineTokenCategory(tokenSymbol: string): TokenCategory {
+  private determineCoinCategory(tokenSymbol: string): CoinCategory {
     const mainCoins = ['BTC', 'ETH', 'SOL', 'USDC', 'USDT'];
 
     if (mainCoins.includes(tokenSymbol.toUpperCase())) {
-      return TokenCategory.MAIN_COINS;
+      return CoinCategory.MAIN_COINS;
     }
 
-    return TokenCategory.ALT_COINS;
+    return CoinCategory.ALT_COINS;
   }
 
   /**
@@ -77,7 +77,7 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
         };
       }
 
-      const tokenCategory = this.determineTokenCategory(token);
+      const tokenCategory = this.determineCoinCategory(token);
 
       const aiPrediction = await this.predictorAdapter.predictToken(
         token,
@@ -486,7 +486,7 @@ export class HyperliquidTradingStrategyService extends PlatformTradingStrategyPo
 
       // Try to get AI prediction for exit decision
       try {
-        const tokenCategory = this.determineTokenCategory(token);
+        const tokenCategory = this.determineCoinCategory(token);
 
         const aiPrediction = await this.predictorAdapter.predictToken(
           token,
