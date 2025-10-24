@@ -26,9 +26,9 @@ COPY src/dash ./src/dash
 # Copy package files for dashboard build
 COPY package.json yarn.lock ./
 
-# Build Next.js application
+# Build Next.js application using next CLI directly
 WORKDIR /app/src/dash
-RUN yarn build
+RUN npx next build
 
 # Stage 3: Runner
 FROM node:20-alpine AS runner
