@@ -56,10 +56,6 @@ export const PerpSchema = SchemaFactory.createForClass(Perp);
 
 // Performance indexes
 PerpSchema.index({ token: 1 });
-PerpSchema.index({ platform: 1 });
 PerpSchema.index({ isActive: 1 });
 PerpSchema.index({ platform: 1, isActive: 1 });
-
 PerpSchema.index({ platform: 1, buyFlag: 1 });
-PerpSchema.index({ token: 1 });
-PerpSchema.index({ isActive: 1 });
