@@ -45,9 +45,10 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Copy built application from builder
+# Next.js standalone creates server.js at src/dash/server.js within the standalone directory
 COPY --from=builder /app/src/dash/.next/standalone ./
-COPY --from=builder /app/src/dash/.next/static ./.next/static
-COPY --from=builder /app/src/dash/public ./public
+COPY --from=builder /app/src/dash/.next/static ./src/dash/.next/static
+COPY --from=builder /app/src/dash/public ./src/dash/public
 
 # Change ownership to nextjs user
 RUN chown -R nextjs:nodejs /app
@@ -66,5 +67,5 @@ ENV HOSTNAME="0.0.0.0"
 HEALTHCHECK --interval=30s --timeout=10s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start Next.js
-CMD ["node", "server.js"]
+# Start Next.js - server.js is at src/dash/server.js in the standalone output
+CMD ["node", "src/dash/server.js"]
