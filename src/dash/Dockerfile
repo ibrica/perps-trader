@@ -28,6 +28,8 @@ COPY package.json yarn.lock ./
 
 # Build Next.js application using next CLI directly
 WORKDIR /app/src/dash
+# Create public directory if it doesn't exist
+RUN mkdir -p public
 RUN npx next build
 
 # Stage 3: Runner
