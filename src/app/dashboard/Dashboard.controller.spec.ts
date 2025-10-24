@@ -10,7 +10,7 @@ import {
 } from '../../shared';
 import { TimePeriod } from './Dashboard.dto';
 import { plainToInstance } from 'class-transformer';
-import { UpdatePositionExitFlagDto, UpdateSettingsDto } from './dto';
+import { UpdatePositionExitFlagDto, UpdateSettingsDto } from '../../shared';
 import { AuthService } from '../auth/Auth.service';
 
 describe('DashboardController', () => {
