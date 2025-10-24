@@ -50,6 +50,14 @@ services:
       - HL_MAX_LEVERAGE_PER_SYMBOL=${HL_MAX_LEVERAGE_PER_SYMBOL:-10}
       - HL_MAX_NOTIONAL_PER_ORDER=${HL_MAX_NOTIONAL_PER_ORDER:-10000}
       - HL_MAX_TOTAL_NOTIONAL=${HL_MAX_TOTAL_NOTIONAL:-50000}
+      # Dashboard Authentication
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+      - GOOGLE_CALLBACK_URL=${GOOGLE_CALLBACK_URL:-http://localhost:7777/api/auth/google/callback}
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_EXPIRATION=${JWT_EXPIRATION:-7d}
+      - ALLOWED_EMAILS=${ALLOWED_EMAILS}
+      - DASHBOARD_URL=${DASHBOARD_URL:-http://localhost:3000}
     depends_on:
       sol-indexer:
         condition: service_healthy
@@ -69,6 +77,38 @@ services:
       options:
         max-size: '50m'
         max-file: '3'
+
+  # ============================================================================
+  # DASHBOARD (Next.js Web Interface)
+  # ============================================================================
+  dashboard:
+    build:
+      context: .
+      dockerfile: src/dash/Dockerfile
+    container_name: perps-trader-dashboard
+    ports:
+      - '3000:3000' # Dashboard web interface
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:7777}
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+    depends_on:
+      perps-trader:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shared-network
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '--spider', 'http://localhost:3000']
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: 'json-file'
+      options:
+        max-size: '20m'
+        max-file: '2'
 
   # ============================================================================
   # TRADER-AI APPLICATION (AI Trading Service - OPTIONAL)

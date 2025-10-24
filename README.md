@@ -10,11 +10,14 @@ Perps Trader is a simplified, perps-only trading application that integrates:
 - **AI Integration**: Optional AI predictions via external trader-ai service
 - **Real-time Data**: Price feeds and market data via sol-indexer service
 - **Automated Execution**: Scheduled trading jobs with position monitoring
+- **Web Dashboard**: Next.js dashboard with Google OAuth for monitoring and control
 - **Clean Architecture**: Modular design for easy platform expansion
 
 ## Architecture
 
 - **NestJS Backend**: TypeScript-based API with dependency injection
+- **Next.js Dashboard**: React-based web interface for monitoring and control
+- **Google OAuth 2.0**: Secure authentication with email whitelist
 - **MongoDB**: Primary data store for trades, positions, and settings
 - **NestJS Schedule**: Cron jobs for trade monitoring and execution
 - **Datadog APM**: Optional monitoring and observability
@@ -35,11 +38,15 @@ Perps Trader is a simplified, perps-only trading application that integrates:
 # Install dependencies
 yarn install
 
-# Start development server
+# Start backend development server
 yarn dev
+
+# Start dashboard (in separate terminal)
+yarn dashboard:dev
 
 # Build for production
 yarn build
+yarn dashboard:build
 ```
 
 ### Docker Deployment
@@ -78,6 +85,16 @@ curl http://localhost:7777/health
 - `HL_DEFAULT_LEVERAGE=3` - Default trading leverage
 - `HL_MAX_OPEN_POSITIONS=1` - Maximum concurrent positions
 
+#### Dashboard & Authentication
+
+- `GOOGLE_CLIENT_ID` - Google OAuth 2.0 client ID
+- `GOOGLE_CLIENT_SECRET` - Google OAuth 2.0 client secret
+- `GOOGLE_CALLBACK_URL` - OAuth callback URL (default: http://localhost:7777/api/auth/google/callback)
+- `JWT_SECRET` - Secret key for JWT token signing
+- `JWT_EXPIRATION=7d` - JWT token expiration time
+- `ALLOWED_EMAILS` - Comma-separated list of authorized email addresses
+- `DASHBOARD_URL=http://localhost:3000` - Dashboard frontend URL for OAuth redirect
+
 #### External Services
 
 - `PREDICTOR_URL=http://trader-ai` - AI predictor service URL (optional)
@@ -109,11 +126,62 @@ See `.env.example` for complete configuration options.
 - **Extensible Architecture**: Easy to add new trading platforms
 - **Strategy Framework**: Pluggable trading strategy system
 
+## Dashboard
+
+The web-based dashboard provides comprehensive monitoring and control capabilities:
+
+### Features
+
+- **Real-time Analytics**: PnL tracking, win rates, position metrics
+- **Position Management**: View and control open/closed positions
+- **Configuration**: Manage perp settings and trading parameters
+- **Trading Control**: Emergency halt via closeAllPositions toggle
+- **Secure Access**: Google OAuth 2.0 with email whitelist
+
+### Quick Start
+
+```bash
+# Terminal 1 - Start backend
+yarn dev
+
+# Terminal 2 - Start dashboard
+yarn dashboard:dev
+
+# Access dashboard at http://localhost:3000
+```
+
+### Setup
+
+1. **Configure Google OAuth**: Create OAuth credentials in Google Cloud Console
+2. **Set Environment Variables**: Add credentials and allowed emails to `.env`
+3. **Start Services**: Run backend and dashboard
+4. **Access Dashboard**: Navigate to http://localhost:3000
+
+See [docs/dashboard.md](docs/dashboard.md) for complete documentation.
+
 ## API Endpoints
+
+### Core
 
 - `GET /` - Application status
 - `GET /health` - Health check
 - `GET /version` - Application version
+
+### Dashboard API
+
+- `GET /api/dashboard/analytics` - Trading analytics and metrics
+- `GET /api/dashboard/positions` - Position tracking and management
+- `PATCH /api/dashboard/positions/:id` - Update position (exit flag)
+- `GET /api/dashboard/perps` - Perp configuration
+- `PATCH /api/dashboard/perps/:id` - Update perp settings
+- `GET /api/dashboard/settings` - System settings
+- `PATCH /api/dashboard/settings` - Update settings (trading halt)
+
+### Authentication
+
+- `GET /api/auth/google` - Initiate Google OAuth flow
+- `GET /api/auth/google/callback` - OAuth callback handler
+- `GET /api/auth/me` - Get current user profile
 
 ## Development
 
@@ -128,9 +196,17 @@ src/
     trade/              # Core trading functionality
     trade-manager/      # Trade orchestration and management
     trade-position/     # Position tracking and lifecycle
+    dashboard/          # Dashboard API endpoints
+    auth/               # Google OAuth & JWT authentication
     indexer/            # Price feed integration
     predictor/          # AI prediction integration
     jobs/               # Scheduled trading jobs
+  dash/                 # Next.js dashboard frontend
+    pages/              # Dashboard pages
+    components/         # React components
+    services/           # API client
+    types/              # TypeScript types
+    styles/             # CSS styles
   config/               # Application configuration
   infrastructure/       # External service adapters
   shared/              # Common utilities and models
@@ -171,6 +247,8 @@ yarn prettier:fix
 ### Security Considerations
 
 - **Key Encryption**: Private keys are encrypted using `crypto-js`
+- **OAuth Authentication**: Google OAuth 2.0 with email whitelist
+- **JWT Tokens**: Secure session management with expiring tokens
 - **Environment Isolation**: Separate testnet/mainnet configurations
 - **Health Monitoring**: Comprehensive health checks and logging
 - **Non-root Container**: Docker runs as non-privileged user
@@ -193,6 +271,12 @@ The architecture supports adding new trading platforms:
 3. Register platform in `PlatformManagerModule`
 4. Configure platform-specific settings
 
+## Documentation
+
+- [Dashboard Guide](docs/dashboard.md) - Complete dashboard documentation
+- [Trade Decision Flow](docs/trade-decision-flow.md) - Trading logic and decision process
+- [Extreme Tracking Feature](docs/extreme-tracking-feature.md) - OHLCV-based entry timing
+
 ## Support
 
 For issues and questions:
@@ -200,6 +284,7 @@ For issues and questions:
 - Check the [issues](https://github.com/your-org/perps-trader/issues) page
 - Review configuration in `.env.example`
 - Check logs via `docker-compose logs perps-trader`
+- See [docs/dashboard.md](docs/dashboard.md) for dashboard-specific issues
 
 ## License
 

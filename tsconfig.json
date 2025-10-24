@@ -26,5 +26,10 @@
       "@perps-infra/*": ["src/infrastructure/*"],
       "@perps-infra": ["src/infrastructure"]
     }
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/dash"
+  ]
 }

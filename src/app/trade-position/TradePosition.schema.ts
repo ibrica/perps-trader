@@ -117,7 +117,14 @@ export class TradePosition {
 
 export const TradePositionSchema = SchemaFactory.createForClass(TradePosition);
 
-TradePositionSchema.index({ tokenMint: 1 });
+// Performance indexes
+TradePositionSchema.index({ status: 1 });
+TradePositionSchema.index({ timeOpened: -1 });
+TradePositionSchema.index({ token: 1 });
+TradePositionSchema.index({ platform: 1 });
+TradePositionSchema.index({ status: 1, timeOpened: -1 });
+TradePositionSchema.index({ token: 1, status: 1 });
+TradePositionSchema.index({ platform: 1, status: 1 });
 TradePositionSchema.index({ baseAssetSymbol: 1 });
 TradePositionSchema.index({ platform: 1, positionType: 1 });
 TradePositionSchema.index({ marketIndex: 1 });

@@ -13,6 +13,8 @@ Perps Trader is a lean, production-ready perpetual futures trading service focus
 ### Technology Stack
 
 - **Backend**: NestJS (Node.js framework)
+- **Frontend**: Next.js with React 19 and TypeScript
+- **Authentication**: Google OAuth 2.0 + JWT tokens
 - **Database**: MongoDB (primary)
 - **Scheduling**: NestJS Schedule (@nestjs/schedule) for cron jobs
 - **Trading Platform**: Hyperliquid (perpetual futures)
@@ -24,9 +26,10 @@ Perps Trader is a lean, production-ready perpetual futures trading service focus
 The application follows a simplified modular architecture with core trading services:
 
 1. **Main Trading Service** (`perps-trader`) - Core trading engine and API
-2. **AI Trading Service** (`trader-ai`) - External AI-powered analysis and predictions
-3. **Price Indexer** (`sol-indexer`) - External real-time price data indexing
-4. **Infrastructure Services**: MongoDB, optional Datadog
+2. **Web Dashboard** (`src/dash`) - Next.js frontend for monitoring and control
+3. **AI Trading Service** (`trader-ai`) - External AI-powered analysis and predictions
+4. **Price Indexer** (`sol-indexer`) - External real-time price data indexing
+5. **Infrastructure Services**: MongoDB, optional Datadog
 
 ## Core Functionality
 
@@ -225,6 +228,11 @@ Token Discovery → Entry Decision → Position Opened → Monitoring → Exit D
 yarn install
 yarn dev                   # Start NestJS backend with hot reload
 
+# Dashboard (run in separate terminal)
+yarn dashboard:dev         # Start Next.js dashboard on port 3000
+yarn dashboard:build       # Build dashboard for production
+yarn dashboard:start       # Start built dashboard
+
 # Build and production
 yarn build                 # Build the NestJS application
 yarn start:prod           # Start built application
@@ -267,6 +275,9 @@ docker-compose logs perps-trader # View application logs
 Clean NestJS modular architecture:
 
 - **App Modules** (`src/app/`): Core business logic modules
+- **Dashboard Frontend** (`src/dash/`): Next.js web interface
+- **Dashboard Backend** (`src/app/dashboard/`): Dashboard API endpoints
+- **Authentication** (`src/app/auth/`): Google OAuth & JWT
 - **Infrastructure** (`src/infrastructure/`): External service adapters
 - **Jobs** (`src/app/jobs/`): NestJS Schedule-based cron jobs
 - **Shared** (`src/shared/`): Common utilities, constants, and types
@@ -304,6 +315,7 @@ Clean import paths using TypeScript path mapping:
 Simplified configuration with essential services only:
 
 - `src/config/app.config.ts` - Core application settings
+- `src/config/auth.config.ts` - Google OAuth & JWT configuration
 - `src/config/hyperliquid.config.ts` - Trading platform configuration
 - `src/config/predictor.config.ts` - AI service integration
 - `src/config/indexer.config.ts` - Price feed integration
@@ -362,6 +374,129 @@ Simple error hierarchy in `src/shared/`:
 - **No Redis/ClickHouse**: Simplified to MongoDB only
 - **NestJS Schedule**: Simple cron jobs, no message queues
 - **Production ready**: Docker, monitoring, health checks included
+- **Dashboard included**: Full-featured Next.js dashboard with OAuth authentication
+
+## Dashboard Features
+
+### Overview
+
+The dashboard provides a web-based interface for monitoring and controlling the trading system. Built with Next.js and React, it features:
+
+- **Real-time Analytics**: PnL tracking, win rates, position metrics with time-series charts
+- **Position Management**: View, filter, and control open/closed positions
+- **Configuration**: Edit perp settings (amounts, leverage) with inline editing
+- **Trading Control**: Emergency halt via closeAllPositions toggle
+- **Secure Access**: Google OAuth 2.0 authentication with email whitelist
+
+### Architecture
+
+**Frontend** (`src/dash/`):
+- Next.js 15.3.3 with React 19 and TypeScript
+- Recharts for data visualization
+- Custom CSS with responsive grid system
+- OAuth callback handling and JWT token management
+
+**Backend APIs** (`src/app/dashboard/`, `src/app/auth/`):
+- Dashboard analytics endpoint with time-series aggregation
+- Position management with exitFlag controls
+- Perp configuration updates
+- Settings management (closeAllPositions)
+- Google OAuth strategy with email whitelist validation
+- JWT token generation and validation
+
+### Authentication Flow
+
+1. User visits dashboard → redirects to backend OAuth endpoint
+2. Backend redirects to Google OAuth consent screen
+3. User authorizes → Google redirects to backend callback
+4. Backend validates email against `ALLOWED_EMAILS` whitelist
+5. Backend generates JWT token → redirects to frontend with token
+6. Frontend stores token in localStorage → authenticated access
+
+### Key Configuration
+
+```bash
+# Google OAuth 2.0
+GOOGLE_CLIENT_ID=your-client-id
+GOOGLE_CLIENT_SECRET=your-client-secret
+GOOGLE_CALLBACK_URL=http://localhost:7777/api/auth/google/callback
+
+# JWT Configuration
+JWT_SECRET=your-jwt-secret
+JWT_EXPIRATION=7d
+
+# Access Control
+ALLOWED_EMAILS=user1@gmail.com,user2@gmail.com
+
+# Dashboard URL
+DASHBOARD_URL=http://localhost:3000
+```
+
+### Dashboard Components
+
+**Pages** (`src/dash/pages/`):
+- `index.tsx` - Main dashboard with 4 tabs (Overview, Positions, Perps, Settings)
+- `auth/callback.tsx` - OAuth callback handler
+- `_app.tsx` - App wrapper with authentication check
+
+**Components** (`src/dash/components/`):
+- `MetricCard.tsx` - KPI display with trend indicators
+- `ProfitChart.tsx` - Recharts time-series PnL chart
+- `PositionsTable.tsx` - Interactive position table with exitFlag toggle
+- `PerpsTable.tsx` - Perp configuration with inline editing
+- `SettingsPanel.tsx` - Trading halt controls with confirmation
+
+**Services** (`src/dash/services/`):
+- `api.ts` - Type-safe API client with JWT auth headers
+
+**Types** (`src/dash/types/`):
+- `dashboard.ts` - Complete TypeScript interfaces for all data types
+
+### Dashboard Development
+
+```bash
+# Start dashboard in development
+yarn dashboard:dev  # Runs on http://localhost:3000
+
+# Build for production
+yarn dashboard:build
+
+# Start in production mode
+yarn dashboard:start
+```
+
+### Dashboard API Endpoints
+
+All endpoints require JWT authentication via `Authorization: Bearer <token>` header:
+
+- `GET /api/dashboard/analytics` - Analytics with time-period filtering
+- `GET /api/dashboard/positions` - Positions with status filtering
+- `PATCH /api/dashboard/positions/:id` - Update exitFlag
+- `GET /api/dashboard/perps` - All perp configurations
+- `PATCH /api/dashboard/perps/:id` - Update amounts/leverage
+- `GET /api/dashboard/settings` - Current settings
+- `PATCH /api/dashboard/settings` - Update closeAllPositions
+- `GET /api/auth/google` - Initiate OAuth flow
+- `GET /api/auth/google/callback` - OAuth callback
+- `GET /api/auth/me` - Current user profile
+
+### Security Features
+
+- **Email Whitelist**: Only authorized emails can access dashboard
+- **OAuth 2.0**: Secure Google authentication
+- **JWT Tokens**: Stateless session management with expiration
+- **Protected Routes**: All dashboard endpoints require valid JWT
+- **Automatic Re-auth**: 401 errors trigger re-authentication flow
+
+### Use Cases
+
+1. **Monitor Performance**: Track PnL, win rates, and position metrics in real-time
+2. **Control Positions**: Mark open positions for exit via exitFlag
+3. **Configure Trading**: Adjust recommended amounts and leverage per perp
+4. **Emergency Halt**: Immediately stop trading and close all positions
+5. **Analyze History**: Review closed positions and token performance
+
+See [docs/dashboard.md](docs/dashboard.md) for complete documentation.
 
 ## Trading Decision Logic (Recent Enhancements)
 

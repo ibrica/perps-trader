@@ -9,6 +9,6 @@ import { PerpRepository } from './Perp.repository';
     MongooseModule.forFeature([{ name: Perp.name, schema: PerpSchema }]),
   ],
   providers: [PerpService, PerpRepository],
-  exports: [PerpService],
+  exports: [PerpService, PerpRepository],
 })
 export class PerpModule {}
