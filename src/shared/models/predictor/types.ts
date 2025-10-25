@@ -7,6 +7,7 @@
  * - Added ensemble prediction support
  * - Added category-specific predictions
  * - Enhanced with probability gating system
+ * ! The error response and case for CoinCategory manually changed
  */
 
 // Enums
@@ -29,12 +30,12 @@ export enum MarketSentiment {
   NEUTRAL = 'NEUTRAL',
 }
 
-// Note: CoinCategory uses lowercase values to match model checkpoint names
+// Note: CoinCategory in predictor uses lowercase values to match model checkpoint names
 // API accepts both uppercase ('MAIN_COINS') and lowercase ('main_coins')
 export enum CoinCategory {
-  MEME_TOKENS = 'meme_tokens',
-  MAIN_COINS = 'main_coins',
-  ALT_COINS = 'alt_coins',
+  MEME_TOKENS = 'MEME_TOKENS',
+  MAIN_COINS = 'MAIN_COINS',
+  ALT_COINS = 'ALT_COINS',
 }
 
 // Request types
@@ -149,7 +150,7 @@ export interface HealthResponse {
   clickhouse_connected: boolean;
 }
 
-export interface ErrorResponse {
+export interface PredictorErrorResponse {
   error: string;
   detail?: string | null;
   timestamp: string; // ISO datetime string
@@ -201,7 +202,7 @@ export interface TrendsResponse {
 // API Client helper types
 export interface ApiResponse<T> {
   data?: T;
-  error?: ErrorResponse;
+  error?: PredictorErrorResponse;
 }
 
 // Example usage types
