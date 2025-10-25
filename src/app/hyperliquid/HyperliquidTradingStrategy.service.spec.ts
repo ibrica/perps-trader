@@ -7,7 +7,7 @@ import { PredictorAdapter } from '../../infrastructure/predictor/PredictorAdapte
 import { PlatformTradingParams } from '../../shared/ports/trading/PlatformTradingStrategyPort';
 import { PositionDirection, Currency } from '../../shared';
 import {
-  TokenCategory,
+  CoinCategory,
   PredictionHorizon,
   Recommendation,
   TrendStatus,
@@ -43,7 +43,7 @@ describe('HyperliquidTradingStrategyService', () => {
 
   const createMockPrediction = (recommendation: Recommendation) => ({
     token_address: mockTokenAddress,
-    category: TokenCategory.MAIN_COINS,
+    category: CoinCategory.MAIN_COINS,
     recommendation,
     confidence:
       recommendation === Recommendation.BUY
@@ -161,13 +161,13 @@ describe('HyperliquidTradingStrategyService', () => {
     jest.clearAllMocks();
   });
 
-  describe('determineTokenCategory', () => {
+  describe('determineCoinCategory', () => {
     it('should return MAIN_COINS for main coins', () => {
       const mainCoins = ['BTC', 'ETH', 'SOL', 'USDC', 'USDT'];
 
       mainCoins.forEach((coin) => {
-        const category = (service as any).determineTokenCategory(coin);
-        expect(category).toBe(TokenCategory.MAIN_COINS);
+        const category = (service as any).determineCoinCategory(coin);
+        expect(category).toBe(CoinCategory.MAIN_COINS);
       });
     });
 
@@ -175,8 +175,8 @@ describe('HyperliquidTradingStrategyService', () => {
       const altCoins = ['DOGE', 'ADA', 'DOT', 'LINK'];
 
       altCoins.forEach((coin) => {
-        const category = (service as any).determineTokenCategory(coin);
-        expect(category).toBe(TokenCategory.ALT_COINS);
+        const category = (service as any).determineCoinCategory(coin);
+        expect(category).toBe(CoinCategory.ALT_COINS);
       });
     });
   });
@@ -239,7 +239,7 @@ describe('HyperliquidTradingStrategyService', () => {
 
       expect(mockPredictorAdapter.predictToken).toHaveBeenCalledWith(
         'BTC',
-        TokenCategory.MAIN_COINS,
+        CoinCategory.MAIN_COINS,
         PredictionHorizon.ONE_HOUR,
         true,
       );

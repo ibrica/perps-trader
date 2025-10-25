@@ -1,6 +1,13 @@
 /**
  * TypeScript definitions for TraderAI Inference API v1.1.0
  * Generated from Python Pydantic schemas
+ *
+ * Recent updates:
+ * - Removed 1-minute prediction horizon
+ * - Added ensemble prediction support
+ * - Added category-specific predictions
+ * - Enhanced with probability gating system
+ * ! The error response and case for CoinCategory manually changed
  */
 
 // Enums
@@ -23,7 +30,9 @@ export enum MarketSentiment {
   NEUTRAL = 'NEUTRAL',
 }
 
-export enum TokenCategory {
+// Note: CoinCategory in predictor uses lowercase values to match model checkpoint names
+// API accepts both uppercase ('MAIN_COINS') and lowercase ('main_coins')
+export enum CoinCategory {
   MEME_TOKENS = 'MEME_TOKENS',
   MAIN_COINS = 'MAIN_COINS',
   ALT_COINS = 'ALT_COINS',
@@ -32,21 +41,21 @@ export enum TokenCategory {
 // Request types
 export interface PredictionRequest {
   token_address: string;
-  category?: TokenCategory;
+  category?: CoinCategory;
   prediction_horizon?: PredictionHorizon;
   include_reasoning?: boolean;
 }
 
 export interface EnsemblePredictionRequest {
   token_address: string;
-  category?: TokenCategory;
+  category?: CoinCategory;
   ensemble_horizons?: number[];
   include_reasoning?: boolean;
 }
 
 export interface CategoryPredictionRequest {
   token_symbol: string;
-  token_category: TokenCategory;
+  token_category: CoinCategory;
   prediction_horizon?: PredictionHorizon;
   include_reasoning?: boolean;
 }
@@ -100,7 +109,7 @@ export interface ReasoningFactors {
 // Main response types
 export interface PredictionResponse {
   token_address: string;
-  category?: TokenCategory;
+  category?: CoinCategory;
   recommendation: Recommendation;
   confidence: number;
   predicted_curve_position_change: string;
@@ -112,7 +121,7 @@ export interface PredictionResponse {
 
 export interface CategoryPredictionResponse {
   token_symbol: string;
-  token_category: TokenCategory;
+  token_category: CoinCategory;
   recommendation: Recommendation;
   confidence: number;
   predicted_curve_position_change: string;

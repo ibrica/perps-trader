@@ -6,7 +6,7 @@ import { PositionDirection } from '../../shared';
 import {
   PredictionHorizon,
   Recommendation,
-  TokenCategory,
+  CoinCategory,
 } from '../../shared/models/predictor/types';
 import { TradePositionDocument } from '../trade-position/TradePosition.schema';
 
@@ -531,7 +531,7 @@ describe('TrailingService', () => {
 
         expect(predictorAdapter.predictToken).toHaveBeenCalledWith(
           'ETH',
-          TokenCategory.MAIN_COINS, // ETH is a main coin
+          CoinCategory.MAIN_COINS, // ETH is a main coin
           PredictionHorizon.ONE_HOUR,
           true,
         );
@@ -554,7 +554,7 @@ describe('TrailingService', () => {
 
         expect(predictorAdapter.predictToken).toHaveBeenCalledWith(
           'DOGE',
-          TokenCategory.ALT_COINS,
+          CoinCategory.ALT_COINS,
           PredictionHorizon.ONE_HOUR,
           true,
         );

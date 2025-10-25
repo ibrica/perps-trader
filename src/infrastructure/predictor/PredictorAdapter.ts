@@ -3,7 +3,7 @@ import axios, { AxiosError } from 'axios';
 import {
   PredictionHorizon,
   PredictionResponse,
-  TokenCategory,
+  CoinCategory,
   TrendsResponse,
   retryCallback,
 } from '../../shared';
@@ -29,7 +29,7 @@ export class PredictorAdapter {
 
   async predictToken(
     tokenMint: string,
-    category: TokenCategory = TokenCategory.MEME_TOKENS,
+    category: CoinCategory = CoinCategory.MEME_TOKENS,
     predictionHorizon: string = PredictionHorizon.THIRTY_MIN,
     includeReasoning: boolean = true,
   ): Promise<PredictionResponse | undefined> {

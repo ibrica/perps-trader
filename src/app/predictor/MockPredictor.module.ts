@@ -3,7 +3,7 @@ import { PredictorAdapter } from '../../infrastructure';
 import {
   PredictionResponse,
   Recommendation,
-  TokenCategory,
+  CoinCategory,
 } from '../../shared/models/predictor/types';
 
 @Module({
@@ -13,7 +13,7 @@ import {
       useValue: {
         predictToken: jest.fn().mockResolvedValue({
           token_address: 'mock-token-address',
-          category: TokenCategory.MEME_TOKENS,
+          category: CoinCategory.MEME_TOKENS,
           recommendation: Recommendation.HOLD,
           confidence: 0.7,
           percentage_change: 0,

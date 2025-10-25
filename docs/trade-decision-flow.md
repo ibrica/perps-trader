@@ -254,7 +254,7 @@ Request to external AI service:
 POST http://predictor:5001/predict
 {
   "token_address": "BTC",
-  "category": "MAIN_COINS",        // MAIN_COINS, ALT_COINS, MEME_TOKENS
+  "category": "main_coins",        // main_coins, alt_coins, meme_tokens
   "prediction_horizon": "1h",      // 5m, 15m, 30m, 1h
   "include_reasoning": true
 }

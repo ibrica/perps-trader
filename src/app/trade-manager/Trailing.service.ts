@@ -6,7 +6,7 @@ import { PredictorAdapter } from '../../infrastructure/predictor/PredictorAdapte
 import {
   PredictionHorizon,
   Recommendation,
-  TokenCategory,
+  CoinCategory,
 } from '../../shared/models/predictor/types';
 
 export interface TrailingEvaluation {
@@ -234,7 +234,7 @@ export class TrailingService {
     direction: PositionDirection,
   ): Promise<{ shouldContinue: boolean; reason: string }> {
     try {
-      const tokenCategory = this.determineTokenCategory(token);
+      const coinCategory = this.determineCoinCategory(token);
       const minConfidence = this.configService.get<number>(
         'hyperliquid.predictorMinConfidence',
         0.6,
@@ -242,7 +242,7 @@ export class TrailingService {
 
       const prediction = await this.predictorAdapter.predictToken(
         token,
-        tokenCategory,
+        coinCategory,
         PredictionHorizon.ONE_HOUR,
         true,
       );
@@ -347,15 +347,15 @@ export class TrailingService {
   }
 
   /**
-   * Determine token category for prediction
+   * Determine coin category for prediction
    */
-  private determineTokenCategory(tokenSymbol: string): TokenCategory {
+  private determineCoinCategory(tokenSymbol: string): CoinCategory {
     const mainCoins = ['BTC', 'ETH', 'SOL', 'USDC', 'USDT'];
 
     if (mainCoins.includes(tokenSymbol.toUpperCase())) {
-      return TokenCategory.MAIN_COINS;
+      return CoinCategory.MAIN_COINS;
     }
 
-    return TokenCategory.ALT_COINS;
+    return CoinCategory.ALT_COINS;
   }
 }
